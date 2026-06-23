@@ -1,0 +1,107 @@
+{
+    "area_name": "遺忘墓地",
+    "req_level": 30,
+    "monsters": {
+        "skeleton": {
+            "id": "skeleton",
+            "name": "甦醒的骷髏兵",
+            "spawn_rate": 0.45,
+            "max_hp": 2400,
+            "atk": 144,
+            "def": 90,
+            "exp": 5500,
+            "spd": 25,
+            "weakness": [
+                "holy"
+            ],
+            "immunity": [
+                "poison"
+            ],
+            "drops": {
+                "bone_shard": 1,
+                "flame_sword": 0.05
+            },
+            "money_min": 80,
+            "money_max": 130
+        },
+        "grave_goblin": {
+            "id": "grave_goblin",
+            "name": "盜墓哥布林",
+            "spawn_rate": 0.25,
+            "max_hp": 2100,
+            "atk": 136,
+            "def": 80,
+            "exp": 6000,
+            "spd": 30,
+            "weakness": [],
+            "money_min": 100,
+            "money_max": 300,
+            "drops": {
+                "stolen_gem": 0.5,
+                "high_health_potion": 0.25
+            }
+        },
+        "ghost": {
+            "id": "ghost",
+            "name": "遊蕩幽靈",
+            "spawn_rate": 0.3,
+            "max_hp": 1800,
+            "atk": 170,
+            "def": 70,
+            "exp": 6500,
+            "spd": 45,
+            "weakness": [
+                "holy"
+            ],
+            "resistance": [
+                "physical",
+                "poison"
+            ],
+            "drops": {
+                "ectoplasm": 1,
+                "high_mana_potion": 0.25
+            },
+            "status_on_hit": [
+                "freeze"
+            ],
+            "status_chance": 0.25,
+            "money_min": 90,
+            "money_max": 150
+        }
+    },
+    "boss": {
+        "id": "lich",
+        "name": "亡靈巫妖",
+        "is_boss": true,
+        "max_hp": 9000,
+        "atk": 221,
+        "def": 110,
+        "exp": 95000,
+        "spd": 50,
+        "weakness": [
+            "holy",
+            "fire"
+        ],
+        "resistance": [
+            "dark",
+            "poison",
+            "water"
+        ],
+        "immunity": [
+            "ice"
+        ],
+        "money_min": 500,
+        "money_max": 900,
+        "drops": {
+            "lich_soulstone": 0.4,
+            "dragon_plate": 0.15,
+            "scroll_divine_thunder": 0.2,
+            "high_mana_potion": 0.5
+        },
+        "status_on_hit": [
+            "freeze",
+            "poison"
+        ],
+        "status_chance": 0.5
+    }
+}

@@ -1,0 +1,99 @@
+{
+    "area_name": "瘋狂博士的實驗室",
+    "req_level": 20,
+    "monsters": {
+        "failed_experiment": {
+            "id": "failed_experiment",
+            "name": "失敗的實驗體",
+            "spawn_rate": 0.55,
+            "max_hp": 1200,
+            "atk": 119,
+            "def": 55,
+            "exp": 3500,
+            "spd": 20,
+            "weakness": [
+                "holy",
+                "fire"
+            ],
+            "resistance": [
+                "poison",
+                "dark"
+            ],
+            "drops": {
+                "medium_health_potion": 0.35,
+                "flame_sword": 0.05
+            },
+            "status_on_hit": [
+                "poison"
+            ],
+            "status_chance": 0.2,
+            "money_min": 50,
+            "money_max": 85
+        },
+        "mutant_slime": {
+            "id": "mutant_slime",
+            "name": "變異史萊姆",
+            "spawn_rate": 0.45,
+            "max_hp": 1600,
+            "atk": 106,
+            "def": 70,
+            "exp": 4500,
+            "spd": 18,
+            "weakness": [
+                "ice",
+                "thunder"
+            ],
+            "resistance": [
+                "physical",
+                "poison"
+            ],
+            "drops": {
+                "burn_salve": 1,
+                "medium_mana_potion": 0.3
+            },
+            "status_on_hit": [
+                "burn",
+                "poison"
+            ],
+            "status_chance": 0.25,
+            "money_min": 60,
+            "money_max": 100
+        }
+    },
+    "boss": {
+        "id": "mad_doctor",
+        "name": "瘋狂博士",
+        "is_boss": true,
+        "max_hp": 6000,
+        "atk": 153,
+        "def": 80,
+        "exp": 60000,
+        "spd": 35,
+        "weakness": [
+            "holy",
+            "physical"
+        ],
+        "resistance": [
+            "poison",
+            "dark",
+            "thunder",
+            "magic"
+        ],
+        "money_min": 400,
+        "money_max": 700,
+        "drops": {
+            "holy_sword": 0.15,
+            "scroll_inferno": 0.2,
+            "scroll_divine_thunder": 0.15,
+            "medium_health_potion": 0.5,
+            "elixir_of_cleansing": 0.2
+        },
+        "status_on_hit": [
+            "poison",
+            "paralysis",
+            "freeze",
+            "burn"
+        ],
+        "status_chance": 0.55
+    }
+}

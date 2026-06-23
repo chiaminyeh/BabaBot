@@ -1,0 +1,77 @@
+{
+    "area_name": "迷霧森林",
+    "req_level": 5,
+    "monsters": {
+        "dire_wolf": {
+            "id": "dire_wolf",
+            "name": "凶暴化黑狼",
+            "spawn_rate": 0.7,
+            "max_hp": 120,
+            "atk": 35,
+            "def": 12,
+            "exp": 65,
+            "spd": 25,
+            "money_min": 12,
+            "money_max": 22,
+            "weakness": [
+                "fire",
+                "thunder"
+            ],
+            "resistance": [
+                "dark"
+            ],
+            "drops": {
+                "wolf_fur": 1,
+                "bronze_sword": 0.3
+            }
+        },
+        "orc": {
+            "id": "orc",
+            "name": "獸人掠奪者",
+            "spawn_rate": 0.3,
+            "max_hp": 180,
+            "atk": 45,
+            "def": 15,
+            "exp": 90,
+            "spd": 15,
+            "money_min": 20,
+            "money_max": 50,
+            "weakness": [
+                "poison",
+                "fire"
+            ],
+            "resistance": [
+                "physical"
+            ],
+            "drops": {
+                "leather_armor": 0.55,
+                "health_potion": 0.4
+            }
+        }
+    },
+    "boss": {
+        "id": "forest_guardian",
+        "name": "迷霧林王",
+        "is_boss": true,
+        "max_hp": 800,
+        "atk": 55,
+        "def": 22,
+        "exp": 1200,
+        "spd": 30,
+        "weakness": [
+            "fire",
+            "dark"
+        ],
+        "resistance": [
+            "water",
+            "earth"
+        ],
+        "money_min": 120,
+        "money_max": 250,
+        "drops": {
+            "scroll_shadow_step": 0.45,
+            "scroll_combo_attack": 0.55,
+            "bronze_sword": 0.2
+        }
+    }
+}

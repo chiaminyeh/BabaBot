@@ -1,4 +1,5 @@
 import datetime
+import time
 import discord
 import random
 from discord import DMChannel
@@ -39,6 +40,9 @@ class WordleGame:
         self.guesses_left = WORDLE_GUESS
         self.guesses = []  # each element: [ ['c','r','a','n','e'], [2,1,0,0,0] ]
         self.ended = False
+
+        self.board_message: discord.Message | None = None  # the live board message to edit
+        self.last_board_time: float = 0  # timestamp of when the board message was sent
 
     def get_board(self) -> str:
         """
@@ -93,8 +97,9 @@ class WordleGame:
 
     async def send_board(self, bot: commands.Bot, user: discord.abc.User):
         """
-        Sends the current board to the original channel of the game.
-        Works for both slash & prefix commands.
+        Sends or edits the current board message.
+        Edits the existing message if it was sent less than 10 minutes ago;
+        otherwise sends a new message.
         """
         channel = bot.get_channel(self.channel)
 
@@ -112,7 +117,24 @@ class WordleGame:
             description=self.get_board(),
             color=0x80008E
         )
-        await channel.send(embed=embed)
+
+        # Try to edit the existing board message if it's less than 10 minutes old
+        should_edit = (
+            self.board_message is not None
+            and (time.time() - self.last_board_time) < 600  # 10 minutes
+        )
+
+        if should_edit:
+            try:
+                await self.board_message.edit(embed=embed)
+                return
+            except (discord.NotFound, discord.Forbidden, discord.HTTPException):
+                # Message was deleted or can't be edited — fall through to send a new one
+                pass
+
+        # Send a new message and store the reference
+        self.board_message = await channel.send(embed=embed)
+        self.last_board_time = time.time()
 
     def guess_word(self, word: str):
         """

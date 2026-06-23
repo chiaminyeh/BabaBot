@@ -1,0 +1,60 @@
+{
+    "power_slash": {
+        "name": "強力斬擊", "desc": "造成 1.5 倍物理傷害（CD: 2）", "type": "physical", "element": "physical", "power_multiplier": 1.5, "crit_bonus": 0.08, "cd": 2, "req_level": 1
+    },
+    "heal_light": {
+        "name": "初級治療", "desc": "回復自身 100 點 HP（CD: 4）", "type": "support", "heal_amount": 100, "mp_cost": 25, "cd": 4, "req_level": 1
+    },
+    "double_strike": {
+        "name": "連環快斬", "desc": "快速連砍兩次，每次 0.75 倍傷害（CD: 2）", "type": "physical", "element": "physical", "power_multiplier": 0.75, "hits": 2, "cd": 2, "req_level": 1
+    },
+    "combo_attack": {
+        "name": "連續攻擊", "desc": "被動：普攻額外攻擊一次（0.75 倍傷害，需 Lv.8）", "type": "passive", "req_level": 8, "extra_attack_multiplier": 0.75
+    },
+    "shadow_step": {
+        "name": "暗影步", "desc": "消耗 15 MP，有 85% 機率強制脫離戰鬥（CD: 4，需 Lv.5）", "type": "flee", "flee_chance": 0.85, "mp_cost": 15, "cd": 4, "req_level": 5
+    },
+    "blood_strike": {
+        "name": "血之獻祭",
+        "desc": "消耗 20% 最大 HP，並根據獻祭的血量造成 2.5 倍暗屬性真實傷害（CD: 4，需 Lv.10）",
+        "type": "physical",
+        "element": "dark",
+        "hp_cost_percent": 0.2,
+        "hp_scaling_multiplier": 2.5,
+        "cd": 4,
+        "req_level": 10
+    },
+    "fireball": {
+        "name": "火球術", "desc": "造成 2.0 倍火屬性傷害，使敵人燃燒 2 回合（CD: 3）", "type": "magic", "element": "fire", "power_multiplier": 2.0, "mp_cost": 20, "def_pierce": 0.4, "cd": 3, "apply_status": "burn", "status_turns": 2, "req_level": 1
+    },
+    "ice_spear": {
+        "name": "寒冰矛", "desc": "造成 1.8 倍冰屬性傷害，有高機率凍結敵人 1 回合（CD: 4）", "type": "magic", "element": "ice", "power_multiplier": 1.8, "mp_cost": 25, "def_pierce": 0.3, "cd": 4, "apply_status": "freeze", "status_turns": 1, "req_level": 1
+    },
+    "thunder_strike": {
+        "name": "落雷術", "desc": "造成 2.8 倍雷屬性傷害，附帶麻痺效果 2 回合（CD: 5）", "type": "magic", "element": "thunder", "power_multiplier": 2.8, "mp_cost": 35, "def_pierce": 0.6, "cd": 5, "apply_status": "paralysis", "status_turns": 2, "req_level": 1
+    },
+    "water_ball": {
+        "name": "水球術", "desc": "造成 1.5 倍水屬性傷害，連擊兩次（CD: 3）", "type": "magic", "element": "water", "power_multiplier": 1.5, "hits": 2, "mp_cost": 25, "def_pierce": 0.2, "cd": 3, "req_level": 5
+    },
+    "stone_spike": {
+        "name": "岩刺術", "desc": "造成 2.5 倍土屬性傷害，無視 60% 防禦（CD: 4）", "type": "magic", "element": "earth", "power_multiplier": 2.5, "mp_cost": 30, "def_pierce": 0.6, "cd": 4, "req_level": 8
+    },
+    "holy_smash": {
+        "name": "神聖制裁", "desc": "造成 3.0 倍光屬性傷害，專剋不死生物（CD: 5，需 Lv.12）", "type": "magic", "element": "holy", "power_multiplier": 3.0, "mp_cost": 40, "def_pierce": 0.5, "cd": 5, "req_level": 12
+    },
+    "dark_orb": {
+        "name": "暗影球", "desc": "造成 2.6 倍暗屬性傷害，機率造成中毒（CD: 4，需 Lv.10）", "type": "magic", "element": "dark", "power_multiplier": 2.6, "mp_cost": 35, "def_pierce": 0.4, "cd": 4, "apply_status": "poison", "status_turns": 3, "req_level": 10
+    },
+    "inferno": {
+        "name": "煉獄火", "desc": "造成 3.2 倍火屬性傷害，強力燃燒 3 回合（CD: 5，需 Lv.15）", "type": "magic", "element": "fire", "power_multiplier": 3.2, "mp_cost": 45, "def_pierce": 0.5, "cd": 5, "apply_status": "burn", "status_turns": 3, "req_level": 15
+    },
+    "blizzard": {
+        "name": "暴風雪", "desc": "造成 2.4 倍冰屬性傷害，凍結敵人 2 回合（CD: 5，需 Lv.12）", "type": "magic", "element": "ice", "power_multiplier": 2.4, "mp_cost": 40, "def_pierce": 0.45, "cd": 5, "apply_status": "freeze", "status_turns": 2, "req_level": 12
+    },
+    "divine_thunder": {
+        "name": "神聖落雷", "desc": "造成 4.0 倍雷屬性傷害，麻痺 3 回合（CD: 6，需 Lv.18）", "type": "magic", "element": "thunder", "power_multiplier": 4.0, "mp_cost": 55, "def_pierce": 0.7, "cd": 6, "apply_status": "paralysis", "status_turns": 3, "req_level": 18
+    },
+    "void_eruption": {
+        "name": "虛空爆發", "desc": "造成 5.0 倍暗屬性傷害，且無視 80% 防禦（CD: 6，需 Lv.25）", "type": "magic", "element": "dark", "power_multiplier": 5.0, "mp_cost": 80, "def_pierce": 0.8, "cd": 6, "req_level": 25
+    }
+}

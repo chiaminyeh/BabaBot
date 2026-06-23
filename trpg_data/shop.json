@@ -1,0 +1,9 @@
+{
+    "health_potion": {"name": "微型生命藥水", "type": "potion", "heal": 35, "price": 20, "desc": "回復 35 點 HP"},
+    "slime_jelly": {"name": "史萊姆果凍", "type": "etc", "price": 5, "desc": "黏糊糊的亮晶晶液體"},
+    "wolf_fur": {"name": "完整狼皮", "type": "etc", "price": 18, "desc": "可以拿來做保暖衣物"},
+    "rusty_dagger": {"name": "生鏽的匕首", "type": "weapon", "atk_bonus": 5, "price": 80, "desc": "雖然鈍，但捅人還是會痛"},
+    "wooden_sword": {"name": "練習用木劍", "type": "weapon", "atk_bonus": 8, "price": 150, "desc": "新手冒險者的標配"},
+    "iron_sword": {"name": "精鋼長劍", "type": "weapon", "atk_bonus": 20, "price": 500, "desc": "散發冷冽光芒的正規武器"},
+    "raw_meat": {"name": "生肉", "type": "etc", "price": 10, "desc": "看起來不太新鮮的肉塊"}
+}

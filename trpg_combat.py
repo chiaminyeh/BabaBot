@@ -45,8 +45,10 @@ def exp_to_next_level(level: int) -> int:
 
 
 def get_player_atk(player, items: dict) -> int:
-
-    return player.base_atk
+    atk = player.base_atk
+    if getattr(player, "status_effects", None) and "paralysis" in player.status_effects:
+        atk = int(atk * 0.70)
+    return atk
 
 
 
@@ -60,9 +62,7 @@ def get_player_def(player, items: dict) -> int:
 
 
 
-def get_player_magic(player, items: dict) -> int:
 
-    return getattr(player, "base_magic", 0)
 
 
 
@@ -89,11 +89,14 @@ def calc_physical_damage(atk: int, defense: int, multiplier: float = 1.0) -> int
     return int(dmg * random.uniform(0.85, 1.15))
 
 def get_player_magic(player, items: dict) -> int:
-    return getattr(player, "base_int", 0) # 改抓智力
+    mag = getattr(player, "base_int", 0)
+    if getattr(player, "status_effects", None) and "paralysis" in player.status_effects:
+        mag = int(mag * 0.70)
+    return mag
 
 def apply_schrodinger(player, dmg: int, base_msg: str) -> tuple[int, str]:
     if getattr(player, "accessory", "") == "schrodinger_watch":
-        if random.random() < 0.5:
+        if random.random() < 0.6:
             return dmg * 2, f"⏱️ 【薛丁格的懷錶】發動！傷害翻倍！\n{base_msg}"
         else:
             return max(1, dmg // 2), f"⏱️ 【薛丁格的懷錶】反噬！傷害減半！\n{base_msg}"
@@ -248,7 +251,10 @@ class TRPGCombat:
         if status_log: log += f"\n{status_log}"
         if self.monster_hp <= 0 or not m_can_act: return log
 
-        m_dmg = calc_monster_damage(self.monster["atk"], get_player_def(self.player, self.cog.items))
+        m_atk = self.monster["atk"]
+        if getattr(self, "monster_status", None) and "paralysis" in self.monster_status:
+            m_atk = int(m_atk * 0.70)
+        m_dmg = calc_monster_damage(m_atk, get_player_def(self.player, self.cog.items))
 
         # 閃避判定
         if self.is_dodging:
@@ -312,18 +318,12 @@ class TRPGCombat:
         attack_elem = weapon.get("element", "physical")
         ele_mult, ele_msg = get_elemental_multiplier(attack_elem, self.monster)
         
-        # 傳遞屬性倍率給攻擊計算
-        base_dmg, base_msg = self._do_physical_hit(ele_mult=ele_mult) 
-        p_dmg, hit_msg = apply_schrodinger(self.player, base_dmg, base_msg)
-
         spd_scale = weapon.get("spd_scaling", 0.0)
         p_spd = getattr(self.player, "base_spd", 10)
+        multiplier = 1.0 + p_spd * spd_scale
         
-        # 計算傷害並過懷錶
-        p_atk = get_player_atk(self.player, self.cog.items)
-        base_dmg, base_msg = self._do_physical_hit() # 原本的方法裡面記得補傳參數
-        
-        # (因為篇幅，請記得在原本算物理與魔法傷害的地方加上 apply_schrodinger)
+        # 傳遞屬性與速度倍率給攻擊計算
+        base_dmg, base_msg = self._do_physical_hit(multiplier=multiplier, ele_mult=ele_mult) 
         p_dmg, hit_msg = apply_schrodinger(self.player, base_dmg, base_msg)
         
         log += f"⚔️ 你攻擊了 {self.monster['name']}，{hit_msg}"
@@ -443,7 +443,10 @@ class TRPGCombat:
             log += f"🩸 你殘忍地獻祭了自己 {actual_hp_cost} 點生命值！\n"
 
         if skill_type == "support":
-            heal = skill.get("heal_amount", 20)
+            if skill_id == "heal_light":
+                heal = int(self.player.max_hp * 0.20 + 50)
+            else:
+                heal = skill.get("heal_amount", 20)
             before = self.player.current_hp
             self.player.current_hp = min(self.player.max_hp, self.player.current_hp + heal)
             log += f"✨ 【{skill['name']}】回復了 {self.player.current_hp - before} 點 HP！"
@@ -566,13 +569,7 @@ class TRPGCombat:
 
 
 
-        uid = int(self.view.user_id)
-
-        current_bal = self.cog.bank.get(uid, [0])[0]
-
-        self.cog.bank[uid] = (current_bal + gold, self.cog.bank.get(uid, (0, False))[1])
-
-        self.cog.bot.baba.refresh_bank_file()
+        self.cog.adjust_bank(self.view.user_id, gold)
 
 
 
@@ -599,12 +596,39 @@ class TRPGCombat:
 
 
         if self.monster.get("is_boss"):
-
             today_str = datetime.today().strftime("%Y-%m-%d")
-
             self.player.daily_boss_kills[self.player.current_area] = today_str
-
             drop_log += "👑 區域 BOSS 討伐成功！今日已無法再次挑戰。\n"
+
+            # Guaranteed scroll drop logic (100% first kill, 30% daily)
+            boss_id = self.monster.get("id")
+            scroll_pool = [item_id for item_id in self.monster.get("drops", {}).keys() if "scroll" in item_id]
+            if not scroll_pool:
+                FALLBACK_BOSS_SCROLLS = {
+                    "goblin_chief": ["scroll_heal_light", "scroll_power_slash", "scroll_fireball"],
+                    "forest_guardian": ["scroll_shadow_step", "scroll_combo_attack"],
+                    "bee_queen": ["scroll_blood_strike", "scroll_double_strike", "ice_spear_scroll"],
+                    "mad_doctor": ["scroll_inferno", "scroll_divine_thunder", "scroll_blizzard"],
+                    "lich": ["scroll_divine_thunder", "scroll_blizzard"],
+                    "vampire_lord": ["scroll_divine_thunder", "scroll_inferno"]
+                }
+                scroll_pool = FALLBACK_BOSS_SCROLLS.get(boss_id, ["scroll_heal_light"])
+            
+            area_id = self.player.current_area
+            killed_bosses = getattr(self.player, "killed_bosses", [])
+            is_first_kill = area_id not in killed_bosses
+            
+            if is_first_kill or random.random() < 0.30:
+                dropped_scroll = random.choice(scroll_pool)
+                self.player.inventory[dropped_scroll] = self.player.inventory.get(dropped_scroll, 0) + 1
+                scroll_name = self.cog.items.get(dropped_scroll, {}).get("name", dropped_scroll)
+                drop_log += f"🎁 討伐 BOSS 獎勵！獲得技能卷軸：{scroll_name} "
+                if is_first_kill:
+                    drop_log += "(✨ 首殺首通確定獎勵！)\n"
+                    killed_bosses.append(area_id)
+                    self.player.killed_bosses = killed_bosses
+                else:
+                    drop_log += "(⚡ 每日挑戰隨機獲得！)\n"
 
 
 
@@ -628,30 +652,73 @@ class TRPGCombat:
 
                         quest_log += "\n✅ 任務完成！請回村莊找 NPC 領取獎勵！"
 
-        # 👇 新增：如果是魔塔怪物，勝利後爬升一層
+        # 👇 每日任務進度更新 (Kill 類型)
+        completed_dailies = getattr(self.player, "completed_dailies", [])
+        for q_id, q_data in getattr(self.player, "daily_quests", {}).items():
+            if q_data.get("quest_type") == "kill" and q_id not in completed_dailies:
+                if q_data.get("target_monster") == monster_id:
+                    q_data["progress"] = min(q_data["target_count"], q_data["progress"] + 1)
+                    quest_log += f"\n📜 每日任務進度：{q_data['title']} ({q_data['progress']}/{q_data['target_count']})"
+                    if q_data["progress"] >= q_data["target_count"]:
+                        quest_log += f"\n✅ 每日任務【{q_data['title']}】已可回報！"
+
         tower_log = ""
         if self.monster.get("is_tower"):
             self.player.tower_floor += 1
             self.view.tower_safe_room_visited = False  # 👈 這行是關鍵，重置狀態讓下一層有休息室
             tower_log = f"\n🧗 轟隆隆... 通往第 {self.player.tower_floor} 層的階梯緩緩降下了！"
+            
+            # Milestone rewards logic
+            completed_floor = self.player.tower_floor - 1
+            milestones = {
+                10: {"trophy": "🥉 銅魔箱勳章", "gold": 5000, "item": None},
+                25: {"trophy": "🥈 銀魔箱勳章", "gold": 15000, "item": "mystery_power_ring"},
+                50: {"trophy": "🥇 金魔箱勳章", "gold": 50000, "item": "mystery_void_blade"},
+                75: {"trophy": "💎 鑽石魔箱勳章", "gold": 100000, "item": "immortal_totem"},
+                99: {"trophy": "👑 冠軍魔箱勳章", "gold": 250000, "item": "scroll_divine_thunder"}
+            }
+            if completed_floor in milestones:
+                milestone_data = milestones[completed_floor]
+                if not hasattr(self.player, "tower_milestones"):
+                    self.player.tower_milestones = []
+                if completed_floor not in self.player.tower_milestones:
+                    self.player.tower_milestones.append(completed_floor)
+                    self.cog.adjust_bank(self.view.user_id, milestone_data["gold"])
+                    
+                    item_msg = ""
+                    gift_item = milestone_data["item"]
+                    if gift_item:
+                        self.player.inventory[gift_item] = self.player.inventory.get(gift_item, 0) + 1
+                        gift_name = self.cog.items.get(gift_item, {}).get("name", gift_item)
+                        item_msg = f" 與【{gift_name}】x1"
+                        
+                    if not hasattr(self.player, "trophies"):
+                        self.player.trophies = []
+                    self.player.trophies.append(milestone_data["trophy"])
+                    
+                    tower_log += f"\n🏆 **【魔塔里程碑達成！】**\n你征服了魔塔第 {completed_floor} 層！獲得了【{milestone_data['trophy']}】、💰 {milestone_data['gold']}金幣{item_msg}！"
 
-        log = f"\n🏆 戰鬥勝利！\n獲得了 {exp} 經驗值與 {gold} {self.cog.bot.baba.money_name}。\n{drop_log}{quest_log}"
+        # 👇 新增：如果是地下城怪物，勝利後前進一層
+        dungeon_log = ""
+        if self.monster.get("is_dungeon"):
+            self.player.dungeon_floor += 1
+            self.view.dungeon_safe_room_visited = False
+            dungeon_log = f"\n🧗 轟隆隆... 通往深淵地下城第 {self.player.dungeon_floor} 層的通道打開了！"
+
+        log = f"\n🏆 戰鬥勝利！\n獲得了 {exp} 經驗值與 {gold} {self.cog.bot.baba.money_name}。\n{drop_log}{quest_log}{tower_log}{dungeon_log}"
 
         if lvl_up:
-
             log += f"\n🌟 升級了！你提升到了 Lv.{self.player.level}！"
 
+        achv_text = self.view.check_achievements()
+        if achv_text:
+            log += achv_text
 
-
+        self.view.record_combat_history(log)
         self.cog.save_players()
-
         self._clear_battle_state()
-
         self.view.in_battle = False
-
         self.view.active_monster = None
-
         self.view.build_main_menu()
-
         return log
 

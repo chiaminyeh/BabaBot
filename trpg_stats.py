@@ -6,7 +6,7 @@ ALLOC_BONUS = {
     "atk": 3,
     "vit": 1,  # 1點體力 = +12血量 & +2防禦
     "int": 1,  # 1點智力 = +4魔攻 & +3最大MP
-    "spd": 2,  # 1點速度 = +2速度
+    "spd": 3,  # 1點速度 = +3速度
     "res": 2,
 }
 
@@ -53,22 +53,40 @@ def recalc_player_stats(player, items: dict = None, heal_full: bool = False):
     level = player.level
     alloc = getattr(player, "stat_alloc", None) or default_stat_alloc()
     eq = get_equipment_bonuses(player, items or {})
+    prestige = getattr(player, "prestige_count", 0)
+    prestige_mult = 1.0 + prestige * 0.10  # 每級轉生提升 10% 全屬性
 
-    player.base_atk = 10 + level * 2 + alloc.get("atk", 0) * ALLOC_BONUS["atk"] + eq["atk"]
+    base_atk = 10 + level * 2 + alloc.get("atk", 0) * ALLOC_BONUS["atk"] + eq["atk"]
+    if getattr(player, "weapon", None):
+        base_atk += getattr(player, "weapon_upgrade", 0) * 3
+    player.base_atk = int(base_atk * prestige_mult)
     
     # 👇 體力 (vit) 統一管理血量與防禦
-    player.base_def = 4 + level + alloc.get("vit", 0) * 2 + eq["def"]
+    base_def = 4 + level * 1.5 + alloc.get("vit", 0) * 2 + eq["def"]
+    if getattr(player, "armor", None):
+        base_def += getattr(player, "armor_upgrade", 0) * 2
+    player.base_def = int(base_def * prestige_mult)
+    
     old_max_hp = getattr(player, "max_hp", 60)
-    player.max_hp = 50 + level * 10 + alloc.get("vit", 0) * 12 + eq["hp"]
+    base_max_hp = 50 + level * 10 + alloc.get("vit", 0) * 12 + eq["hp"]
+    if getattr(player, "armor", None):
+        base_max_hp += getattr(player, "armor_upgrade", 0) * 15
+    player.max_hp = int(base_max_hp * prestige_mult)
     
     # 👇 智力 (int) 統一管理魔法攻擊與 MP
-    player.base_int = 10 + int(level * 2.5) + alloc.get("int", 0) * 4 + eq["magic"]
+    base_int = 10 + int(level * 2.5) + alloc.get("int", 0) * 4 + eq["magic"]
+    player.base_int = int(base_int * prestige_mult)
+    
     old_max_mp = getattr(player, "max_mp", 25)
-    player.max_mp = 40 + level * 6 + alloc.get("int", 0) * 3 + eq.get("mp_bonus", 0)
+    base_max_mp = 40 + level * 6 + alloc.get("int", 0) * 3 + eq["mp"]
+    player.max_mp = int(base_max_mp * prestige_mult)
     
     # 👇 速度 (spd) 與抗性 (res)
-    player.base_spd = 10 + level + alloc.get("spd", 0) * ALLOC_BONUS["spd"] + eq.get("spd", 0)
-    player.base_res = alloc.get("res", 0) * ALLOC_BONUS["res"] + eq["res"]
+    base_spd = 10 + level + alloc.get("spd", 0) * ALLOC_BONUS["spd"] + eq.get("spd", 0)
+    player.base_spd = int(base_spd * prestige_mult)
+    
+    base_res = level // 5 + alloc.get("res", 0) * ALLOC_BONUS["res"] + eq["res"]
+    player.base_res = int(base_res * prestige_mult)
 
     if heal_full:
         player.current_hp = player.max_hp

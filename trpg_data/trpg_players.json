@@ -1,0 +1,467 @@
+{
+    "295288056276189185": {
+        "id": "295288056276189185",
+        "level": 6,
+        "exp": 860,
+        "max_hp": 110,
+        "current_hp": 110,
+        "base_atk": 36,
+        "base_def": 16,
+        "weapon": "bronze_sword",
+        "armor": "leather_armor",
+        "current_area": "area_01grassland",
+        "inventory": {
+            "jester_mask": 1,
+            "iron_armor": 1,
+            "leather_armor": 2,
+            "raw_meat": 5,
+            "slime_jelly": 5,
+            "mana_potion": 5,
+            "boar_tusk": 1,
+            "wolf_fur": 3,
+            "bronze_sword": 1
+        },
+        "last_shop_refresh": "2026-06-02",
+        "shop_items": [
+            "health_potion",
+            "mana_potion",
+            "paralyze_cure",
+            "scroll_shadow_step",
+            "bat_wing",
+            "rusty_dagger",
+            "wooden_sword"
+        ],
+        "stats": {
+            "monsters_killed": 66,
+            "total_deaths": 1,
+            "money_spent": 0
+        },
+        "achievements": [],
+        "active_quests": {
+            "quest_010": {
+                "progress": 0
+            },
+            "quest_008": {
+                "progress": 0
+            }
+        },
+        "completed_quests": [
+            "quest_001",
+            "quest_003",
+            "quest_002",
+            "quest_004"
+        ],
+        "skills": [
+            "power_slash",
+            "heal_light",
+            "shadow_step"
+        ],
+        "daily_boss_kills": {
+            "area_01grassland": "2026-06-03"
+        },
+        "max_mp": 76,
+        "current_mp": 26,
+        "status_effects": {},
+        "accessory": "jester_mask",
+        "jester_immunity_date": "2026-06-01",
+        "trade_inbox": [],
+        "stat_alloc": {
+            "atk": 0,
+            "vit": 0,
+            "int": 0,
+            "spd": 12,
+            "res": 0
+        },
+        "base_magic": 0,
+        "base_res": 0,
+        "mystery_merchant_date": "2026-06-02",
+        "mystery_shop_active": false,
+        "mystery_shop_items": [],
+        "tower_floor": 4,
+        "shop_refresh_count": 2,
+        "base_int": 25,
+        "base_spd": 40
+    },
+    "1354006002357239810": {
+        "id": "1354006002357239810",
+        "level": 6,
+        "exp": 47,
+        "max_hp": 216,
+        "current_hp": 0,
+        "base_atk": 63,
+        "base_def": 28,
+        "weapon": "wooden_sword",
+        "armor": "leather_armor",
+        "current_area": "area_05forest",
+        "inventory": {
+            "health_potion": 46,
+            "wooden_sword": 6,
+            "wolf_fur": 209,
+            "rusty_dagger": 14,
+            "iron_sword": 10,
+            "jester_mask": 1,
+            "burn_salve": 1,
+            "paralyze_cure": 1,
+            "boar_tusk": 8,
+            "antidote_herb": 2,
+            "leather_armor": 3,
+            "raw_meat": 21,
+            "slime_jelly": 69,
+            "royal_honey": 1,
+            "elixir_of_cleansing": 1
+        },
+        "last_shop_refresh": "2026-06-02",
+        "shop_items": [
+            "health_potion",
+            "mana_potion",
+            "elixir_of_cleansing",
+            "leather_armor",
+            "ice_spear_scroll",
+            "antidote_herb",
+            "stolen_gem"
+        ],
+        "stats": {
+            "monsters_killed": 195,
+            "total_deaths": 3,
+            "money_spent": 0
+        },
+        "achievements": [],
+        "active_quests": {
+            "quest_004": {
+                "progress": 2
+            }
+        },
+        "completed_quests": [
+            "quest_001",
+            "quest_003",
+            "quest_002"
+        ],
+        "skills": [
+            "ice_spear",
+            "heal_light",
+            "fireball"
+        ],
+        "daily_boss_kills": {
+            "area_01grassland": "2026-06-02"
+        },
+        "max_mp": 84,
+        "current_mp": 39,
+        "status_effects": {},
+        "accessory": "jester_mask",
+        "jester_immunity_date": "",
+        "trade_inbox": [],
+        "stat_alloc": {
+            "atk": 0,
+            "def": 0,
+            "hp": 0,
+            "magic": 0,
+            "res": 0
+        },
+        "base_magic": 0,
+        "base_res": 0,
+        "mystery_merchant_date": "",
+        "mystery_shop_active": false,
+        "mystery_shop_items": [],
+        "tower_floor": 1,
+        "shop_refresh_count": 2
+    },
+    "844206103192535070": {
+        "id": "844206103192535070",
+        "level": 19,
+        "exp": 4634,
+        "max_hp": 240,
+        "current_hp": 240,
+        "base_atk": 122,
+        "base_def": 41,
+        "weapon": "iron_sword",
+        "armor": "iron_armor",
+        "current_area": "area_00village",
+        "inventory": {
+            "health_potion": 98,
+            "jester_mask": 1,
+            "boar_tusk": 34,
+            "burn_salve": 3,
+            "thaw_herb": 3,
+            "paralyze_cure": 2,
+            "poison_stinger": 11,
+            "raw_meat": 51,
+            "leather_armor": 4,
+            "slime_jelly": 142,
+            "mana_potion": 30,
+            "wolf_fur": 9,
+            "iron_sword": 2,
+            "rusty_dagger": 1,
+            "bronze_sword": 4,
+            "mage_staff": 1,
+            "iron_armor": 1,
+            "mystery_elixir": 92,
+            "antidote_herb": 2,
+            "medium_health_potion": 2,
+            "royal_honey": 1,
+            "ancient_wood": 4,
+            "scroll_shadow_step": 1
+        },
+        "last_shop_refresh": "2026-06-03",
+        "shop_items": [
+            "health_potion",
+            "mana_potion",
+            "burn_salve",
+            "bronze_sword",
+            "scroll_heal_light",
+            "iron_armor",
+            "thaw_herb"
+        ],
+        "stats": {
+            "monsters_killed": 850,
+            "total_deaths": 0,
+            "money_spent": 0
+        },
+        "achievements": [],
+        "active_quests": {
+            "quest_008": {
+                "progress": 0
+            },
+            "quest_010": {
+                "progress": 0
+            },
+            "quest_009": {
+                "progress": 0
+            }
+        },
+        "completed_quests": [
+            "quest_001",
+            "quest_003",
+            "quest_002",
+            "quest_004",
+            "quest_005"
+        ],
+        "skills": [
+            "power_slash",
+            "fireball",
+            "heal_light",
+            "thunder_strike",
+            "ice_spear",
+            "shadow_step",
+            "inferno",
+            "blood_strike"
+        ],
+        "daily_boss_kills": {
+            "area_forest": "2026-06-01",
+            "area_01grassland": "2026-06-03",
+            "area_05forest": "2026-06-03",
+            "area_10deep_forest": "2026-06-02"
+        },
+        "max_mp": 154,
+        "current_mp": 154,
+        "status_effects": {},
+        "accessory": "jester_mask",
+        "jester_immunity_date": "",
+        "trade_inbox": [],
+        "stat_alloc": {
+            "atk": 18,
+            "vit": 0,
+            "int": 0,
+            "spd": 20,
+            "res": 0
+        },
+        "base_magic": 0,
+        "base_res": 0,
+        "mystery_merchant_date": "2026-06-03",
+        "mystery_shop_active": false,
+        "mystery_shop_items": [],
+        "tower_floor": 9,
+        "shop_refresh_count": 2,
+        "base_int": 57,
+        "base_spd": 69
+    },
+    "834715610536869978": {
+        "id": "834715610536869978",
+        "level": 1,
+        "exp": 0,
+        "max_hp": 60,
+        "current_hp": 60,
+        "base_atk": 12,
+        "base_def": 4,
+        "weapon": null,
+        "armor": null,
+        "current_area": "area_forest",
+        "inventory": {
+            "health_potion": 3,
+            "slime_jelly": 2,
+            "wooden_sword": 1,
+            "jester_mask": 1
+        },
+        "last_shop_refresh": "2026-06-01",
+        "shop_items": [
+            "health_potion",
+            "wooden_sword",
+            "slime_jelly"
+        ],
+        "stats": {
+            "monsters_killed": 0,
+            "total_deaths": 0,
+            "money_spent": 0
+        },
+        "achievements": [],
+        "active_quests": {},
+        "completed_quests": [],
+        "skills": [],
+        "daily_boss_kills": {},
+        "max_mp": 25,
+        "current_mp": 25,
+        "status_effects": {},
+        "accessory": null,
+        "jester_immunity_date": "",
+        "trade_inbox": [],
+        "stat_alloc": {
+            "atk": 0,
+            "def": 0,
+            "hp": 0,
+            "magic": 0,
+            "res": 0
+        },
+        "base_magic": 0,
+        "base_res": 0,
+        "mystery_merchant_date": "",
+        "mystery_shop_active": false,
+        "mystery_shop_items": [],
+        "tower_floor": 1
+    },
+    "696225074621186118": {
+        "id": "696225074621186118",
+        "level": 45,
+        "exp": 643,
+        "max_hp": 700,
+        "current_hp": 700,
+        "base_atk": 200,
+        "base_def": 99,
+        "weapon": "mystery_void_blade",
+        "armor": "mystery_demon_armor",
+        "current_area": "area_00village",
+        "inventory": {
+            "health_potion": 29,
+            "iron_sword": 1,
+            "wolf_fur": 31,
+            "slime_jelly": 64,
+            "rusty_dagger": 2,
+            "wooden_sword": 1,
+            "jester_mask": 1,
+            "boar_tusk": 5,
+            "leather_armor": 2,
+            "paralyze_cure": 1,
+            "raw_meat": 14,
+            "ancient_wood": 17,
+            "royal_honey": 2,
+            "antidote_herb": 12,
+            "poison_stinger": 33,
+            "elixir_of_cleansing": 10,
+            "mana_potion": 10,
+            "bat_wing": 5,
+            "mystery_elixir": 1,
+            "medium_health_potion": 5,
+            "bronze_sword": 2,
+            "burn_salve": 5,
+            "medium_mana_potion": 1,
+            "iron_armor": 1,
+            "gargoyle_stone": 4,
+            "flame_sword": 1,
+            "apprentice_staff": 1,
+            "lich_soulstone": 1,
+            "high_mana_potion": 1,
+            "bone_shard": 2,
+            "ectoplasm": 1,
+            "high_health_potion": 1,
+            "mystery_power_ring": 1,
+            "mystery_void_blade": 1,
+            "tainted_blood": 2,
+            "vampire_fang": 1,
+            "immortal_totem": 1,
+            "mystery_mana_elixir": 1,
+            "mystery_demon_armor": 1
+        },
+        "last_shop_refresh": "2026-06-04",
+        "shop_items": [
+            "health_potion",
+            "mana_potion",
+            "scroll_heal_light",
+            "rusty_dagger",
+            "boar_tusk",
+            "iron_armor",
+            "schrodinger_watch"
+        ],
+        "stats": {
+            "monsters_killed": 831,
+            "total_deaths": 17,
+            "money_spent": 0
+        },
+        "achievements": [],
+        "active_quests": {
+            "quest_008": {
+                "progress": 0
+            },
+            "quest_009": {
+                "progress": 0
+            },
+            "quest_010": {
+                "progress": 0
+            },
+            "quest_011": {
+                "progress": 0
+            }
+        },
+        "completed_quests": [
+            "quest_002",
+            "quest_001",
+            "quest_003",
+            "quest_004",
+            "quest_005",
+            "quest_007",
+            "quest_006"
+        ],
+        "skills": [
+            "power_slash",
+            "double_strike",
+            "heal_light",
+            "thunder_strike",
+            "ice_spear",
+            "fireball",
+            "inferno",
+            "blizzard",
+            "blood_strike",
+            "combo_attack",
+            "void_eruption"
+        ],
+        "daily_boss_kills": {
+            "area_forest": "2026-06-01",
+            "area_deep_forest": "2026-06-01",
+            "area_01grassland": "2026-06-03",
+            "area_05forest": "2026-06-03",
+            "area_10deep_forest": "2026-06-02",
+            "area_20lab": "2026-06-03",
+            "area_30graveyard": "2026-06-03",
+            "area_40vampire_castle": "2026-06-03"
+        },
+        "max_mp": 445,
+        "current_mp": 445,
+        "status_effects": {},
+        "accessory": "mystery_power_ring",
+        "jester_immunity_date": "",
+        "trade_inbox": [],
+        "stat_alloc": {
+            "atk": 0,
+            "vit": 0,
+            "int": 45,
+            "spd": 45,
+            "res": 0
+        },
+        "base_res": 0,
+        "mystery_merchant_date": "2026-06-04",
+        "mystery_shop_active": false,
+        "mystery_shop_items": [],
+        "tower_floor": 73,
+        "shop_refresh_count": 0,
+        "base_int": 372,
+        "base_spd": 145,
+        "base_magic": 0
+    }
+}

@@ -1,0 +1,77 @@
+{
+    "area_name": "森林深處",
+    "req_level": 10,
+    "monsters": {
+        "killer_bee": {
+            "id": "killer_bee",
+            "name": "狂躁殺人蜂",
+            "spawn_rate": 0.6,
+            "max_hp": 350,
+            "atk": 75,
+            "def": 25,
+            "exp": 500,
+            "money_min": 25,
+            "money_max": 45,
+            "drops": {
+                "poison_stinger": 1,
+                "medium_health_potion": 0.2
+            },
+            "status_on_hit": [
+                "poison"
+            ],
+            "status_chance": 0.3
+        },
+        "treant": {
+            "id": "treant",
+            "name": "枯萎樹精",
+            "spawn_rate": 0.4,
+            "max_hp": 500,
+            "atk": 65,
+            "def": 35,
+            "exp": 600,
+            "money_min": 30,
+            "money_max": 55,
+            "weakness": [
+                "fire"
+            ],
+            "resistance": [
+                "water",
+                "earth"
+            ],
+            "drops": {
+                "ancient_wood": 1,
+                "iron_sword": 0.08
+            }
+        }
+    },
+    "boss": {
+        "id": "bee_queen",
+        "name": "劇毒蜂后",
+        "is_boss": true,
+        "max_hp": 2500,
+        "atk": 95,
+        "def": 45,
+        "exp": 10000,
+        "money_min": 150,
+        "money_max": 250,
+        "weakness": [
+            "fire",
+            "wind"
+        ],
+        "resistance": [
+            "earth",
+            "poison"
+        ],
+        "drops": {
+            "royal_honey": 0.7,
+            "scroll_blood_strike": 0.2,
+            "mage_staff": 0.35,
+            "iron_armor": 0.3
+        },
+        "status_on_hit": [
+            "poison",
+            "paralysis"
+        ],
+        "status_chance": 0.45
+    }
+}

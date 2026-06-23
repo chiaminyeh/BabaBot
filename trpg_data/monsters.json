@@ -1,0 +1,29 @@
+{
+    "slime": {
+        "name": "新手村史萊姆",
+        "max_hp": 20,
+        "atk": 5,
+        "def": 2,
+        "exp": 10,
+        "money": 5,
+        "drops": ["slime_jelly"]
+    },
+    "goblin": {
+        "name": "偷錢的哥布林",
+        "max_hp": 45,
+        "atk": 12,
+        "def": 5,
+        "exp": 25,
+        "money": 30,
+        "drops": ["rusty_dagger"]
+    },
+    "wild_boar": {
+        "name": "狂暴野豬",
+        "max_hp": 60,
+        "atk": 18,
+        "def": 8,
+        "exp": 40,
+        "money": 40,
+        "drops": ["raw_meat"]
+    }
+}

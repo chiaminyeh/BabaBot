@@ -1,0 +1,119 @@
+{
+    "area_name": "吸血鬼城堡",
+    "req_level": 40,
+    "monsters": {
+        "vampire_bat": {
+            "id": "vampire_bat",
+            "name": "巨型吸血蝙蝠",
+            "spawn_rate": 0.4,
+            "max_hp": 3500,
+            "atk": 212,
+            "def": 100,
+            "exp": 8000,
+            "spd": 60,
+            "weakness": [
+                "holy",
+                "fire",
+                "wind"
+            ],
+            "resistance": [
+                "dark",
+                "earth"
+            ],
+            "drops": {
+                "bat_wing": 1,
+                "high_health_potion": 0.3
+            },
+            "money_min": 120,
+            "money_max": 200
+        },
+        "gargoyle": {
+            "id": "gargoyle",
+            "name": "守衛石像鬼",
+            "spawn_rate": 0.35,
+            "max_hp": 4500,
+            "atk": 170,
+            "def": 150,
+            "exp": 10000,
+            "spd": 30,
+            "weakness": [
+                "water",
+                "thunder"
+            ],
+            "resistance": [
+                "physical",
+                "fire",
+                "poison"
+            ],
+            "drops": {
+                "gargoyle_stone": 1,
+                "dragon_plate": 0.05
+            },
+            "money_min": 130,
+            "money_max": 220
+        },
+        "vampire_servant": {
+            "id": "vampire_servant",
+            "name": "血族僕從",
+            "spawn_rate": 0.25,
+            "max_hp": 4000,
+            "atk": 238,
+            "def": 120,
+            "exp": 12000,
+            "spd": 55,
+            "weakness": [
+                "holy",
+                "fire"
+            ],
+            "resistance": [
+                "dark",
+                "poison"
+            ],
+            "drops": {
+                "tainted_blood": 1,
+                "high_mana_potion": 0.3
+            },
+            "status_on_hit": [
+                "paralysis"
+            ],
+            "status_chance": 0.3,
+            "money_min": 150,
+            "money_max": 250
+        }
+    },
+    "boss": {
+        "id": "vampire_lord",
+        "name": "吸血鬼真祖",
+        "is_boss": true,
+        "max_hp": 15000,
+        "atk": 297,
+        "def": 160,
+        "exp": 150000,
+        "spd": 70,
+        "weakness": [
+            "holy",
+            "thunder"
+        ],
+        "resistance": [
+            "dark",
+            "poison",
+            "ice",
+            "water"
+        ],
+        "money_min": 1500,
+        "money_max": 2500,
+        "drops": {
+            "vampire_fang": 1,
+            "immortal_totem": 0.05,
+            "holy_sword": 0.2,
+            "dragon_plate": 0.15
+        },
+        "status_on_hit": [
+            "burn",
+            "poison",
+            "paralysis",
+            "freeze"
+        ],
+        "status_chance": 0.6
+    }
+}

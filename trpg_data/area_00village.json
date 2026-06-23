@@ -1,0 +1,37 @@
+{
+    "area_name": "新手村",
+    "monsters": {
+        "slime": {
+            "id": "slime",
+            "name": "草地史萊姆",
+            "spawn_rate": 0.50,
+            "max_hp": 12, "atk": 4, "def": 0, "spd": 5, "exp": 4,
+            "money_min": 0, "money_max": 0,
+            "drops": {"slime_jelly": 0.70}
+        },
+        "goblin": {
+            "id": "goblin",
+            "name": "落單的哥布林",
+            "spawn_rate": 0.30,
+            "max_hp": 22, "atk": 8, "def": 1, "spd": 10, "exp": 8,
+            "money_min": 5, "money_max": 12,
+            "drops": {"rusty_dagger": 0.25, "health_potion": 0.20, "leather_armor": 0.10}
+        },
+        "wild_boar": {
+            "id": "wild_boar",
+            "name": "野豬",
+            "spawn_rate": 0.20,
+            "max_hp": 35, "atk": 12, "def": 2, "spd": 8, "exp": 12,
+            "money_min": 0, "money_max": 0,
+            "drops": {"boar_tusk": 0.30, "raw_meat": 0.50}
+        }
+    },
+    "boss": {
+        "id": "goblin_chief",
+        "name": "哥布林首領",
+        "is_boss": true,
+        "max_hp": 90, "atk": 16, "def": 5, "spd": 14, "exp": 100,
+        "money_min": 40, "money_max": 80,
+        "drops": {"health_potion": 0.50, "rusty_dagger": 0.30}
+    }
+}

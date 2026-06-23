@@ -1,0 +1,30 @@
+{
+    "poison": {
+        "name": "中毒",
+        "emoji": "☠️",
+        "dot_ratio": 0.05,
+        "cure_item": "antidote_herb",
+        "desc": "每回合損失 5% 最大 HP"
+    },
+    "burn": {
+        "name": "燃燒",
+        "emoji": "🔥",
+        "dot_flat": 10,
+        "cure_item": "burn_salve",
+        "desc": "每回合受到 10 點灼燒傷害"
+    },
+    "freeze": {
+        "name": "冰凍",
+        "emoji": "🧊",
+        "skip_chance": 0.45,
+        "cure_item": "thaw_herb",
+        "desc": "有機率無法行動"
+    },
+    "paralysis": {
+        "name": "麻痺",
+        "emoji": "⚡",
+        "skip_chance": 0.40,
+        "cure_item": "paralyze_cure",
+        "desc": "有機率無法行動"
+    }
+}

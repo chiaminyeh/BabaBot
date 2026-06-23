@@ -42,8 +42,8 @@ def try_apply_status(player, status_id: str, turns: int, status_defs: dict, sour
     existing = player.status_effects.get(status_id, {})
     new_turns = max(existing.get("turns", 0), turns)
     
-    # 紀錄疊加層數 (給燃燒用)
-    tick = existing.get("tick", 1) if status_id == "burn" and existing else 1
+    # 紀錄疊加層數 (給燃燒用，重新施加時重置為 1)
+    tick = 1
     player.status_effects[status_id] = {"turns": new_turns, "tick": tick}
 
     info = status_defs[status_id]
@@ -95,14 +95,14 @@ def process_turn_start(player, status_defs: dict) -> tuple[str, bool]:
             log_parts.append(f"☠️ 中毒發作，損失 {dmg} HP")
 
         elif sid == "burn":
-            # 漸進式燃燒：2% -> 4% -> 6% 最大生命值
-            tick = data.get("tick", 1)
+            # 漸進式燃燒：2% -> 4% -> 6% 最大生命值，上限 5 層 (10%)
+            tick = min(5, data.get("tick", 1))
             ratio = 0.02 * tick
             dmg = max(1, int(player.max_hp * ratio))
             dmg = max(1, int(dmg * (1 - dot_reduce)))
             player.current_hp = max(0, player.current_hp - dmg)
             log_parts.append(f"🔥 灼燒加劇！(第{tick}層) 損失 {dmg} HP")
-            player.status_effects[sid]["tick"] = tick + 1
+            player.status_effects[sid]["tick"] = min(5, tick + 1)
 
         elif sid == "freeze":
             # 冰凍：100% 無法行動，且會流失部分 MP
@@ -135,8 +135,8 @@ def apply_status_to_monster(monster_status_dict: dict, status_id: str, turns: in
     existing = monster_status_dict.get(status_id, {})
     new_turns = max(existing.get("turns", 0), turns)
     
-    # 給燃燒疊層用
-    tick = existing.get("tick", 1) if status_id == "burn" and existing else 1
+    # 給燃燒疊層用 (重新施加時重置為 1)
+    tick = 1
     monster_status_dict[status_id] = {"turns": new_turns, "tick": tick}
     
     info = status_defs[status_id]
@@ -162,12 +162,12 @@ def process_monster_status(combat_obj, status_defs: dict) -> tuple[str, bool]:
             log_parts.append(f"☠️ 敵人中毒發作，損失 {dmg} HP")
 
         elif sid == "burn":
-            tick = data.get("tick", 1)
+            tick = min(5, data.get("tick", 1))
             ratio = 0.02 * tick
             dmg = max(1, int(combat_obj.monster["max_hp"] * ratio))
             combat_obj.monster_hp -= dmg
             log_parts.append(f"🔥 敵人身上的灼燒加劇！(第{tick}層) 損失 {dmg} HP")
-            monster_status[sid]["tick"] = tick + 1
+            monster_status[sid]["tick"] = min(5, tick + 1)
 
         elif sid == "freeze":
             can_act = False

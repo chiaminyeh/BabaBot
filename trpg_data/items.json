@@ -1,0 +1,106 @@
+{
+    "health_potion": {"name": "生命藥水", "type": "potion", "heal_target": "hp", "heal_percent": 0.25, "price": 20, "sell_price": 8, "shop_weight": 0, "desc": "商店必定販售，回復 25% 最大 HP"},
+    "mana_potion": {"name": "魔力藥水", "type": "potion", "heal_target": "mp", "heal_percent": 0.25, "price": 20, "sell_price": 8, "shop_weight": 0, "desc": "商店必定販售，回復 25% 最大 MP"},
+    "medium_health_potion": {"name": "中級生命藥水", "type": "potion", "heal_target": "hp", "heal_percent": 0.5, "price": 50, "sell_price": 20, "shop_weight": 0, "desc": "回復 50% 最大 HP"},
+    "medium_mana_potion": {"name": "中級魔力藥水", "type": "potion", "heal_target": "mp", "heal_percent": 0.5, "price": 50, "sell_price": 20, "shop_weight": 0, "desc": "回復 50% 最大 MP"},
+    "high_health_potion": {"name": "高級生命藥水", "type": "potion", "heal_target": "hp", "heal_percent": 0.8, "price": 120, "sell_price": 45, "shop_weight": 0, "desc": "回復 80% 最大 HP"},
+    "high_mana_potion": {"name": "高級魔力藥水", "type": "potion", "heal_target": "mp", "heal_percent": 0.8, "price": 120, "sell_price": 45, "shop_weight": 0, "desc": "回復 80% 最大 MP"},
+
+    "slime_jelly": {"name": "史萊姆果凍", "type": "etc", "price": 5, "sell_price": 2, "shop_weight": 10, "desc": "黏糊糊的亮晶晶液體"},
+    "wolf_fur": {"name": "完整狼皮", "type": "etc", "price": 18, "sell_price": 9, "shop_weight": 20, "desc": "可以拿來做保暖衣物"},
+    "raw_meat": {"name": "生肉", "type": "etc", "price": 10, "sell_price": 4, "shop_weight": 30, "desc": "看起來不太新鮮的肉塊"},
+    "boar_tusk": {"name": "野豬獠牙", "type": "etc", "price": 25, "sell_price": 12, "shop_weight": 15, "desc": "鋒利的獠牙，拿來當飾品也不錯"},
+    "poison_stinger": {"name": "毒蜂針", "type": "etc", "price": 40, "sell_price": 15, "shop_weight": 10, "desc": "帶有劇毒的鋒利尖刺"},
+    "ancient_wood": {"name": "古老靈木", "type": "etc", "price": 60, "sell_price": 25, "shop_weight": 5, "desc": "散發微光的堅硬木材"},
+    "royal_honey": {"name": "蜂后凝脂", "type": "etc", "price": 150, "sell_price": 60, "shop_weight": 2, "desc": "極度稀有的珍貴補品"},
+    "bone_shard": {"name": "骸骨碎片", "type": "etc", "price": 80, "sell_price": 30, "shop_weight": 15, "desc": "充滿陰氣的碎骨"},
+    "stolen_gem": {"name": "盜來的寶石", "type": "etc", "price": 300, "sell_price": 120, "shop_weight": 5, "desc": "哥布林不知從哪偷來的亮晶晶寶石"},
+    "ectoplasm": {"name": "幽靈靈質", "type": "etc", "price": 100, "sell_price": 40, "shop_weight": 8, "desc": "半透明的神祕物質"},
+    "lich_soulstone": {"name": "巫妖魂石", "type": "etc", "price": 500, "sell_price": 200, "shop_weight": 0, "desc": "封印著強大死靈魔力的石頭"},
+    "bat_wing": {"name": "巨大蝙蝠翼", "type": "etc", "price": 120, "sell_price": 50, "shop_weight": 10, "desc": "充滿韌性的皮革質地翅膀"},
+    "gargoyle_stone": {"name": "石像鬼魔石", "type": "etc", "price": 180, "sell_price": 75, "shop_weight": 5, "desc": "極度堅硬的核心石頭"},
+    "tainted_blood": {"name": "污穢之血", "type": "etc", "price": 150, "sell_price": 60, "shop_weight": 8, "desc": "裝在小瓶子裡的暗紅色液體"},
+    "vampire_fang": {"name": "真祖之牙", "type": "etc", "price": 800, "sell_price": 350, "shop_weight": 0, "desc": "吸血鬼王者的象徵"},
+
+    "rusty_dagger": {"name": "生鏽的匕首", "type": "weapon", "atk_bonus": 5, "price": 80, "sell_price": 30, "shop_weight": 80, "desc": "雖然鈍，但捅人還是會痛"},
+    "wooden_sword": {"name": "練習用木劍", "type": "weapon", "atk_bonus": 8, "price": 150, "sell_price": 55, "shop_weight": 60, "desc": "新手冒險者的標配"},
+    "bronze_sword": {"name": "青銅長劍", "type": "weapon", "atk_bonus": 14, "price": 320, "sell_price": 110, "exclusive_level": 5, "shop_weight": 40, "desc": "比木劍可靠的正規武器"},
+    "iron_sword": {"name": "精鋼長劍", "type": "weapon", "atk_bonus": 20, "price": 500, "sell_price": 180, "exclusive_level": 10, "shop_weight": 20, "desc": "散發冷冽光芒的正規武器"},
+    "flame_sword": {"name": "火焰之劍", "type": "weapon", "atk_bonus": 28, "price": 1200, "sell_price": 400, "exclusive_level": 15, "shop_weight": 8, "element": "fire", "on_hit_status": "burn", "on_hit_chance": 0.3, "on_hit_status_turns": 2, "desc": "劍身灼熱，普攻有機率使敵人燃燒"},
+    "holy_sword": {"name": "聖光之劍", "type": "weapon", "atk_bonus": 32, "price": 1500, "sell_price": 500, "exclusive_level": 20, "shop_weight": 5, "on_hit_heal_percent": 0.08, "element": "holy", "desc": "每次攻擊回復自身 8% 最大 HP"},
+    "mage_staff": {"name": "巫師法杖", "type": "weapon", "atk_bonus": 6, "magic_bonus": 15, "price": 450, "sell_price": 160, "exclusive_level": 12, "shop_weight": 15, "desc": "提升魔力，適合施法者"},
+    "leather_armor": {"name": "粗製皮甲", "type": "armor", "def_bonus": 6, "price": 200, "sell_price": 70, "shop_weight": 60, "desc": "輕巧的基礎防具"},
+    "iron_armor": {"name": "精鋼重甲", "type": "armor", "def_bonus": 18, "price": 600, "sell_price": 210, "exclusive_level": 10, "shop_weight": 15, "desc": "厚實沉重的金屬防具"},
+    "dragon_plate": {"name": "龍鱗重甲", "type": "armor", "def_bonus": 28, "hp_bonus": 40, "price": 2000, "sell_price": 700, "exclusive_level": 25, "shop_weight": 3, "desc": "傳說級防具，大幅提升防禦與生命上限"},
+    "schrodinger_watch": {
+        "name": "薛丁格的懷錶",
+        "type": "accessory",
+        "price": 8000,
+        "sell_price": 3000,
+        "shop_weight": 5,
+        "desc": "純粹賭徒的浪漫。攻擊時 50% 機率傷害翻倍，50% 減半"
+    },
+    "apprentice_staff": {
+        "name": "學徒法杖", "type": "weapon", "atk_bonus": 2, "magic_bonus": 8, "price": 120, "sell_price": 40, "exclusive_level": 5, "shop_weight": 20, "desc": "適合剛學會魔法的新手"
+    },
+    "sage_staff": {
+        "name": "賢者之杖", "type": "weapon", "atk_bonus": 10, "magic_bonus": 45, "price": 2500, "sell_price": 800, "exclusive_level": 20, "shop_weight": 5, "desc": "蘊含龐大魔力的高階法杖"
+    },
+
+
+
+    "scroll_power_slash": {"name": "技能卷軸：強力斬擊", "type": "skill_scroll", "teaches": "power_slash", "price": 180, "sell_price": 60, "shop_weight": 20, "desc": "研讀後可習得【強力斬擊】"},
+    "scroll_fireball": {"name": "技能卷軸：火球術", "type": "skill_scroll", "teaches": "fireball", "price": 350, "sell_price": 120, "shop_weight": 15, "desc": "研讀後可習得【火球術】"},
+    "scroll_heal_light": {"name": "技能卷軸：初級治療", "type": "skill_scroll", "teaches": "heal_light", "price": 220, "sell_price": 75, "shop_weight": 30, "desc": "研讀後可習得【初級治療】"},
+    "scroll_double_strike": {"name": "技能卷軸：連環快斬", "type": "skill_scroll", "teaches": "double_strike", "price": 400, "sell_price": 140, "shop_weight": 15, "desc": "研讀後可習得【連環快斬】"},
+    "ice_spear_scroll": {"name": "技能卷軸：寒冰矛", "type": "skill_scroll", "teaches": "ice_spear", "price": 320, "sell_price": 110, "shop_weight": 20, "desc": "研讀後可習得【寒冰矛】"},
+    "thunder_strike_scroll": {"name": "技能卷軸：落雷術", "type": "skill_scroll", "teaches": "thunder_strike", "price": 500, "sell_price": 150, "shop_weight": 10, "desc": "研讀後可習得【落雷術】"},
+    "scroll_inferno": {"name": "技能卷軸：煉獄火", "type": "skill_scroll", "teaches": "inferno", "price": 800, "sell_price": 280, "exclusive_level": 15, "shop_weight": 8, "desc": "研讀後可習得上位魔法【煉獄火】"},
+    "scroll_blizzard": {"name": "技能卷軸：暴風雪", "type": "skill_scroll", "teaches": "blizzard", "price": 700, "sell_price": 240, "exclusive_level": 12, "shop_weight": 10, "desc": "研讀後可習得上位魔法【暴風雪】"},
+    "scroll_divine_thunder": {"name": "技能卷軸：神聖落雷", "type": "skill_scroll", "teaches": "divine_thunder", "price": 950, "sell_price": 320, "exclusive_level": 18, "shop_weight": 6, "desc": "研讀後可習得上位魔法【神聖落雷】"},
+    "scroll_combo_attack": {"name": "技能卷軸：連續攻擊", "type": "skill_scroll", "teaches": "combo_attack", "price": 550, "sell_price": 180, "exclusive_level": 8, "shop_weight": 12, "desc": "研讀後習得被動【連續攻擊】，普攻可打兩次"},
+    "scroll_water_ball": {"name": "技能卷軸：水球術", "type": "skill_scroll", "teaches": "water_ball", "price": 400, "sell_price": 140, "exclusive_level": 5, "shop_weight": 18, "desc": "研讀後可習得水屬性魔法【水球術】"},
+    "scroll_stone_spike": {"name": "技能卷軸：岩刺術", "type": "skill_scroll", "teaches": "stone_spike", "price": 550, "sell_price": 180, "exclusive_level": 8, "shop_weight": 15, "desc": "研讀後可習得土屬性魔法【岩刺術】"},
+    "scroll_dark_orb": {"name": "技能卷軸：暗影球", "type": "skill_scroll", "teaches": "dark_orb", "price": 650, "sell_price": 220, "exclusive_level": 10, "shop_weight": 12, "desc": "研讀後可習得暗屬性魔法【暗影球】"},
+    "scroll_holy_smash": {"name": "技能卷軸：神聖制裁", "type": "skill_scroll", "teaches": "holy_smash", "price": 800, "sell_price": 280, "exclusive_level": 12, "shop_weight": 10, "desc": "研讀後可習得光屬性魔法【神聖制裁】"},
+    
+    "antidote_herb": {"name": "解毒草", "type": "cure", "cures": ["poison"], "price": 45, "sell_price": 18, "shop_weight": 50, "desc": "解除中毒狀態"},
+    "burn_salve": {"name": "灼傷藥膏", "type": "cure", "cures": ["burn"], "price": 45, "sell_price": 18, "shop_weight": 50, "desc": "解除燃燒狀態"},
+    "thaw_herb": {"name": "解凍草", "type": "cure", "cures": ["freeze"], "price": 50, "sell_price": 20, "shop_weight": 40, "desc": "解除冰凍狀態"},
+    "paralyze_cure": {"name": "醒神劑", "type": "cure", "cures": ["paralysis"], "price": 50, "sell_price": 20, "shop_weight": 40, "desc": "解除麻痺狀態"},
+    "elixir_of_cleansing": {"name": "萬能淨化藥水", "type": "cure", "cures": ["poison", "burn", "freeze", "paralysis"], "price": 120, "sell_price": 45, "shop_weight": 10, "desc": "解除所有異常狀態"},
+
+    "jester_mask": {"name": "小丑面具", "type": "accessory", "price": 0, "sell_price": 0, "shop_weight": 0, "desc": "裝備後每日免疫隨機異常狀態"},
+    "scroll_shadow_step": { 
+        "name": "技能卷軸：暗影步", 
+        "type": "skill_scroll", 
+        "teaches": "shadow_step", 
+        "price": 600, 
+        "sell_price": 200, 
+        "exclusive_level": 5, 
+        "shop_weight": 12, 
+        "desc": "研讀後可習得【暗影步】，打不過就跑的最高境界" 
+    },
+    "scroll_blood_strike": { 
+        "name": "技能卷軸：血之獻祭", 
+        "type": "skill_scroll", 
+        "teaches": "blood_strike", 
+        "price": 1200, 
+        "sell_price": 400, 
+        "exclusive_level": 10, 
+        "shop_weight": 8, 
+        "desc": "研讀後可習得【血之獻祭】，燃燒生命換取極致輸出的狂戰士技能" 
+    },
+    "immortal_totem": {"name": "不死圖騰","type": "etc","price": 5000,"sell_price": 1000,"shop_weight": 2,"desc": "放在背包裡，致死瞬間自動消耗，免除死亡並回復 50% 狀態，資本主義的奇蹟"},
+
+    "mystery_phoenix_feather": {"name": "神秘鳳羽", "type": "etc", "price": 10000, "sell_price": 4000, "shop_weight": 0, "mystery_only": true, "desc": "神秘商人專賣，據說蘊含著重生的力量"},
+    "mystery_void_blade": {"name": "虛空短刃", "type": "weapon", "atk_bonus": 50, "magic_bonus": 20, "price": 3500, "sell_price": 1000, "exclusive_level": 30, "shop_weight": 0, "mystery_only": true, "on_hit_status": "paralysis", "on_hit_chance": 0.25, "on_hit_status_turns": 1, "desc": "神秘商人專賣，虛空之力纏繞的終極利刃"},
+    "mystery_sage_tome": {"name": "賢者秘典卷軸", "type": "skill_scroll", "teaches": "void_eruption", "price": 4000, "sell_price": 1200, "exclusive_level": 25, "shop_weight": 0, "mystery_only": true, "desc": "神秘商人專賣，記載著禁忌魔法【虛空爆發】的古老卷軸"},
+    "mystery_elixir": {"name": "賢者萬靈藥", "type": "potion", "heal_target": "hp", "heal_percent": 1.0, "price": 500, "sell_price": 150, "shop_weight": 0, "mystery_only": true, "desc": "神秘商人專賣，完全回復 HP"},
+    "mystery_mana_elixir": {"name": "賢者魔力藥", "type": "potion", "heal_target": "mp", "heal_percent": 1.0, "price": 500, "sell_price": 150, "shop_weight": 0, "mystery_only": true, "desc": "神秘商人專賣，完全回復 MP"},
+    "mystery_chaos_staff": {"name": "混沌法杖", "type": "weapon", "atk_bonus": 15, "magic_bonus": 60, "price": 3200, "sell_price": 900, "exclusive_level": 30, "shop_weight": 0, "mystery_only": true, "desc": "神秘商人專賣，法師夢寐以求的極致魔杖"},
+    "mystery_demon_armor": {"name": "魔王重甲", "type": "armor", "def_bonus": 50, "hp_bonus": 200, "price": 3800, "sell_price": 1000, "exclusive_level": 35, "shop_weight": 0, "mystery_only": true, "desc": "神秘商人專賣，堅不可摧的絕世重甲"},
+    "mystery_power_ring": {"name": "力量之戒", "type": "accessory", "atk_bonus": 50, "magic_bonus": 50, "price": 2800, "sell_price": 800, "exclusive_level": 25, "shop_weight": 0, "mystery_only": true, "desc": "神秘商人專賣，配戴後大幅提升雙攻的戒指"},
+    "mystery_time_hourglass": {"name": "時光沙漏", "type": "cure", "cures": ["poison", "burn", "freeze", "paralysis"], "price": 6000, "sell_price": 1800, "shop_weight": 0, "mystery_only": true, "desc": "神秘商人專賣，一次性解除你身上的所有異常狀態"},
+    "mystery_lucky_coin": {"name": "幸運金幣", "type": "etc", "price": 100000, "sell_price": 50000, "shop_weight": 0, "mystery_only": true, "desc": "神秘商人專賣，純粹用來證明你錢多到沒處花的無用硬幣"}
+}
