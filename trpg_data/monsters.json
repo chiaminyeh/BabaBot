@@ -1,0 +1,984 @@
+{
+    "tier_1": {
+        "floor_range": [
+            1,
+            10
+        ],
+        "monsters": {
+            "cave_rat": {
+                "id": "cave_rat",
+                "name": "洞穴巨鼠",
+                "base_hp": 22,
+                "base_atk": 9,
+                "base_def": 2,
+                "base_spd": 9,
+                "weakness": [
+                    "fire"
+                ],
+                "resistance": [],
+                "ai": "none",
+                "drops": {
+                    "raw_meat": 0.4
+                }
+            },
+            "vampire_bat": {
+                "id": "vampire_bat",
+                "name": "吸血蝙蝠",
+                "base_hp": 26,
+                "base_atk": 13,
+                "base_def": 1,
+                "base_spd": 15,
+                "weakness": [
+                    "holy",
+                    "thunder"
+                ],
+                "resistance": [],
+                "ai": "lifesteal",
+                "drops": {
+                    "bat_wing": 0.3
+                }
+            },
+            "spider_queen": {
+                "id": "spider_queen",
+                "name": "劇毒蛛后",
+                "base_hp": 85,
+                "base_atk": 25,
+                "base_def": 10,
+                "base_spd": 22,
+                "weakness": [
+                    "fire"
+                ],
+                "resistance": [
+                    "dark"
+                ],
+                "ai": "poison_spitter",
+                "drops": {
+                    "poison_stinger": 0.5,
+                    "scroll_poison_strike": 0.05
+                }
+            },
+            "sonic_bat": {
+                "id": "sonic_bat",
+                "name": "音速蝙蝠",
+                "base_hp": 70,
+                "base_atk": 28,
+                "base_def": 8,
+                "base_spd": 55,
+                "weakness": [
+                    "thunder"
+                ],
+                "resistance": [
+                    "earth"
+                ],
+                "ai": "evasive",
+                "drops": {
+                    "bat_wing": 0.6
+                }
+            },
+            "goblin_scout": {
+                "id": "goblin_scout",
+                "name": "哥布林斥候",
+                "base_hp": 30,
+                "base_atk": 11,
+                "base_def": 4,
+                "base_spd": 11,
+                "weakness": [],
+                "resistance": [
+                    "earth"
+                ],
+                "ai": "flee_low_hp",
+                "drops": {
+                    "rusty_dagger": 0.1,
+                    "slime_jelly": 0.3
+                }
+            },
+            "slime_blob": {
+                "id": "slime_blob",
+                "name": "黏稠史萊姆",
+                "base_hp": 34,
+                "base_atk": 8,
+                "base_def": 5,
+                "base_spd": 6,
+                "weakness": [
+                    "thunder"
+                ],
+                "resistance": [
+                    "physical"
+                ],
+                "ai": "none",
+                "drops": {
+                    "slime_jelly": 0.5
+                }
+            }
+        },
+        "boss_minions": {
+            "rat_shaman": {
+                "id": "rat_shaman",
+                "name": "鼠王祭司",
+                "base_hp": 18,
+                "base_atk": 6,
+                "base_def": 2,
+                "base_spd": 9,
+                "ai": "support_healer",
+                "drops": {}
+            },
+            "rat_brute": {
+                "id": "rat_brute",
+                "name": "鼠王衛兵",
+                "base_hp": 22,
+                "base_atk": 10,
+                "base_def": 4,
+                "base_spd": 7,
+                "ai": "debuffer",
+                "drops": {}
+            }
+        },
+        "boss": {
+            "id": "rat_king",
+            "name": "巨鼠之王",
+            "is_boss": true,
+            "base_hp": 140,
+            "base_atk": 20,
+            "base_def": 7,
+            "base_spd": 10,
+            "weakness": [
+                "fire"
+            ],
+            "resistance": [],
+            "ai": "berserk_low_hp",
+            "drops": {
+                "raw_meat": 1.0
+            },
+            "active_skills": [
+                {
+                    "id": "call_rat_swarm",
+                    "name": "召喚鼠群",
+                    "trigger": {
+                        "type": "interval",
+                        "value": 4
+                    },
+                    "effect": {
+                        "type": "summon_minion",
+                        "summon_ids": [
+                            "cave_rat",
+                            "rat_shaman",
+                            "rat_brute"
+                        ]
+                    }
+                }
+            ],
+            "phase2": {
+                "hp_below": 0.5,
+                "ai": "multi_hit_flurry",
+                "name_suffix": "（暴怒）",
+                "heal_pct": 0.05,
+                "transform_text": "巨鼠之王發出刺耳尖嘯，狂亂地揮舞利爪衝向你！",
+                "active_skills": [
+                    {
+                        "id": "frenzy_bite",
+                        "name": "狂亂撕咬",
+                        "trigger": {
+                            "type": "hp_below",
+                            "value": 0.2
+                        },
+                        "effect": {
+                            "type": "heavy_attack",
+                            "mult": 2.2
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "tier_2": {
+        "floor_range": [
+            11,
+            25
+        ],
+        "monsters": {
+            "skeleton_swordsman": {
+                "id": "skeleton_swordsman",
+                "name": "骸骨劍士",
+                "base_hp": 60,
+                "base_atk": 22,
+                "base_def": 10,
+                "base_spd": 10,
+                "weakness": [
+                    "holy"
+                ],
+                "resistance": [
+                    "poison",
+                    "dark"
+                ],
+                "ai": "none",
+                "drops": {
+                    "bone_shard": 0.4
+                }
+            },
+            "shadow_assassin": {
+                "id": "shadow_assassin",
+                "name": "暗影刺客",
+                "base_hp": 130,
+                "base_atk": 48,
+                "base_def": 12,
+                "base_spd": 35,
+                "weakness": [
+                    "holy"
+                ],
+                "resistance": [
+                    "dark"
+                ],
+                "ai": "assassin",
+                "drops": {
+                    "bone_shard": 0.4,
+                    "stolen_gem": 0.2
+                }
+            },
+            "crystal_golem": {
+                "id": "crystal_golem",
+                "name": "水晶魔像",
+                "base_hp": 220,
+                "base_atk": 40,
+                "base_def": 35,
+                "base_spd": 12,
+                "weakness": [
+                    "physical"
+                ],
+                "resistance": [
+                    "fire",
+                    "water",
+                    "ice",
+                    "thunder",
+                    "earth",
+                    "dark",
+                    "holy"
+                ],
+                "ai": "heavy_tank",
+                "drops": {
+                    "stolen_gem": 0.5
+                }
+            },
+            "dark_mage": {
+                "id": "dark_mage",
+                "name": "暗黑法師",
+                "base_hp": 50,
+                "base_atk": 26,
+                "base_def": 6,
+                "base_spd": 13,
+                "weakness": [
+                    "holy"
+                ],
+                "resistance": [
+                    "dark"
+                ],
+                "ai": "self_heal",
+                "drops": {
+                    "ectoplasm": 0.3
+                }
+            },
+            "giant_spider": {
+                "id": "giant_spider",
+                "name": "巨型蜘蛛",
+                "base_hp": 70,
+                "base_atk": 20,
+                "base_def": 8,
+                "base_spd": 14,
+                "weakness": [
+                    "fire"
+                ],
+                "resistance": [],
+                "ai": "debuffer",
+                "status_on_hit": [
+                    "poison"
+                ],
+                "status_chance": 0.3,
+                "drops": {
+                    "poison_stinger": 0.35
+                }
+            },
+            "shade_wolf": {
+                "id": "shade_wolf",
+                "name": "暗影狼",
+                "base_hp": 55,
+                "base_atk": 24,
+                "base_def": 7,
+                "base_spd": 18,
+                "weakness": [
+                    "holy",
+                    "fire"
+                ],
+                "resistance": [
+                    "dark"
+                ],
+                "ai": "multi_hit_flurry",
+                "drops": {
+                    "wolf_fur": 0.3
+                }
+            }
+        },
+        "boss_minions": {
+            "bone_archer": {
+                "id": "bone_archer",
+                "name": "骸骨弓兵",
+                "base_hp": 36,
+                "base_atk": 15,
+                "base_def": 5,
+                "base_spd": 13,
+                "ai": "debuffer",
+                "drops": {}
+            },
+            "bone_priest": {
+                "id": "bone_priest",
+                "name": "骸骨祭司",
+                "base_hp": 32,
+                "base_atk": 10,
+                "base_def": 6,
+                "base_spd": 10,
+                "ai": "support_healer",
+                "drops": {}
+            }
+        },
+        "boss": {
+            "id": "bone_knight",
+            "name": "骸骨騎士",
+            "is_boss": true,
+            "base_hp": 320,
+            "base_atk": 38,
+            "base_def": 16,
+            "base_spd": 12,
+            "weakness": [
+                "holy"
+            ],
+            "resistance": [
+                "poison",
+                "dark"
+            ],
+            "ai": "berserk_low_hp",
+            "drops": {
+                "bone_shard": 1.0
+            },
+            "active_skills": [
+                {
+                    "id": "raise_dead",
+                    "name": "喚醒亡骸",
+                    "trigger": {
+                        "type": "interval",
+                        "value": 5
+                    },
+                    "effect": {
+                        "type": "summon_minion",
+                        "summon_ids": [
+                            "skeleton_swordsman",
+                            "bone_archer",
+                            "bone_priest"
+                        ]
+                    }
+                }
+            ],
+            "phase2": {
+                "hp_below": 0.45,
+                "ai": "debuffer",
+                "name_suffix": "（怨念覺醒）",
+                "heal_pct": 0.1,
+                "transform_text": "骸骨騎士眼窩中燃起幽綠火焰，怨念瞬間爆發！",
+                "active_skills": [
+                    {
+                        "id": "soul_reap",
+                        "name": "亡魂收割",
+                        "trigger": {
+                            "type": "hp_below",
+                            "value": 0.15
+                        },
+                        "effect": {
+                            "type": "heavy_attack",
+                            "mult": 2.3
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "tier_3": {
+        "floor_range": [
+            26,
+            50
+        ],
+        "monsters": {
+            "orc_brute": {
+                "id": "orc_brute",
+                "name": "獸人蠻兵",
+                "base_hp": 110,
+                "base_atk": 36,
+                "base_def": 14,
+                "base_spd": 11,
+                "weakness": [],
+                "resistance": [],
+                "ai": "none",
+                "status_on_hit": [
+                    "berserk"
+                ],
+                "status_chance": 0.25,
+                "drops": {
+                    "stolen_gem": 0.05
+                }
+            },
+            "harpy": {
+                "id": "harpy",
+                "name": "鷹身女妖",
+                "base_hp": 95,
+                "base_atk": 40,
+                "base_def": 9,
+                "base_spd": 20,
+                "weakness": [
+                    "thunder"
+                ],
+                "resistance": [
+                    "wind"
+                ],
+                "ai": "none",
+                "status_on_hit": [
+                    "sleep"
+                ],
+                "status_chance": 0.25,
+                "drops": {
+                    "bat_wing": 0.3
+                }
+            },
+            "stone_golem": {
+                "id": "stone_golem",
+                "name": "石製魔像",
+                "base_hp": 180,
+                "base_atk": 30,
+                "base_def": 26,
+                "base_spd": 6,
+                "weakness": [
+                    "water",
+                    "thunder"
+                ],
+                "resistance": [
+                    "physical",
+                    "earth"
+                ],
+                "ai": "shield_ally",
+                "drops": {
+                    "gargoyle_stone": 0.3
+                }
+            },
+            "void_weaver": {
+                "id": "void_weaver",
+                "name": "虛空編織者",
+                "base_hp": 300,
+                "base_atk": 75,
+                "base_def": 25,
+                "base_spd": 28,
+                "weakness": [
+                    "holy"
+                ],
+                "resistance": [
+                    "dark",
+                    "fire",
+                    "ice",
+                    "thunder"
+                ],
+                "ai": "void_mage",
+                "drops": {
+                    "ectoplasm": 0.6,
+                    "scroll_void_eruption": 0.02
+                }
+            },
+            "ancient_guardian": {
+                "id": "ancient_guardian",
+                "name": "古代守衛者",
+                "base_hp": 450,
+                "base_atk": 85,
+                "base_def": 50,
+                "base_spd": 18,
+                "weakness": [
+                    "thunder",
+                    "water"
+                ],
+                "resistance": [
+                    "fire",
+                    "earth",
+                    "poison",
+                    "bleed",
+                    "paralysis"
+                ],
+                "ai": "heavy_tank",
+                "drops": {
+                    "ancient_wood": 0.8,
+                    "scroll_earthquake": 0.05
+                }
+            },
+            "wraith": {
+                "id": "wraith",
+                "name": "怨靈",
+                "base_hp": 100,
+                "base_atk": 38,
+                "base_def": 12,
+                "base_spd": 16,
+                "weakness": [
+                    "holy"
+                ],
+                "resistance": [
+                    "dark",
+                    "poison"
+                ],
+                "ai": "none",
+                "drops": {
+                    "ectoplasm": 0.4
+                }
+            }
+        },
+        "boss_minions": {
+            "orc_shaman": {
+                "id": "orc_shaman",
+                "name": "獸人巫醫",
+                "base_hp": 75,
+                "base_atk": 22,
+                "base_def": 9,
+                "base_spd": 13,
+                "ai": "support_healer",
+                "drops": {}
+            },
+            "orc_skirmisher": {
+                "id": "orc_skirmisher",
+                "name": "獸人散兵",
+                "base_hp": 80,
+                "base_atk": 26,
+                "base_def": 10,
+                "base_spd": 15,
+                "ai": "debuffer",
+                "drops": {}
+            }
+        },
+        "boss": {
+            "id": "orc_warlord",
+            "name": "獸人軍閥",
+            "is_boss": true,
+            "base_hp": 650,
+            "base_atk": 55,
+            "base_def": 22,
+            "base_spd": 13,
+            "weakness": [],
+            "resistance": [],
+            "ai": "buffer",
+            "drops": {
+                "stolen_gem": 0.3
+            },
+            "active_skills": [
+                {
+                    "id": "rallying_cry",
+                    "name": "戰意激揚",
+                    "trigger": {
+                        "type": "chance",
+                        "value": 0.2
+                    },
+                    "effect": {
+                        "type": "buff_self_atk",
+                        "mult": 1.3,
+                        "turns": 3
+                    }
+                },
+                {
+                    "id": "muster_troops",
+                    "name": "召集部隊",
+                    "trigger": {
+                        "type": "interval",
+                        "value": 4
+                    },
+                    "effect": {
+                        "type": "summon_minion",
+                        "summon_ids": [
+                            "orc_brute",
+                            "orc_shaman",
+                            "orc_skirmisher"
+                        ]
+                    }
+                }
+            ],
+            "phase2": {
+                "hp_below": 0.5,
+                "ai": "berserk_low_hp",
+                "name_suffix": "（破軍之怒）",
+                "heal_pct": 0.08,
+                "transform_text": "獸人軍閥怒擲斷裂的軍旗，獨自殺入戰場！",
+                "active_skills": [
+                    {
+                        "id": "warlord_execution",
+                        "name": "軍閥裁決",
+                        "trigger": {
+                            "type": "hp_below",
+                            "value": 0.2
+                        },
+                        "effect": {
+                            "type": "heavy_attack",
+                            "mult": 2.3
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "tier_4": {
+        "floor_range": [
+            51,
+            99
+        ],
+        "monsters": {
+            "demon_knight": {
+                "id": "demon_knight",
+                "name": "魔界騎士",
+                "base_hp": 220,
+                "base_atk": 60,
+                "base_def": 30,
+                "base_spd": 14,
+                "weakness": [
+                    "holy",
+                    "water"
+                ],
+                "resistance": [
+                    "dark",
+                    "fire"
+                ],
+                "ai": "berserk_low_hp",
+                "drops": {
+                    "tainted_blood": 0.3
+                }
+            },
+            "lich_apprentice": {
+                "id": "lich_apprentice",
+                "name": "巫妖學徒",
+                "base_hp": 180,
+                "base_atk": 65,
+                "base_def": 18,
+                "base_spd": 15,
+                "weakness": [
+                    "holy"
+                ],
+                "resistance": [
+                    "dark",
+                    "poison",
+                    "ice"
+                ],
+                "ai": "self_heal",
+                "drops": {
+                    "lich_soulstone": 0.05
+                }
+            },
+            "hellhound": {
+                "id": "hellhound",
+                "name": "地獄獵犬",
+                "base_hp": 200,
+                "base_atk": 58,
+                "base_def": 16,
+                "base_spd": 24,
+                "weakness": [
+                    "water",
+                    "ice"
+                ],
+                "resistance": [
+                    "fire"
+                ],
+                "ai": "multi_hit_flurry",
+                "drops": {
+                    "tainted_blood": 0.25
+                }
+            },
+            "iron_golem": {
+                "id": "iron_golem",
+                "name": "鋼鐵巨像",
+                "base_hp": 340,
+                "base_atk": 50,
+                "base_def": 45,
+                "base_spd": 7,
+                "weakness": [
+                    "thunder"
+                ],
+                "resistance": [
+                    "physical",
+                    "earth"
+                ],
+                "ai": "shield_ally",
+                "drops": {
+                    "gargoyle_stone": 0.4
+                }
+            }
+        },
+        "boss_minions": {
+            "abyss_cultist": {
+                "id": "abyss_cultist",
+                "name": "深淵信徒",
+                "base_hp": 150,
+                "base_atk": 38,
+                "base_def": 16,
+                "base_spd": 14,
+                "ai": "debuffer",
+                "drops": {}
+            },
+            "abyss_acolyte": {
+                "id": "abyss_acolyte",
+                "name": "深淵侍祭",
+                "base_hp": 145,
+                "base_atk": 30,
+                "base_def": 18,
+                "base_spd": 13,
+                "ai": "support_healer",
+                "drops": {}
+            }
+        },
+        "boss": {
+            "id": "abyss_overlord",
+            "name": "深淵統治者",
+            "is_boss": true,
+            "base_hp": 1400,
+            "base_atk": 95,
+            "base_def": 40,
+            "base_spd": 16,
+            "weakness": [
+                "holy"
+            ],
+            "resistance": [
+                "dark",
+                "poison",
+                "ice"
+            ],
+            "ai": "berserk_low_hp",
+            "drops": {
+                "lich_soulstone": 0.2,
+                "void_crystal": 0.15
+            },
+            "revive_once": {
+                "turns": 3,
+                "hp_pct": 0.35
+            },
+            "active_skills": [
+                {
+                    "id": "void_slam",
+                    "name": "虛空重擊",
+                    "trigger": {
+                        "type": "hp_below",
+                        "value": 0.4
+                    },
+                    "effect": {
+                        "type": "heavy_attack",
+                        "mult": 2.2
+                    }
+                },
+                {
+                    "id": "abyss_call",
+                    "name": "深淵召喚",
+                    "trigger": {
+                        "type": "interval",
+                        "value": 4
+                    },
+                    "effect": {
+                        "type": "summon_minion",
+                        "summon_ids": [
+                            "abyss_cultist",
+                            "abyss_acolyte"
+                        ]
+                    }
+                }
+            ],
+            "phase2": {
+                "hp_below": 0.35,
+                "ai": "lifesteal",
+                "name_suffix": "（深淵覺醒）",
+                "heal_pct": 0.1,
+                "transform_text": "深淵統治者的軀體崩解又重組，化作更純粹的災厄之形！",
+                "active_skills": [
+                    {
+                        "id": "abyss_devour",
+                        "name": "深淵吞噬",
+                        "trigger": {
+                            "type": "hp_below",
+                            "value": 0.15
+                        },
+                        "effect": {
+                            "type": "heavy_attack",
+                            "mult": 2.6
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "tier_5": {
+        "floor_range": [
+            100,
+            999
+        ],
+        "monsters": {
+            "abyss_guard": {
+                "id": "abyss_guard",
+                "name": "深淵近衛",
+                "base_hp": 2000,
+                "base_atk": 300,
+                "base_def": 150,
+                "base_spd": 100,
+                "weakness": [
+                    "holy"
+                ],
+                "resistance": [
+                    "dark",
+                    "physical"
+                ],
+                "ai": "heavy_tank",
+                "drops": {
+                    "tainted_blood": 0.6
+                }
+            },
+            "demon_warlock": {
+                "id": "demon_warlock",
+                "name": "惡魔術士",
+                "base_hp": 1500,
+                "base_atk": 380,
+                "base_def": 90,
+                "base_spd": 120,
+                "weakness": [
+                    "holy"
+                ],
+                "resistance": [
+                    "dark",
+                    "fire"
+                ],
+                "ai": "void_mage",
+                "drops": {
+                    "void_crystal": 0.4
+                }
+            },
+            "corrupted_dragon": {
+                "id": "corrupted_dragon",
+                "name": "墮落巨龍",
+                "base_hp": 4000,
+                "base_atk": 450,
+                "base_def": 200,
+                "base_spd": 150,
+                "weakness": [
+                    "holy",
+                    "ice"
+                ],
+                "resistance": [
+                    "dark",
+                    "fire",
+                    "thunder",
+                    "earth",
+                    "poison"
+                ],
+                "ai": "berserk_low_hp",
+                "drops": {
+                    "demon_core": 0.5
+                }
+            }
+        },
+        "boss_minions": {
+            "sargeras_imp": {
+                "id": "sargeras_imp",
+                "name": "薩格拉斯的小鬼",
+                "base_hp": 2500,
+                "base_atk": 75,
+                "base_def": 35,
+                "base_spd": 42,
+                "ai": "kamikaze",
+                "drops": {}
+            }
+        },
+        "boss": {
+            "id": "sargeras",
+            "name": "魔王 薩格拉斯",
+            "is_boss": true,
+            "base_hp": 18000,
+            "base_atk": 750,
+            "base_def": 350,
+            "base_spd": 420,
+            "weakness": [
+                "holy"
+            ],
+            "resistance": [
+                "dark",
+                "fire",
+                "ice",
+                "thunder",
+                "earth",
+                "water",
+                "poison",
+                "paralysis",
+                "freeze",
+                "burn"
+            ],
+            "ai": "sargeras_ai",
+            "drops": {
+                "sargeras_crown": 1.0,
+                "demon_core": 3.0,
+                "void_crystal": 5.0
+            },
+            "active_skills": [
+                {
+                    "id": "summon_imp",
+                    "name": "深淵召喚",
+                    "trigger": {
+                        "type": "interval",
+                        "value": 2
+                    },
+                    "effect": {
+                        "type": "summon_minion",
+                        "summon_ids": [
+                            "sargeras_imp"
+                        ]
+                    }
+                },
+                {
+                    "id": "void_eruption_boss",
+                    "name": "虛空爆發",
+                    "trigger": {
+                        "type": "chance",
+                        "value": 0.2
+                    },
+                    "effect": {
+                        "type": "heavy_attack",
+                        "mult": 5.5
+                    }
+                },
+                {
+                    "id": "divine_thunder_boss",
+                    "name": "神聖落雷",
+                    "trigger": {
+                        "type": "chance",
+                        "value": 0.2
+                    },
+                    "effect": {
+                        "type": "debuff_spd",
+                        "mult": 0.5,
+                        "turns": 3
+                    }
+                },
+                {
+                    "id": "blizzard_boss",
+                    "name": "暴風雪",
+                    "trigger": {
+                        "type": "chance",
+                        "value": 0.2
+                    },
+                    "effect": {
+                        "type": "debuff_atk",
+                        "mult": 0.7,
+                        "turns": 2
+                    }
+                },
+                {
+                    "id": "chaos_storm_boss",
+                    "name": "混沌風暴",
+                    "trigger": {
+                        "type": "hp_below",
+                        "value": 0.4
+                    },
+                    "effect": {
+                        "type": "heavy_attack",
+                        "mult": 5.0
+                    }
+                }
+            ]
+        }
+    }
+}

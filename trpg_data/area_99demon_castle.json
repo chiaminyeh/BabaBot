@@ -1,0 +1,69 @@
+{
+    "area_name": "魔王城",
+    "req_level": 80,
+    "desc": "【終局】深淵之主的殿堂，空氣中彌漫著令人窒息的魔力。",
+    "emoji": "🏰",
+    "explore_cost": 50,
+    "monsters": {
+        "abyss_guard": 0.4,
+        "demon_warlock": 0.4,
+        "corrupted_dragon": 0.2
+    },
+    "boss": {
+        "id": "sargeras",
+        "name": "魔王 薩格拉斯",
+        "is_boss": true,
+        "max_hp": 18000,
+        "atk": 750,
+        "def": 350,
+        "spd": 420,
+        "exp": 500000,
+        "money_min": 5000,
+        "money_max": 8000,
+        "weakness": [
+            "holy"
+        ],
+        "resistance": [
+            "dark",
+            "fire",
+            "ice",
+            "thunder",
+            "earth",
+            "water",
+            "poison",
+            "paralysis",
+            "freeze",
+            "burn"
+        ],
+        "ai": "sargeras_ai",
+        "drops": {
+            "sargeras_crown": 1.0,
+            "demon_core": 3.0,
+            "void_crystal": 5.0
+        },
+        "active_skills": [
+            {"id": "summon_imp", "name": "深淵召喚", "trigger": {"type": "interval", "value": 2}, "effect": {"type": "summon_minion", "summon_ids": ["sargeras_imp"]}},
+            {"id": "void_eruption_boss", "name": "虛空爆發", "trigger": {"type": "chance", "value": 0.2}, "effect": {"type": "heavy_attack", "mult": 5.5}},
+            {"id": "divine_thunder_boss", "name": "神聖落雷", "trigger": {"type": "chance", "value": 0.2}, "effect": {"type": "debuff_spd", "mult": 0.5, "turns": 3}},
+            {"id": "blizzard_boss", "name": "暴風雪", "trigger": {"type": "chance", "value": 0.2}, "effect": {"type": "debuff_atk", "mult": 0.7, "turns": 2}},
+            {"id": "chaos_storm_boss", "name": "混沌風暴", "trigger": {"type": "hp_below", "value": 0.4}, "effect": {"type": "heavy_attack", "mult": 5.0}}
+        ]
+    },
+    "boss_minions": {
+        "sargeras_imp": {
+            "id": "sargeras_imp",
+            "name": "薩格拉斯的小鬼",
+            "base_hp": 4500,
+            "base_atk": 300,
+            "base_def": 150,
+            "base_spd": 180,
+            "ai": "kamikaze",
+            "drops": {}
+        }
+    },
+    "drops": {
+        "void_crystal": 0.3,
+        "tainted_blood": 0.5,
+        "demon_core": 0.1
+    }
+}

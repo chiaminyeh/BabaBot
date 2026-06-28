@@ -1,0 +1,45 @@
+{
+    "poison": {
+        "name": "中毒",
+        "emoji": "☠️",
+        "dot_ratio": 0.05,
+        "cure_item": "antidote_herb",
+        "desc": "每回合損失 5% 最大 HP"
+    },
+    "burn": {
+        "name": "燃燒",
+        "emoji": "🔥",
+        "tick_ratio": 0.04,
+        "max_stacks": 5,
+        "cure_item": "burn_salve",
+        "desc": "每回合受到灼燒傷害，隨持續時間遞增（4%→8%→12%→16%→20% 最大HP）"
+    },
+    "freeze": {
+        "name": "冰凍",
+        "emoji": "🧊",
+        "mp_drain_ratio": 0.1,
+        "cure_item": "thaw_herb",
+        "desc": "100% 無法行動，且每回合流失 10% 最大 MP"
+    },
+    "paralysis": {
+        "name": "麻痺",
+        "emoji": "⚡",
+        "skip_chance": 0.40,
+        "atk_mult": 0.7,
+        "cure_item": "paralyze_cure",
+        "desc": "有機率無法行動，且攻擊/魔攻永久下降"
+    },
+    "sleep": {
+        "name": "睡眠",
+        "emoji": "💤",
+        "cure_item": "alarm_bell",
+        "desc": "100% 無法行動，但只要受到傷害就會立刻清醒"
+    },
+    "berserk": {
+        "name": "狂暴",
+        "emoji": "😡",
+        "atk_mult": 1.6,
+        "cure_item": "calming_incense",
+        "desc": "陷入瘋狂，只能使用普通攻擊，但攻擊力大幅提升"
+    }
+}

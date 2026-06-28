@@ -1,0 +1,100 @@
+{
+    "area_name": "新手村郊外",
+    "monsters": {
+        "slime": {
+            "id": "slime",
+            "name": "草地史萊姆",
+            "spawn_rate": 0.5,
+            "max_hp": 20,
+            "atk": 8,
+            "def": 1,
+            "spd": 7,
+            "exp": 6,
+            "money_min": 3,
+            "money_max": 7,
+            "drops": {
+                "slime_jelly": 1
+            },
+            "ai": "none"
+        },
+        "goblin": {
+            "id": "goblin",
+            "name": "落單的哥布林",
+            "spawn_rate": 0.3,
+            "max_hp": 35,
+            "atk": 12,
+            "def": 2,
+            "spd": 15,
+            "exp": 12,
+            "money_min": 15,
+            "money_max": 28,
+            "drops": {
+                "rusty_dagger": 0.7,
+                "health_potion": 0.2,
+                "leather_armor": 0.4
+            },
+            "ai": "none"
+        },
+        "wild_boar": {
+            "id": "wild_boar",
+            "name": "野豬",
+            "spawn_rate": 0.2,
+            "max_hp": 50,
+            "atk": 18,
+            "def": 3,
+            "spd": 12,
+            "exp": 18,
+            "money_min": 8,
+            "money_max": 15,
+            "drops": {
+                "boar_tusk": 1,
+                "raw_meat": 0.7
+            },
+            "ai": "none"
+        }
+    },
+    "boss_minions": {
+        "goblin_medic": {
+            "id": "goblin_medic", "name": "哥布林藥師",
+            "max_hp": 24, "atk": 8, "def": 2, "spd": 13, "exp": 0,
+            "money_min": 0, "money_max": 0, "drops": {},
+            "ai": "support_healer"
+        },
+        "goblin_raider": {
+            "id": "goblin_raider", "name": "哥布林掠奪者",
+            "max_hp": 28, "atk": 10, "def": 3, "spd": 16, "exp": 0,
+            "money_min": 0, "money_max": 0, "drops": {},
+            "ai": "debuffer"
+        }
+    },
+    "boss": {
+        "id": "goblin_chief",
+        "name": "哥布林首領",
+        "is_boss": true,
+        "max_hp": 150,
+        "atk": 22,
+        "def": 8,
+        "spd": 20,
+        "exp": 200,
+        "money_min": 100,
+        "money_max": 200,
+        "drops": {
+            "health_potion": 0.5,
+            "wooden_sword": 0.7
+        },
+        "ai": "berserk_low_hp",
+        "active_skills": [
+            {"id": "rally_goblins", "name": "召集同夥", "trigger": {"type": "interval", "value": 4}, "effect": {"type": "summon_minion", "summon_ids": ["goblin", "goblin_medic", "goblin_raider"]}}
+        ],
+        "phase2": {
+            "hp_below": 0.5,
+            "ai": "buffer",
+            "name_suffix": "（嗜血頭目）",
+            "heal_pct": 0.06,
+            "transform_text": "哥布林首領嗜血的雙眼發紅，舉起武器怒吼！",
+            "active_skills": [
+                {"id": "chief_smash", "name": "首領重擊", "trigger": {"type": "hp_below", "value": 0.2}, "effect": {"type": "heavy_attack", "mult": 2.1}}
+            ]
+        }
+    }
+}

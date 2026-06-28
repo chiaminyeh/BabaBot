@@ -1,0 +1,12 @@
+{
+    "achv_first_blood": {"name": "初出茅廬", "desc": "擊殺第一隻怪物", "type": "monsters_killed", "threshold": 1},
+    "achv_hunter": {"name": "封閉者", "desc": "累計擊殺 100 隻怪物", "type": "monsters_killed", "threshold": 100},
+    "achv_slayer": {"name": "該摸草了", "desc": "累計擊殺 1000 隻怪物", "type": "monsters_killed", "threshold": 1000},
+    
+    "achv_first_death": {"name": "☠️", "desc": "第一次死亡", "type": "total_deaths", "threshold": 1},
+    "achv_die_hard": {"name": "這遊戲沒那麼難", "desc": "累計死亡 10 次", "type": "total_deaths", "threshold": 10},
+    "achv_zombie": {"name": "老兄...", "desc": "累計死亡 50 次", "type": "total_deaths", "threshold": 50},
+    
+    "achv_consumer": {"name": "有錢人", "desc": "商店與旅館累計消費 1,000 金幣", "type": "money_spent", "threshold": 1000},
+    "achv_vip": {"name": "尊爵不凡 VIP", "desc": "商店與旅館累計消費 10,000 金幣", "type": "money_spent", "threshold": 10000}
+}

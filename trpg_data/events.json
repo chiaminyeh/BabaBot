@@ -1,0 +1,100 @@
+{
+    "shiny_coin": {
+        "category": "good",
+        "weight": 15,
+        "message": "路邊閃著金光……你撿到一袋被遺忘的零錢！",
+        "rewards": { "gold": 50, "items": { "health_potion": 1 } }
+    },
+    "herb_patch": {
+        "category": "good",
+        "weight": 12,
+        "message": "草叢裡長著幾株藥草，你小心翼翼地採集了下來。",
+        "rewards": { "items": { "antidote_herb": 2 } }
+    },
+    "wandering_merchant_gift": {
+        "category": "good",
+        "weight": 8,
+        "message": "路過的旅人塞給你一瓶藥水：「拿著，別客氣！」說完就消失了。",
+        "rewards": { "items": { "mana_potion": 1 } }
+    },
+    "old_sign": {
+        "category": "neutral",
+        "weight": 25,
+        "message": "木牌寫著：『前方有史萊姆』——廢話，這裡到處都是史萊姆。"
+    },
+    "bird_song": {
+        "category": "neutral",
+        "weight": 20,
+        "message": "樹梢傳來悅耳鳥鳴，你心情放鬆，什麼也沒發生……但感覺不錯。"
+    },
+    "lore_ruins": {
+        "category": "neutral",
+        "weight": 15,
+        "message": "殘破石碑記載：『勇者曾在此與魔王決戰，最後雙雙餓昏』——史學價值存疑。"
+    },
+    "slime_prank": {
+        "category": "neutral",
+        "weight": 18,
+        "message": "一隻史萊姆從頭頂掉下來，彈走前還對你眨了眨眼。你覺得被嘲笑了。"
+    },
+    "pit_trap": {
+        "category": "bad",
+        "weight": 20,
+        "message": "腳下一空！你跌進簡陋陷阱，摔得七葉八素。",
+        "hp_loss_percent": 0.15
+    },
+    "poison_mist": {
+        "category": "bad",
+        "weight": 12,
+        "message": "紫色霧氣撲面而來，你嗆咳了好一陣。",
+        "hp_loss_percent": 0.10
+    },
+    "mp_drain_curse": {
+        "category": "bad",
+        "weight": 10,
+        "message": "古老符文閃了一下，你感到魔力被抽走了一部分。",
+        "mp_loss_percent": 0.20
+    },
+    "thief_snatch": {
+        "category": "bad",
+        "weight": 8,
+        "message": "一隻手伸進你的口袋又縮回去——幸好只摸走一點零錢的感覺。",
+        "gold_loss": 30
+    },
+    "find_chest": {
+        "category": "good",
+        "weight": 5,
+        "message": "你在草叢中發現了一個被遺棄的生鏽寶箱，撬開後發現裡面有些零錢與藥水！",
+        "rewards": {
+            "gold": 150,
+            "items": {"health_potion": 2}
+        }
+    },
+    "trap_pit": {
+        "category": "bad",
+        "weight": 4,
+        "message": "「喀喇！」你踩到了獵人佈下的陷阱，捕獸夾狠狠咬住了你的小腿！",
+        "hp_loss_percent": 0.15
+    },
+    "magic_drain": {
+        "category": "bad",
+        "weight": 3,
+        "message": "你走進了一片充滿奇異花香的區域，感覺體內的魔力正被周圍的植物迅速吸走...",
+        "mp_loss_percent": 0.30
+    },
+    "wandering_bard": {
+        "category": "neutral",
+        "weight": 6,
+        "message": "你遇到了一位吟遊詩人，他向你講述了吸血鬼真祖過去的笑話，雖然不好笑，但打發了點時間。"
+    },
+    "merchant_corpse": {
+        "category": "good",
+        "weight": 2,
+        "message": "你發現了一具倒楣商人的屍體，你雙手合十拜了一下，然後默默把他的背包拿走了。",
+        "rewards": {
+            "gold": 300,
+            "items": {"iron_sword": 1, "health_potion": 3}
+        }
+    }
+}
+

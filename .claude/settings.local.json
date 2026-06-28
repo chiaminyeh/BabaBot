@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m py_compile trpg_cog.py trpg_monster_pool.py trpg_combat.py trpg_stats.py trpg_status.py)",
+      "Bash(python -m py_compile)"
+    ]
+  }
+}

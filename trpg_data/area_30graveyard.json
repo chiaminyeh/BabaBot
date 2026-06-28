@@ -1,0 +1,139 @@
+{
+    "area_name": "遺忘墓地",
+    "req_level": 30,
+    "monsters": {
+        "skeleton": {
+            "id": "skeleton",
+            "name": "甦醒的骷髏兵",
+            "spawn_rate": 0.45,
+            "max_hp": 2400,
+            "atk": 144,
+            "def": 90,
+            "exp": 5500,
+            "spd": 25,
+            "weakness": [
+                "holy"
+            ],
+            "immunity": [
+                "poison"
+            ],
+            "drops": {
+                "bone_shard": 1,
+                "flame_sword": 0.05
+            },
+            "money_min": 80,
+            "money_max": 130,
+            "ai": "none"
+        },
+        "grave_goblin": {
+            "id": "grave_goblin",
+            "name": "盜墓哥布林",
+            "spawn_rate": 0.25,
+            "max_hp": 2100,
+            "atk": 136,
+            "def": 80,
+            "exp": 6000,
+            "spd": 30,
+            "weakness": [],
+            "money_min": 100,
+            "money_max": 300,
+            "drops": {
+                "stolen_gem": 0.5,
+                "high_health_potion": 0.25
+            },
+            "ai": "flee_low_hp"
+        },
+        "ghost": {
+            "id": "ghost",
+            "name": "遊蕩幽靈",
+            "spawn_rate": 0.3,
+            "max_hp": 1800,
+            "atk": 170,
+            "def": 70,
+            "exp": 6500,
+            "spd": 45,
+            "weakness": [
+                "holy"
+            ],
+            "resistance": [
+                "physical",
+                "poison"
+            ],
+            "drops": {
+                "ectoplasm": 1,
+                "high_mana_potion": 0.25
+            },
+            "status_on_hit": [
+                "freeze"
+            ],
+            "status_chance": 0.25,
+            "money_min": 90,
+            "money_max": 150,
+            "ai": "lifesteal"
+        }
+    },
+    "boss": {
+        "id": "lich",
+        "name": "亡靈巫妖",
+        "is_boss": true,
+        "max_hp": 9000,
+        "atk": 221,
+        "def": 110,
+        "exp": 95000,
+        "spd": 50,
+        "weakness": [
+            "holy",
+            "fire"
+        ],
+        "resistance": [
+            "dark",
+            "poison",
+            "water"
+        ],
+        "immunity": [
+            "ice"
+        ],
+        "money_min": 500,
+        "money_max": 900,
+        "drops": {
+            "lich_soulstone": 0.4,
+            "dragon_plate": 0.15,
+            "scroll_divine_thunder": 0.2,
+            "high_mana_potion": 0.5
+        },
+        "status_on_hit": [
+            "freeze",
+            "poison"
+        ],
+        "status_chance": 0.5,
+        "ai": "lifesteal",
+        "revive_once": {"turns": 3, "hp_pct": 0.3},
+        "active_skills": [
+            {"id": "raise_legion", "name": "亡靈軍團", "trigger": {"type": "interval", "value": 4}, "effect": {"type": "summon_minion", "summon_ids": ["skeleton", "bone_priest", "grave_wraith"]}}
+        ],
+        "phase2": {
+            "hp_below": 0.5,
+            "ai": "self_heal",
+            "name_suffix": "（亡靈甦醒）",
+            "heal_pct": 0.1,
+            "transform_text": "亡靈巫妖的法袍化作骷髏之風，墓地裡的亡靈紛紛甦醒共鳴！",
+            "active_skills": [
+                {"id": "death_nova", "name": "死亡波動", "trigger": {"type": "hp_below", "value": 0.15}, "effect": {"type": "heavy_attack", "mult": 2.4}}
+            ]
+        }
+    },
+    "boss_minions": {
+        "bone_priest": {
+            "id": "bone_priest", "name": "墓地祭司",
+            "max_hp": 700, "atk": 90, "def": 55, "spd": 28,
+            "exp": 0, "money_min": 0, "money_max": 0, "drops": {},
+            "ai": "support_healer"
+        },
+        "grave_wraith": {
+            "id": "grave_wraith", "name": "墓穴亡魂",
+            "max_hp": 750, "atk": 120, "def": 50, "spd": 35,
+            "exp": 0, "money_min": 0, "money_max": 0, "drops": {},
+            "ai": "debuffer"
+        }
+    }
+}
