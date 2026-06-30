@@ -7,7 +7,9 @@
         "power_multiplier": 1.5,
         "crit_bonus": 0.08,
         "cd": 2,
-        "req_level": 1
+        "req_level": 1,
+        "name_en": "Power Slash",
+        "desc_en": "Deals 1.5x physical damage (CD: 2)"
     },
     "heal_light": {
         "name": "初級治療",
@@ -16,7 +18,9 @@
         "heal_amount": 100,
         "mp_cost": 25,
         "cd": 4,
-        "req_level": 1
+        "req_level": 1,
+        "name_en": "Basic Heal",
+        "desc_en": "Restores 100 HP to yourself (CD: 4)"
     },
     "double_strike": {
         "name": "連環快斬",
@@ -26,14 +30,18 @@
         "power_multiplier": 0.75,
         "hits": 2,
         "cd": 2,
-        "req_level": 1
+        "req_level": 1,
+        "name_en": "Rapid Slash Combo",
+        "desc_en": "Swiftly strikes twice in succession, each hit dealing 0.75x damage (CD: 2)"
     },
     "combo_attack": {
         "name": "連續攻擊",
         "desc": "被動：普攻額外攻擊一次（0.75 倍傷害，需 Lv.8）",
         "type": "passive",
         "req_level": 8,
-        "extra_attack_multiplier": 0.75
+        "extra_attack_multiplier": 0.75,
+        "name_en": "Combo Strike",
+        "desc_en": "Passive: basic attacks strike one extra time (0.75x damage, requires Lv.8)"
     },
     "shadow_step": {
         "name": "暗影步",
@@ -42,7 +50,9 @@
         "flee_chance": 0.85,
         "mp_cost": 15,
         "cd": 4,
-        "req_level": 5
+        "req_level": 5,
+        "name_en": "Shadow Step",
+        "desc_en": "Costs 15 MP, 85% chance to forcibly escape combat (CD: 4, requires Lv.5)"
     },
     "blood_strike": {
         "name": "血之獻祭",
@@ -52,7 +62,9 @@
         "hp_cost_percent": 0.2,
         "hp_scaling_multiplier": 2.5,
         "cd": 4,
-        "req_level": 10
+        "req_level": 10,
+        "name_en": "Blood Sacrifice",
+        "desc_en": "Costs 20% max HP, dealing true dark damage equal to 2.5x the HP sacrificed (CD: 4, requires Lv.10)"
     },
     "fireball": {
         "name": "火球術",
@@ -66,7 +78,9 @@
         "status_turns": 2,
         "req_level": 1,
         "base_power": 60,
-        "magic_scaling": 0.8
+        "magic_scaling": 0.8,
+        "name_en": "Fireball",
+        "desc_en": "Deals 60 base fire damage, inflicting Burn on the enemy for 2 turns (CD: 3)"
     },
     "ice_spear": {
         "name": "寒冰矛",
@@ -80,7 +94,9 @@
         "status_turns": 1,
         "req_level": 1,
         "base_power": 50,
-        "magic_scaling": 0.8
+        "magic_scaling": 0.8,
+        "name_en": "Ice Spear",
+        "desc_en": "Deals 50 base ice damage, with a high chance to Freeze the enemy for 1 turn (CD: 4)"
     },
     "thunder_strike": {
         "name": "落雷術",
@@ -94,7 +110,9 @@
         "status_turns": 2,
         "req_level": 1,
         "base_power": 80,
-        "magic_scaling": 0.8
+        "magic_scaling": 0.8,
+        "name_en": "Lightning Bolt",
+        "desc_en": "Deals 80 base thunder damage, inflicting Paralysis for 2 turns (CD: 5)"
     },
     "water_ball": {
         "name": "水球術",
@@ -108,7 +126,9 @@
         "req_level": 5,
         "target_type": "back",
         "base_power": 40,
-        "magic_scaling": 0.8
+        "magic_scaling": 0.8,
+        "name_en": "Water Ball",
+        "desc_en": "Deals 40 base water damage, hitting twice and able to reach backline enemies (CD: 3)"
     },
     "stone_spike": {
         "name": "岩刺術",
@@ -120,7 +140,9 @@
         "cd": 4,
         "req_level": 8,
         "base_power": 100,
-        "magic_scaling": 1.2
+        "magic_scaling": 1.2,
+        "name_en": "Rock Spike",
+        "desc_en": "Deals 100 base earth damage, ignoring 60% of defense (CD: 4)"
     },
     "holy_smash": {
         "name": "神聖制裁",
@@ -132,7 +154,9 @@
         "cd": 5,
         "req_level": 12,
         "base_power": 150,
-        "magic_scaling": 1.8
+        "magic_scaling": 1.8,
+        "name_en": "Holy Judgment",
+        "desc_en": "Deals 150 base holy damage, especially devastating against undead (CD: 5, requires Lv.12)"
     },
     "dark_orb": {
         "name": "暗影球",
@@ -146,7 +170,9 @@
         "status_turns": 3,
         "req_level": 10,
         "base_power": 130,
-        "magic_scaling": 1.2
+        "magic_scaling": 1.2,
+        "name_en": "Shadow Orb",
+        "desc_en": "Deals 130 base dark damage, with a chance to inflict Poison (CD: 4, requires Lv.10)"
     },
     "hypnotic_gaze": {
         "name": "魅惑安眠",
@@ -160,7 +186,9 @@
         "status_turns": 3,
         "req_level": 15,
         "base_power": 90,
-        "magic_scaling": 1.0
+        "magic_scaling": 1.0,
+        "name_en": "Charming Slumber",
+        "desc_en": "Deals 90 base dark damage, lulling the enemy into Sleep (CD: 5, requires Lv.15)"
     },
     "inferno": {
         "name": "煉獄火",
@@ -174,7 +202,9 @@
         "status_turns": 3,
         "req_level": 15,
         "base_power": 180,
-        "magic_scaling": 1.8
+        "magic_scaling": 1.8,
+        "name_en": "Hellfire",
+        "desc_en": "Deals 180 base fire damage, inflicting intense Burn for 3 turns (CD: 5, requires Lv.15)"
     },
     "blizzard": {
         "name": "暴風雪",
@@ -188,7 +218,9 @@
         "status_turns": 2,
         "req_level": 12,
         "base_power": 140,
-        "magic_scaling": 1.2
+        "magic_scaling": 1.2,
+        "name_en": "Blizzard",
+        "desc_en": "Deals 140 base ice damage, Freezing the enemy for 2 turns (CD: 5, requires Lv.12)"
     },
     "divine_thunder": {
         "name": "神聖落雷",
@@ -203,7 +235,9 @@
         "req_level": 18,
         "target_type": "all",
         "base_power": 120,
-        "magic_scaling": 1.2
+        "magic_scaling": 1.2,
+        "name_en": "Holy Thunder",
+        "desc_en": "Deals 120 base thunder damage to all enemies and inflicts Paralysis for 3 turns, trading lower single-target damage for area coverage (CD: 6, requires Lv.18)"
     },
     "void_eruption": {
         "name": "虛空爆發",
@@ -215,7 +249,9 @@
         "cd": 6,
         "req_level": 25,
         "base_power": 500,
-        "magic_scaling": 2.5
+        "magic_scaling": 2.5,
+        "name_en": "Void Burst",
+        "desc_en": "Deals 500 base dark damage, ignoring 80% of defense (CD: 6, requires Lv.25)"
     },
     "venom_cloud": {
         "name": "劇毒之雲",
@@ -230,7 +266,9 @@
         "req_level": 15,
         "target_type": "all",
         "base_power": 90,
-        "magic_scaling": 0.8
+        "magic_scaling": 0.8,
+        "name_en": "Toxic Cloud",
+        "desc_en": "Deals 90 base dark damage to all enemies, inflicting Poison (CD: 4, requires Lv.15)"
     },
     "frost_nova": {
         "name": "冰霜新星",
@@ -245,7 +283,9 @@
         "req_level": 18,
         "target_type": "all",
         "base_power": 120,
-        "magic_scaling": 1.2
+        "magic_scaling": 1.2,
+        "name_en": "Frost Nova",
+        "desc_en": "Deals 120 base ice damage to all enemies, with a high chance to Freeze them for 2 turns (CD: 5, requires Lv.18)"
     },
     "meteor_swarm": {
         "name": "隕石風暴",
@@ -260,7 +300,9 @@
         "req_level": 25,
         "target_type": "all",
         "base_power": 300,
-        "magic_scaling": 2.5
+        "magic_scaling": 2.5,
+        "name_en": "Meteor Storm",
+        "desc_en": "Deals massive 300 base fire damage to all enemies, inflicting intense Burn for 3 turns (CD: 6, requires Lv.25)"
     },
     "earthquake": {
         "name": "大地震擊",
@@ -275,6 +317,8 @@
         "req_level": 20,
         "target_type": "all",
         "base_power": 250,
-        "magic_scaling": 2.5
+        "magic_scaling": 2.5,
+        "name_en": "Earthquake Strike",
+        "desc_en": "Deals 250 base earth damage to all enemies, ignoring 70% of defense and inflicting Paralysis (CD: 5, requires Lv.20)"
     }
 }

@@ -12,6 +12,8 @@ import random
 
 import discord
 
+from trpg_i18n import t, tf
+
 COOLDOWN_SECONDS = 90
 OFFER_CHANCE = 0.15
 
@@ -41,16 +43,17 @@ def _recompute_live_progress(view):
 
 async def _send_reward_popup(view, interaction, title, quest_line, npc_name, raw_prompt,
                               target_name, target_count, reward_exp, reward_money):
+    lang = getattr(view.player, "language", "zh")
     prompt = (raw_prompt.replace("{count}", str(target_count))
                          .replace("{monster}", target_name)
                          .replace("{item}", target_name))
     ai_text = await view.cog.generate_npc_dialogue(prompt)
-    tag = "📖 主線任務" if quest_line == "main" else "📌 支線任務"
-    content = (
-        f"🎉 **任務達成！** {tag}\n"
-        f"**{title}**\n"
-        f"💬 {npc_name}：「{ai_text}」\n\n"
-        f"🎁 獲得 {reward_exp} EXP、{reward_money} 金幣！"
+    tag = (t(lang, "quest.main_line_tag", "📖 主線任務") if quest_line == "main"
+           else t(lang, "quest.side_line_tag", "📌 支線任務"))
+    content = t(
+        lang, "quest.reward_popup", "🎉 **任務達成！** {tag}\n**{title}**\n💬 {npc_name}：「{ai_text}」\n\n🎁 獲得 {reward_exp} EXP、{reward_money} 金幣！",
+        tag=tag, title=title, npc_name=npc_name, ai_text=ai_text,
+        reward_exp=reward_exp, reward_money=reward_money,
     )
     try:
         await interaction.followup.send(content, ephemeral=True)
@@ -76,12 +79,13 @@ async def _try_pop_completed_active_quest(view, interaction) -> bool:
         player.completed_quests.append(quest_id)
         cog.save_players()
 
-        target_name = quest_info.get("target_monster") or quest_info.get("target_item") or "目標"
+        lang = getattr(player, "language", "zh")
+        target_name = quest_info.get("target_monster") or quest_info.get("target_item") or t(lang, "quest.default_target", "目標")
         await _send_reward_popup(
             view, interaction,
-            title=quest_info["title"], quest_line=quest_info.get("quest_line", "side"),
-            npc_name=quest_info.get("npc_name", "???"),
-            raw_prompt=quest_info.get("turn_in_prompt", "請用一句話稱讚玩家完成了委託。"),
+            title=tf(quest_info, "title", lang), quest_line=quest_info.get("quest_line", "side"),
+            npc_name=tf(quest_info, "npc_name", lang) or "???",
+            raw_prompt=quest_info.get("turn_in_prompt", t(lang, "quest.default_turn_in_prompt", "請用一句話稱讚玩家完成了委託。")),
             target_name=target_name, target_count=quest_info.get("target_count", 1),
             reward_exp=quest_info.get("reward_exp", 0), reward_money=quest_info.get("reward_money", 0),
         )
@@ -107,12 +111,13 @@ async def _try_pop_completed_hidden_quest(view, interaction) -> bool:
         del progress_map[quest_id]
         cog.save_players()
 
-        target_name = quest_info.get("target_monster") or quest_info.get("target_item") or "目標"
+        lang = getattr(player, "language", "zh")
+        target_name = quest_info.get("target_monster") or quest_info.get("target_item") or t(lang, "quest.default_target", "目標")
         await _send_reward_popup(
             view, interaction,
-            title=quest_info["title"], quest_line=quest_info.get("quest_line", "side"),
-            npc_name=quest_info.get("npc_name", "???"),
-            raw_prompt=quest_info.get("turn_in_prompt", "請用一句話神祕地給予玩家獎勵。"),
+            title=tf(quest_info, "title", lang), quest_line=quest_info.get("quest_line", "side"),
+            npc_name=tf(quest_info, "npc_name", lang) or "???",
+            raw_prompt=quest_info.get("turn_in_prompt", t(lang, "quest.default_turn_in_prompt_hidden", "請用一句話神祕地給予玩家獎勵。")),
             target_name=target_name, target_count=quest_info.get("target_count", 1),
             reward_exp=quest_info.get("reward_exp", 0), reward_money=quest_info.get("reward_money", 0),
         )
@@ -143,20 +148,23 @@ async def _maybe_send_offer_popup(view, interaction):
     player.last_quest_popup_ts = now
     cog.save_players()
 
-    target_name = quest_info.get("target_monster") or quest_info.get("target_item") or "目標"
-    raw_prompt = quest_info.get("accept_prompt", "請用一句話邀請玩家接取委託。")
+    lang = getattr(player, "language", "zh")
+    target_name = quest_info.get("target_monster") or quest_info.get("target_item") or t(lang, "quest.default_target", "目標")
+    raw_prompt = quest_info.get("accept_prompt", t(lang, "quest.default_accept_prompt", "請用一句話邀請玩家接取委託。"))
     prompt = (raw_prompt.replace("{count}", str(quest_info.get("target_count", 1)))
                          .replace("{monster}", target_name)
                          .replace("{item}", target_name))
     ai_text = await cog.generate_npc_dialogue(prompt)
 
     quest_line = quest_info.get("quest_line", "side")
-    tag = "📖 主線任務" if quest_line == "main" else "📌 支線任務"
-    content = (
-        f"❗ **突發委託出現！** {tag}\n"
-        f"**{quest_info['title']}**\n"
-        f"💬 {quest_info.get('npc_name', '???')}：「{ai_text}」\n\n"
-        f"要接受這個委託嗎？"
+    tag = (t(lang, "quest.main_line_tag", "📖 主線任務") if quest_line == "main"
+           else t(lang, "quest.side_line_tag", "📌 支線任務"))
+    title = tf(quest_info, "title", lang)
+    npc_name = tf(quest_info, "npc_name", lang) or "???"
+    content = t(
+        lang, "quest.offer_popup",
+        "❗ **突發委託出現！** {tag}\n**{title}**\n💬 {npc_name}：「{ai_text}」\n\n要接受這個委託嗎？",
+        tag=tag, title=title, npc_name=npc_name, ai_text=ai_text,
     )
     try:
         await interaction.followup.send(content, view=QuestOfferView(view, quest_id), ephemeral=True)
@@ -169,17 +177,24 @@ class QuestOfferView(discord.ui.View):
         super().__init__(timeout=120)
         self.game_view = game_view
         self.quest_id = quest_id
+        lang = getattr(game_view.player, "language", "zh")
+        self.accept.label = t(lang, "quest.accept_button", "接受")
+        self.decline.label = t(lang, "quest.decline_button", "拒絕")
 
     @discord.ui.button(label="接受", style=discord.ButtonStyle.success, emoji="✅")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
         player = self.game_view.player
+        lang = getattr(player, "language", "zh")
         if self.quest_id not in player.active_quests and self.quest_id not in player.completed_quests:
             player.active_quests[self.quest_id] = {"progress": 0}
             self.game_view.cog.save_players()
-        await interaction.response.edit_message(content="✅ 已接受委託！進度會自動累積，達成時會再跳出視窗領取獎勵。", view=None)
+        await interaction.response.edit_message(
+            content=t(lang, "quest.accepted_msg", "✅ 已接受委託！進度會自動累積，達成時會再跳出視窗領取獎勵。"), view=None)
         self.stop()
 
     @discord.ui.button(label="拒絕", style=discord.ButtonStyle.secondary, emoji="❌")
     async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.edit_message(content="已拒絕這個委託。", view=None)
+        player = self.game_view.player
+        lang = getattr(player, "language", "zh")
+        await interaction.response.edit_message(content=t(lang, "quest.declined_msg", "已拒絕這個委託。"), view=None)
         self.stop()

@@ -7,7 +7,9 @@
         "price": 20,
         "sell_price": 8,
         "shop_weight": 0,
-        "desc": "商店必定販售，回復 25% 最大 HP"
+        "desc": "商店必定販售，回復 25% 最大 HP",
+        "name_en": "Health Potion",
+        "desc_en": "Always available in the shop. Restores 25% of max HP."
     },
     "mana_potion": {
         "name": "魔力藥水",
@@ -17,7 +19,9 @@
         "price": 20,
         "sell_price": 8,
         "shop_weight": 0,
-        "desc": "商店必定販售，回復 25% 最大 MP"
+        "desc": "商店必定販售，回復 25% 最大 MP",
+        "name_en": "Mana Potion",
+        "desc_en": "Always available in the shop. Restores 25% of max MP."
     },
     "medium_health_potion": {
         "name": "中級生命藥水",
@@ -27,7 +31,9 @@
         "price": 50,
         "sell_price": 20,
         "shop_weight": 0,
-        "desc": "回復 50% 最大 HP"
+        "desc": "回復 50% 最大 HP",
+        "name_en": "Greater Health Potion",
+        "desc_en": "Restores 50% of max HP."
     },
     "medium_mana_potion": {
         "name": "中級魔力藥水",
@@ -37,7 +43,9 @@
         "price": 50,
         "sell_price": 20,
         "shop_weight": 0,
-        "desc": "回復 50% 最大 MP"
+        "desc": "回復 50% 最大 MP",
+        "name_en": "Greater Mana Potion",
+        "desc_en": "Restores 50% of max MP."
     },
     "high_health_potion": {
         "name": "高級生命藥水",
@@ -47,7 +55,9 @@
         "price": 120,
         "sell_price": 45,
         "shop_weight": 0,
-        "desc": "回復 80% 最大 HP"
+        "desc": "回復 80% 最大 HP",
+        "name_en": "Superior Health Potion",
+        "desc_en": "Restores 80% of max HP."
     },
     "high_mana_potion": {
         "name": "高級魔力藥水",
@@ -57,7 +67,9 @@
         "price": 120,
         "sell_price": 45,
         "shop_weight": 0,
-        "desc": "回復 80% 最大 MP"
+        "desc": "回復 80% 最大 MP",
+        "name_en": "Superior Mana Potion",
+        "desc_en": "Restores 80% of max MP."
     },
     "slime_jelly": {
         "name": "史萊姆果凍",
@@ -65,7 +77,9 @@
         "price": 5,
         "sell_price": 2,
         "shop_weight": 10,
-        "desc": "黏糊糊的亮晶晶液體"
+        "desc": "黏糊糊的亮晶晶液體",
+        "name_en": "Slime Jelly",
+        "desc_en": "A sticky, glistening liquid."
     },
     "wolf_fur": {
         "name": "完整狼皮",
@@ -73,7 +87,9 @@
         "price": 18,
         "sell_price": 9,
         "shop_weight": 20,
-        "desc": "可以拿來做保暖衣物"
+        "desc": "可以拿來做保暖衣物",
+        "name_en": "Pristine Wolf Pelt",
+        "desc_en": "Can be used to make warm clothing."
     },
     "raw_meat": {
         "name": "生肉",
@@ -81,7 +97,9 @@
         "price": 10,
         "sell_price": 4,
         "shop_weight": 30,
-        "desc": "看起來不太新鮮的肉塊"
+        "desc": "看起來不太新鮮的肉塊",
+        "name_en": "Raw Meat",
+        "desc_en": "A chunk of meat that doesn't look very fresh."
     },
     "boar_tusk": {
         "name": "野豬獠牙",
@@ -89,7 +107,9 @@
         "price": 25,
         "sell_price": 12,
         "shop_weight": 15,
-        "desc": "鋒利的獠牙，拿來當飾品也不錯"
+        "desc": "鋒利的獠牙，拿來當飾品也不錯",
+        "name_en": "Boar Tusk",
+        "desc_en": "A sharp tusk that also makes for a decent accessory."
     },
     "poison_stinger": {
         "name": "毒蜂針",
@@ -97,7 +117,9 @@
         "price": 40,
         "sell_price": 15,
         "shop_weight": 10,
-        "desc": "帶有劇毒的鋒利尖刺"
+        "desc": "帶有劇毒的鋒利尖刺",
+        "name_en": "Venomous Bee Sting",
+        "desc_en": "A sharp stinger laced with deadly venom."
     },
     "ancient_wood": {
         "name": "古老靈木",
@@ -105,7 +127,9 @@
         "price": 60,
         "sell_price": 25,
         "shop_weight": 5,
-        "desc": "散發微光的堅硬木材"
+        "desc": "散發微光的堅硬木材",
+        "name_en": "Ancient Spirit Tree",
+        "desc_en": "Hardy timber that gives off a faint glow."
     },
     "royal_honey": {
         "name": "蜂后凝脂",
@@ -113,7 +137,9 @@
         "price": 150,
         "sell_price": 60,
         "shop_weight": 2,
-        "desc": "極度稀有的珍貴補品"
+        "desc": "極度稀有的珍貴補品",
+        "name_en": "Queen Bee's Royal Jelly",
+        "desc_en": "An extremely rare and precious tonic."
     },
     "bone_shard": {
         "name": "骸骨碎片",
@@ -121,7 +147,9 @@
         "price": 80,
         "sell_price": 30,
         "shop_weight": 15,
-        "desc": "充滿陰氣的碎骨"
+        "desc": "充滿陰氣的碎骨",
+        "name_en": "Bone Fragment",
+        "desc_en": "A broken bone steeped in dark energy."
     },
     "stolen_gem": {
         "name": "盜來的寶石",
@@ -129,7 +157,9 @@
         "price": 300,
         "sell_price": 120,
         "shop_weight": 5,
-        "desc": "哥布林不知從哪偷來的亮晶晶寶石"
+        "desc": "哥布林不知從哪偷來的亮晶晶寶石",
+        "name_en": "Stolen Gem",
+        "desc_en": "A glittering gem the goblins stole from who-knows-where."
     },
     "ectoplasm": {
         "name": "幽靈靈質",
@@ -137,7 +167,9 @@
         "price": 100,
         "sell_price": 40,
         "shop_weight": 8,
-        "desc": "半透明的神祕物質"
+        "desc": "半透明的神祕物質",
+        "name_en": "Ghostly Ectoplasm",
+        "desc_en": "A translucent, mysterious substance."
     },
     "lich_soulstone": {
         "name": "巫妖魂石",
@@ -145,7 +177,9 @@
         "price": 500,
         "sell_price": 200,
         "shop_weight": 0,
-        "desc": "封印著強大死靈魔力的石頭"
+        "desc": "封印著強大死靈魔力的石頭",
+        "name_en": "Lich Soul Stone",
+        "desc_en": "A stone sealing away powerful necromantic energy."
     },
     "bat_wing": {
         "name": "巨大蝙蝠翼",
@@ -153,7 +187,9 @@
         "price": 120,
         "sell_price": 50,
         "shop_weight": 10,
-        "desc": "充滿韌性的皮革質地翅膀"
+        "desc": "充滿韌性的皮革質地翅膀",
+        "name_en": "Giant Bat Wing",
+        "desc_en": "A wing with a tough, leathery texture."
     },
     "gargoyle_stone": {
         "name": "石像鬼魔石",
@@ -161,7 +197,9 @@
         "price": 180,
         "sell_price": 75,
         "shop_weight": 5,
-        "desc": "極度堅硬的核心石頭"
+        "desc": "極度堅硬的核心石頭",
+        "name_en": "Gargoyle Demonstone",
+        "desc_en": "An extremely hard core stone."
     },
     "tainted_blood": {
         "name": "污穢之血",
@@ -169,7 +207,9 @@
         "price": 150,
         "sell_price": 60,
         "shop_weight": 8,
-        "desc": "裝在小瓶子裡的暗紅色液體"
+        "desc": "裝在小瓶子裡的暗紅色液體",
+        "name_en": "Tainted Blood",
+        "desc_en": "A dark red liquid sealed inside a small vial."
     },
     "vampire_fang": {
         "name": "真祖之牙",
@@ -177,7 +217,9 @@
         "price": 800,
         "sell_price": 350,
         "shop_weight": 0,
-        "desc": "吸血鬼王者的象徵"
+        "desc": "吸血鬼王者的象徵",
+        "name_en": "Progenitor's Fang",
+        "desc_en": "A symbol of vampire royalty."
     },
     "rusty_dagger": {
         "name": "生鏽的匕首",
@@ -187,7 +229,9 @@
         "sell_price": 30,
         "exclusive_level": 1,
         "shop_weight": 80,
-        "desc": "雖然鈍，但捅人還是會痛"
+        "desc": "雖然鈍，但捅人還是會痛",
+        "name_en": "Rusty Dagger",
+        "desc_en": "Dull, maybe, but it still hurts when it stabs you."
     },
     "wooden_sword": {
         "name": "練習用木劍",
@@ -197,7 +241,9 @@
         "sell_price": 55,
         "exclusive_level": 1,
         "shop_weight": 60,
-        "desc": "新手冒險者的標配"
+        "desc": "新手冒險者的標配",
+        "name_en": "Practice Wooden Sword",
+        "desc_en": "Standard issue for novice adventurers."
     },
     "bronze_sword": {
         "name": "青銅長劍",
@@ -207,7 +253,9 @@
         "sell_price": 110,
         "exclusive_level": 5,
         "shop_weight": 40,
-        "desc": "比木劍可靠的正規武器"
+        "desc": "比木劍可靠的正規武器",
+        "name_en": "Bronze Longsword",
+        "desc_en": "A proper weapon, more reliable than a wooden sword."
     },
     "iron_sword": {
         "name": "精鋼長劍",
@@ -217,7 +265,9 @@
         "sell_price": 180,
         "exclusive_level": 10,
         "shop_weight": 20,
-        "desc": "散發冷冽光芒的正規武器"
+        "desc": "散發冷冽光芒的正規武器",
+        "name_en": "Steel Longsword",
+        "desc_en": "A proper weapon that gleams with a cold light."
     },
     "flame_sword": {
         "name": "火焰之劍",
@@ -231,7 +281,9 @@
         "on_hit_status": "burn",
         "on_hit_chance": 0.3,
         "on_hit_status_turns": 2,
-        "desc": "劍身灼熱，普攻有機率使敵人燃燒"
+        "desc": "劍身灼熱，普攻有機率使敵人燃燒",
+        "name_en": "Sword of Flame",
+        "desc_en": "Its blade burns with heat. Basic attacks have a chance to set enemies on fire."
     },
     "hero_sword": {
         "name": "勇者之劍",
@@ -246,7 +298,9 @@
         "anti_boss_atk_mult": 0.6,
         "anti_boss_def_mult": 0.6,
         "anti_boss_spd_mult": 0.4,
-        "desc": "傳說洞窟深處的石墩上插著的聖劍，纏繞著令魔王忌憚的聖光。對戰魔王薩格拉斯時，能大幅削弱他的力量。"
+        "desc": "傳說洞窟深處的石墩上插著的聖劍，纏繞著令魔王忌憚的聖光。對戰魔王薩格拉斯時，能大幅削弱他的力量。",
+        "name_en": "Hero's Sword",
+        "desc_en": "A legendary holy sword said to be lodged in a stone pedestal deep within a cave, wreathed in holy light that the Demon Lord fears. Greatly weakens Demon Lord Sargeras when used against him."
     },
     "holy_sword": {
         "name": "聖光之劍",
@@ -258,7 +312,9 @@
         "shop_weight": 5,
         "on_hit_heal_percent": 0.08,
         "element": "holy",
-        "desc": "每次攻擊回復自身 8% 最大 HP"
+        "desc": "每次攻擊回復自身 8% 最大 HP",
+        "name_en": "Sword of Holy Light",
+        "desc_en": "Restores 8% of your max HP with every attack."
     },
     "mage_staff": {
         "name": "巫師法杖",
@@ -269,7 +325,9 @@
         "sell_price": 160,
         "exclusive_level": 12,
         "shop_weight": 15,
-        "desc": "提升魔力，適合施法者"
+        "desc": "提升魔力，適合施法者",
+        "name_en": "Wizard Staff",
+        "desc_en": "Boosts magic power. Suited for spellcasters."
     },
     "leather_armor": {
         "name": "粗製皮甲",
@@ -279,7 +337,9 @@
         "sell_price": 70,
         "exclusive_level": 1,
         "shop_weight": 60,
-        "desc": "輕巧的基礎防具"
+        "desc": "輕巧的基礎防具",
+        "name_en": "Crude Leather Armor",
+        "desc_en": "Lightweight, basic armor."
     },
     "iron_armor": {
         "name": "精鋼重甲",
@@ -289,7 +349,9 @@
         "sell_price": 210,
         "exclusive_level": 10,
         "shop_weight": 15,
-        "desc": "厚實沉重的金屬防具"
+        "desc": "厚實沉重的金屬防具",
+        "name_en": "Steel Plate Armor",
+        "desc_en": "Thick, heavy metal armor."
     },
     "dragon_plate": {
         "name": "龍鱗重甲",
@@ -300,7 +362,9 @@
         "sell_price": 700,
         "exclusive_level": 25,
         "shop_weight": 3,
-        "desc": "傳說級防具，大幅提升防禦與生命上限"
+        "desc": "傳說級防具，大幅提升防禦與生命上限",
+        "name_en": "Dragonscale Plate Armor",
+        "desc_en": "Legendary armor that greatly boosts defense and max HP."
     },
     "schrodinger_watch": {
         "name": "薛丁格的懷錶",
@@ -309,7 +373,9 @@
         "sell_price": 3000,
         "exclusive_level": 25,
         "shop_weight": 5,
-        "desc": "純粹賭徒的浪漫。攻擊時 50% 機率傷害翻倍，50% 減半"
+        "desc": "純粹賭徒的浪漫。攻擊時 50% 機率傷害翻倍，50% 減半",
+        "name_en": "Schrödinger's Pocket Watch",
+        "desc_en": "A true gambler's romance. When attacking, 50% chance to double damage, 50% chance to halve it."
     },
     "apprentice_staff": {
         "name": "學徒法杖",
@@ -320,7 +386,9 @@
         "sell_price": 40,
         "exclusive_level": 5,
         "shop_weight": 20,
-        "desc": "適合剛學會魔法的新手"
+        "desc": "適合剛學會魔法的新手",
+        "name_en": "Apprentice Staff",
+        "desc_en": "Suited for those who have just learned magic."
     },
     "sage_staff": {
         "name": "賢者之杖",
@@ -331,7 +399,9 @@
         "sell_price": 800,
         "exclusive_level": 20,
         "shop_weight": 5,
-        "desc": "蘊含龐大魔力的高階法杖"
+        "desc": "蘊含龐大魔力的高階法杖",
+        "name_en": "Sage's Staff",
+        "desc_en": "A high-tier staff containing immense magical power."
     },
     "scroll_power_slash": {
         "name": "技能卷軸：強力斬擊",
@@ -340,7 +410,9 @@
         "price": 180,
         "sell_price": 60,
         "shop_weight": 20,
-        "desc": "研讀後可習得【強力斬擊】"
+        "desc": "研讀後可習得【強力斬擊】",
+        "name_en": "Skill Scroll: Power Slash",
+        "desc_en": "Study this to learn [Power Slash]."
     },
     "scroll_fireball": {
         "name": "技能卷軸：火球術",
@@ -349,7 +421,9 @@
         "price": 350,
         "sell_price": 120,
         "shop_weight": 15,
-        "desc": "研讀後可習得【火球術】"
+        "desc": "研讀後可習得【火球術】",
+        "name_en": "Skill Scroll: Fireball",
+        "desc_en": "Study this to learn [Fireball]."
     },
     "scroll_heal_light": {
         "name": "技能卷軸：初級治療",
@@ -358,7 +432,9 @@
         "price": 220,
         "sell_price": 75,
         "shop_weight": 30,
-        "desc": "研讀後可習得【初級治療】"
+        "desc": "研讀後可習得【初級治療】",
+        "name_en": "Skill Scroll: Basic Heal",
+        "desc_en": "Study this to learn [Basic Heal]."
     },
     "scroll_double_strike": {
         "name": "技能卷軸：連環快斬",
@@ -367,7 +443,9 @@
         "price": 400,
         "sell_price": 140,
         "shop_weight": 15,
-        "desc": "研讀後可習得【連環快斬】"
+        "desc": "研讀後可習得【連環快斬】",
+        "name_en": "Skill Scroll: Rapid Slash Combo",
+        "desc_en": "Study this to learn [Rapid Slash Combo]."
     },
     "ice_spear_scroll": {
         "name": "技能卷軸：寒冰矛",
@@ -376,7 +454,9 @@
         "price": 320,
         "sell_price": 110,
         "shop_weight": 20,
-        "desc": "研讀後可習得【寒冰矛】"
+        "desc": "研讀後可習得【寒冰矛】",
+        "name_en": "Skill Scroll: Ice Spear",
+        "desc_en": "Study this to learn [Ice Spear]."
     },
     "thunder_strike_scroll": {
         "name": "技能卷軸：落雷術",
@@ -385,7 +465,9 @@
         "price": 500,
         "sell_price": 150,
         "shop_weight": 10,
-        "desc": "研讀後可習得【落雷術】"
+        "desc": "研讀後可習得【落雷術】",
+        "name_en": "Skill Scroll: Lightning Bolt",
+        "desc_en": "Study this to learn [Lightning Bolt]."
     },
     "scroll_inferno": {
         "name": "技能卷軸：煉獄火",
@@ -395,7 +477,9 @@
         "sell_price": 280,
         "exclusive_level": 15,
         "shop_weight": 8,
-        "desc": "研讀後可習得上位魔法【煉獄火】"
+        "desc": "研讀後可習得上位魔法【煉獄火】",
+        "name_en": "Skill Scroll: Hellfire",
+        "desc_en": "Study this to learn the advanced spell [Hellfire]."
     },
     "scroll_blizzard": {
         "name": "技能卷軸：暴風雪",
@@ -405,7 +489,9 @@
         "sell_price": 240,
         "exclusive_level": 12,
         "shop_weight": 10,
-        "desc": "研讀後可習得上位魔法【暴風雪】"
+        "desc": "研讀後可習得上位魔法【暴風雪】",
+        "name_en": "Skill Scroll: Blizzard",
+        "desc_en": "Study this to learn the advanced spell [Blizzard]."
     },
     "scroll_divine_thunder": {
         "name": "技能卷軸：神聖落雷",
@@ -415,7 +501,9 @@
         "sell_price": 320,
         "exclusive_level": 18,
         "shop_weight": 6,
-        "desc": "研讀後可習得上位魔法【神聖落雷】"
+        "desc": "研讀後可習得上位魔法【神聖落雷】",
+        "name_en": "Skill Scroll: Holy Thunder",
+        "desc_en": "Study this to learn the advanced spell [Holy Thunder]."
     },
     "scroll_combo_attack": {
         "name": "技能卷軸：連續攻擊",
@@ -425,7 +513,9 @@
         "sell_price": 180,
         "exclusive_level": 8,
         "shop_weight": 12,
-        "desc": "研讀後習得被動【連續攻擊】，普攻可打兩次"
+        "desc": "研讀後習得被動【連續攻擊】，普攻可打兩次",
+        "name_en": "Skill Scroll: Combo Strike",
+        "desc_en": "Study this to learn the passive [Combo Strike], letting basic attacks hit twice."
     },
     "scroll_water_ball": {
         "name": "技能卷軸：水球術",
@@ -435,7 +525,9 @@
         "sell_price": 140,
         "exclusive_level": 5,
         "shop_weight": 18,
-        "desc": "研讀後可習得水屬性魔法【水球術】"
+        "desc": "研讀後可習得水屬性魔法【水球術】",
+        "name_en": "Skill Scroll: Water Ball",
+        "desc_en": "Study this to learn the water-elemental spell [Water Ball]."
     },
     "scroll_stone_spike": {
         "name": "技能卷軸：岩刺術",
@@ -445,7 +537,9 @@
         "sell_price": 180,
         "exclusive_level": 8,
         "shop_weight": 15,
-        "desc": "研讀後可習得土屬性魔法【岩刺術】"
+        "desc": "研讀後可習得土屬性魔法【岩刺術】",
+        "name_en": "Skill Scroll: Rock Spike",
+        "desc_en": "Study this to learn the earth-elemental spell [Rock Spike]."
     },
     "scroll_dark_orb": {
         "name": "技能卷軸：暗影球",
@@ -455,7 +549,9 @@
         "sell_price": 220,
         "exclusive_level": 10,
         "shop_weight": 12,
-        "desc": "研讀後可習得暗屬性魔法【暗影球】"
+        "desc": "研讀後可習得暗屬性魔法【暗影球】",
+        "name_en": "Skill Scroll: Shadow Orb",
+        "desc_en": "Study this to learn the dark-elemental spell [Shadow Orb]."
     },
     "scroll_hypnotic_gaze": {
         "name": "技能卷軸：魅惑安眠",
@@ -465,7 +561,9 @@
         "sell_price": 270,
         "exclusive_level": 15,
         "shop_weight": 10,
-        "desc": "研讀後可習得暗屬性魔法【魅惑安眠】"
+        "desc": "研讀後可習得暗屬性魔法【魅惑安眠】",
+        "name_en": "Skill Scroll: Charming Slumber",
+        "desc_en": "Study this to learn the dark-elemental spell [Charming Slumber]."
     },
     "scroll_holy_smash": {
         "name": "技能卷軸：神聖制裁",
@@ -475,7 +573,9 @@
         "sell_price": 280,
         "exclusive_level": 12,
         "shop_weight": 10,
-        "desc": "研讀後可習得光屬性魔法【神聖制裁】"
+        "desc": "研讀後可習得光屬性魔法【神聖制裁】",
+        "name_en": "Skill Scroll: Holy Judgment",
+        "desc_en": "Study this to learn the light-elemental spell [Holy Judgment]."
     },
     "scroll_venom_cloud": {
         "name": "劇毒之雲卷軸",
@@ -484,7 +584,9 @@
         "price": 1800,
         "sell_price": 500,
         "shop_weight": 0,
-        "desc": "【學習條件：Lv.15】散播劇毒雲霧，讓所有敵人痛苦掙扎"
+        "desc": "【學習條件：Lv.15】散播劇毒雲霧，讓所有敵人痛苦掙扎",
+        "name_en": "Toxic Cloud Scroll",
+        "desc_en": "[Requires Lv.15] Spreads a cloud of deadly poison, leaving all enemies writhing in agony."
     },
     "scroll_frost_nova": {
         "name": "冰霜新星卷軸",
@@ -493,7 +595,9 @@
         "price": 2500,
         "sell_price": 700,
         "shop_weight": 0,
-        "desc": "【學習條件：Lv.18】釋放極寒氣息，凍結全場敵人"
+        "desc": "【學習條件：Lv.18】釋放極寒氣息，凍結全場敵人",
+        "name_en": "Frost Nova Scroll",
+        "desc_en": "[Requires Lv.18] Releases a frigid blast that freezes every enemy on the field."
     },
     "scroll_meteor_swarm": {
         "name": "隕石風暴卷軸",
@@ -502,7 +606,9 @@
         "price": 4500,
         "sell_price": 1200,
         "shop_weight": 0,
-        "desc": "【學習條件：Lv.25】召喚毀滅性的隕石，將戰場化為火海"
+        "desc": "【學習條件：Lv.25】召喚毀滅性的隕石，將戰場化為火海",
+        "name_en": "Meteor Storm Scroll",
+        "desc_en": "[Requires Lv.25] Summons devastating meteors, turning the battlefield into a sea of fire."
     },
     "scroll_earthquake": {
         "name": "大地震擊卷軸",
@@ -511,7 +617,9 @@
         "price": 3000,
         "sell_price": 800,
         "shop_weight": 0,
-        "desc": "【學習條件：Lv.20】撼動大地的怒吼，震碎敵人的防禦"
+        "desc": "【學習條件：Lv.20】撼動大地的怒吼，震碎敵人的防禦",
+        "name_en": "Earthquake Strike Scroll",
+        "desc_en": "[Requires Lv.20] An earth-shaking roar that shatters enemy defenses."
     },
     "antidote_herb": {
         "name": "解毒草",
@@ -522,7 +630,9 @@
         "price": 45,
         "sell_price": 18,
         "shop_weight": 50,
-        "desc": "解除中毒狀態"
+        "desc": "解除中毒狀態",
+        "name_en": "Antidote Herb",
+        "desc_en": "Cures the Poison status."
     },
     "burn_salve": {
         "name": "灼傷藥膏",
@@ -533,7 +643,9 @@
         "price": 45,
         "sell_price": 18,
         "shop_weight": 50,
-        "desc": "解除燃燒狀態"
+        "desc": "解除燃燒狀態",
+        "name_en": "Burn Salve",
+        "desc_en": "Cures the Burn status."
     },
     "thaw_herb": {
         "name": "解凍草",
@@ -544,7 +656,9 @@
         "price": 50,
         "sell_price": 20,
         "shop_weight": 40,
-        "desc": "解除冰凍狀態"
+        "desc": "解除冰凍狀態",
+        "name_en": "Thawroot Herb",
+        "desc_en": "Cures the Freeze status."
     },
     "paralyze_cure": {
         "name": "醒神劑",
@@ -555,7 +669,9 @@
         "price": 50,
         "sell_price": 20,
         "shop_weight": 40,
-        "desc": "解除麻痺狀態"
+        "desc": "解除麻痺狀態",
+        "name_en": "Smelling Salts",
+        "desc_en": "Cures the Paralysis status."
     },
     "alarm_bell": {
         "name": "警鈴",
@@ -566,7 +682,9 @@
         "price": 45,
         "sell_price": 18,
         "shop_weight": 50,
-        "desc": "解除睡眠狀態"
+        "desc": "解除睡眠狀態",
+        "name_en": "Alarm Bell",
+        "desc_en": "Cures the Sleep status."
     },
     "calming_incense": {
         "name": "鎮魂香",
@@ -577,7 +695,9 @@
         "price": 50,
         "sell_price": 20,
         "shop_weight": 40,
-        "desc": "解除狂暴狀態"
+        "desc": "解除狂暴狀態",
+        "name_en": "Soul-Calming Incense",
+        "desc_en": "Cures the Berserk status."
     },
     "elixir_of_cleansing": {
         "name": "萬能淨化藥水",
@@ -593,7 +713,9 @@
         "price": 120,
         "sell_price": 45,
         "shop_weight": 10,
-        "desc": "解除所有異常狀態"
+        "desc": "解除所有異常狀態",
+        "name_en": "Universal Cleansing Potion",
+        "desc_en": "Cures all status ailments."
     },
     "jester_mask": {
         "name": "小丑面具",
@@ -602,7 +724,9 @@
         "sell_price": 0,
         "exclusive_level": 1,
         "shop_weight": 0,
-        "desc": "裝備後每日免疫隨機異常狀態"
+        "desc": "裝備後每日免疫隨機異常狀態",
+        "name_en": "Jester Mask",
+        "desc_en": "While equipped, grants daily immunity to a random status ailment."
     },
     "scroll_shadow_step": {
         "name": "技能卷軸：暗影步",
@@ -612,7 +736,9 @@
         "sell_price": 200,
         "exclusive_level": 5,
         "shop_weight": 12,
-        "desc": "研讀後可習得【暗影步】，打不過就跑的最高境界"
+        "desc": "研讀後可習得【暗影步】，打不過就跑的最高境界",
+        "name_en": "Skill Scroll: Shadow Step",
+        "desc_en": "Study this to learn [Shadow Step] — the highest art of running away when you can't win."
     },
     "scroll_blood_strike": {
         "name": "技能卷軸：血之獻祭",
@@ -622,7 +748,9 @@
         "sell_price": 400,
         "exclusive_level": 10,
         "shop_weight": 8,
-        "desc": "研讀後可習得【血之獻祭】，燃燒生命換取極致輸出的狂戰士技能"
+        "desc": "研讀後可習得【血之獻祭】，燃燒生命換取極致輸出的狂戰士技能",
+        "name_en": "Skill Scroll: Blood Sacrifice",
+        "desc_en": "Study this to learn [Blood Sacrifice], a berserker skill that burns your own life for maximum damage output."
     },
     "immortal_totem": {
         "name": "不死圖騰",
@@ -630,7 +758,9 @@
         "price": 5000,
         "sell_price": 1000,
         "shop_weight": 2,
-        "desc": "放在背包裡，致死瞬間自動消耗，免除死亡並回復 50% 狀態，資本主義的奇蹟"
+        "desc": "放在背包裡，致死瞬間自動消耗，免除死亡並回復 50% 狀態，資本主義的奇蹟",
+        "name_en": "Undead Totem",
+        "desc_en": "Kept in your bag, it's automatically consumed the instant you would die, preventing death and restoring 50% of your stats — a miracle of capitalism."
     },
     "mystery_phoenix_feather": {
         "name": "神秘鳳羽",
@@ -639,7 +769,9 @@
         "sell_price": 4000,
         "shop_weight": 0,
         "mystery_only": true,
-        "desc": "神秘商人專賣，據說蘊含著重生的力量"
+        "desc": "神秘商人專賣，據說蘊含著重生的力量",
+        "name_en": "Mysterious Phoenix Feather",
+        "desc_en": "Sold only by the Mysterious Merchant. Said to contain the power of rebirth."
     },
     "mystery_void_blade": {
         "name": "虛空短刃",
@@ -654,7 +786,9 @@
         "on_hit_status": "paralysis",
         "on_hit_chance": 0.25,
         "on_hit_status_turns": 1,
-        "desc": "神秘商人專賣，虛空之力纏繞的終極利刃"
+        "desc": "神秘商人專賣，虛空之力纏繞的終極利刃",
+        "name_en": "Void Shortblade",
+        "desc_en": "Sold only by the Mysterious Merchant. An ultimate blade wreathed in the power of the void."
     },
     "mystery_sage_tome": {
         "name": "賢者秘典卷軸",
@@ -665,7 +799,9 @@
         "exclusive_level": 25,
         "shop_weight": 0,
         "mystery_only": true,
-        "desc": "神秘商人專賣，記載著禁忌魔法【虛空爆發】的古老卷軸"
+        "desc": "神秘商人專賣，記載著禁忌魔法【虛空爆發】的古老卷軸",
+        "name_en": "Sage's Grimoire Scroll",
+        "desc_en": "Sold only by the Mysterious Merchant. An ancient scroll recording the forbidden spell [Void Burst]."
     },
     "mystery_elixir": {
         "name": "賢者萬靈藥",
@@ -676,7 +812,9 @@
         "sell_price": 150,
         "shop_weight": 0,
         "mystery_only": true,
-        "desc": "神秘商人專賣，完全回復 HP"
+        "desc": "神秘商人專賣，完全回復 HP",
+        "name_en": "Sage's Panacea",
+        "desc_en": "Sold only by the Mysterious Merchant. Fully restores HP."
     },
     "mystery_mana_elixir": {
         "name": "賢者魔力藥",
@@ -687,7 +825,9 @@
         "sell_price": 150,
         "shop_weight": 0,
         "mystery_only": true,
-        "desc": "神秘商人專賣，完全回復 MP"
+        "desc": "神秘商人專賣，完全回復 MP",
+        "name_en": "Sage's Mana Elixir",
+        "desc_en": "Sold only by the Mysterious Merchant. Fully restores MP."
     },
     "mystery_chaos_staff": {
         "name": "混沌法杖",
@@ -699,7 +839,9 @@
         "exclusive_level": 30,
         "shop_weight": 0,
         "mystery_only": true,
-        "desc": "神秘商人專賣，法師夢寐以求的極致魔杖"
+        "desc": "神秘商人專賣，法師夢寐以求的極致魔杖",
+        "name_en": "Staff of Chaos",
+        "desc_en": "Sold only by the Mysterious Merchant. The ultimate staff every mage dreams of."
     },
     "mystery_demon_armor": {
         "name": "魔王重甲",
@@ -711,7 +853,9 @@
         "exclusive_level": 35,
         "shop_weight": 0,
         "mystery_only": true,
-        "desc": "神秘商人專賣，堅不可摧的絕世重甲"
+        "desc": "神秘商人專賣，堅不可摧的絕世重甲",
+        "name_en": "Demon Lord's Plate Armor",
+        "desc_en": "Sold only by the Mysterious Merchant. Unbreakable, peerless heavy armor."
     },
     "mystery_power_ring": {
         "name": "力量之戒",
@@ -723,7 +867,9 @@
         "exclusive_level": 25,
         "shop_weight": 0,
         "mystery_only": true,
-        "desc": "神秘商人專賣，配戴後大幅提升雙攻的戒指"
+        "desc": "神秘商人專賣，配戴後大幅提升雙攻的戒指",
+        "name_en": "Ring of Strength",
+        "desc_en": "Sold only by the Mysterious Merchant. A ring that greatly boosts both attack and magic when worn."
     },
     "mystery_time_hourglass": {
         "name": "時光沙漏",
@@ -740,7 +886,9 @@
         "sell_price": 1800,
         "shop_weight": 0,
         "mystery_only": true,
-        "desc": "神秘商人專賣，一次性解除你身上的所有異常狀態"
+        "desc": "神秘商人專賣，一次性解除你身上的所有異常狀態",
+        "name_en": "Hourglass of Time",
+        "desc_en": "Sold only by the Mysterious Merchant. Instantly cures all status ailments on you."
     },
     "mystery_lucky_coin": {
         "name": "幸運金幣",
@@ -749,22 +897,30 @@
         "sell_price": 50000,
         "shop_weight": 0,
         "mystery_only": true,
-        "desc": "神秘商人專賣，純粹用來證明你錢多到沒處花的無用硬幣"
+        "desc": "神秘商人專賣，純粹用來證明你錢多到沒處花的無用硬幣",
+        "name_en": "Lucky Coin",
+        "desc_en": "Sold only by the Mysterious Merchant. A useless coin that exists purely to prove you have more money than you know what to do with."
     },
     "sargeras_crown": {
         "name": "薩格拉斯的魔冠",
         "desc": "散發著無盡魔力的王冠，魔王薩格拉斯的遺物。",
-        "price": 50000
+        "price": 50000,
+        "name_en": "Sargeras's Demon Crown",
+        "desc_en": "A crown radiating endless magic power, a relic of Demon Lord Sargeras."
     },
     "demon_core": {
         "name": "惡魔核心",
         "desc": "純粹的深淵能量結晶。",
-        "price": 1500
+        "price": 1500,
+        "name_en": "Demon Core",
+        "desc_en": "A crystal of pure abyssal energy."
     },
     "void_crystal": {
         "name": "虛空水晶",
         "desc": "蘊含虛空之力的罕見礦物。",
-        "price": 800
+        "price": 800,
+        "name_en": "Void Crystal",
+        "desc_en": "A rare mineral containing the power of the void."
     },
     "demon_king_horn": {
         "name": "魔王之角",
@@ -778,7 +934,9 @@
         "price": 0,
         "sell_price": 50000,
         "rank": "mythic",
-        "emoji": "🦏"
+        "emoji": "🦏",
+        "name_en": "Demon Lord's Horn",
+        "desc_en": "A broken demon horn pulsing with savage magic. Greatly boosts attack and magic, but severely lowers defense."
     },
     "abyssal_cloak": {
         "name": "深淵潛航者披風",
@@ -792,7 +950,9 @@
         "price": 0,
         "sell_price": 45000,
         "rank": "legendary",
-        "emoji": "🧥"
+        "emoji": "🧥",
+        "name_en": "Abyssal Strider's Cloak",
+        "desc_en": "A cloak that blends into the night, making you hard to hit, but it saps your strength when wielding a weapon."
     },
     "dragonbone_greatsword": {
         "name": "龍骨毀滅劍",
@@ -805,7 +965,9 @@
         "price": 0,
         "sell_price": 45000,
         "rank": "legendary",
-        "emoji": "🗡️"
+        "emoji": "🗡️",
+        "name_en": "Dragonbone Ruin Blade",
+        "desc_en": "A massive sword forged from the spine of the Fallen Dragon, immensely powerful but extremely heavy."
     },
     "forbidden_blood_chalice": {
         "name": "禁忌血之聖杯",
@@ -820,6 +982,8 @@
         "price": 0,
         "sell_price": 60000,
         "rank": "mythic",
-        "emoji": "🍷"
+        "emoji": "🍷",
+        "name_en": "Forbidden Chalice of Blood",
+        "desc_en": "A chalice brimming with blood that greatly enhances physical prowess, but lowers resistance to magic."
     }
 }

@@ -4,7 +4,9 @@
         "emoji": "☠️",
         "dot_ratio": 0.05,
         "cure_item": "antidote_herb",
-        "desc": "每回合損失 5% 最大 HP"
+        "desc": "每回合損失 5% 最大 HP",
+        "name_en": "Poison",
+        "desc_en": "Lose 5% of max HP each turn"
     },
     "burn": {
         "name": "燃燒",
@@ -12,34 +14,44 @@
         "tick_ratio": 0.04,
         "max_stacks": 5,
         "cure_item": "burn_salve",
-        "desc": "每回合受到灼燒傷害，隨持續時間遞增（4%→8%→12%→16%→20% 最大HP）"
+        "desc": "每回合受到灼燒傷害，隨持續時間遞增（4%→8%→12%→16%→20% 最大HP）",
+        "name_en": "Burn",
+        "desc_en": "Takes scorching damage each turn, increasing the longer it lasts (4%→8%→12%→16%→20% max HP)"
     },
     "freeze": {
         "name": "冰凍",
         "emoji": "🧊",
         "mp_drain_ratio": 0.1,
         "cure_item": "thaw_herb",
-        "desc": "100% 無法行動，且每回合流失 10% 最大 MP"
+        "desc": "100% 無法行動，且每回合流失 10% 最大 MP",
+        "name_en": "Freeze",
+        "desc_en": "Completely unable to act, and loses 10% of max MP each turn"
     },
     "paralysis": {
         "name": "麻痺",
         "emoji": "⚡",
-        "skip_chance": 0.40,
+        "skip_chance": 0.4,
         "atk_mult": 0.7,
         "cure_item": "paralyze_cure",
-        "desc": "有機率無法行動，且攻擊/魔攻永久下降"
+        "desc": "有機率無法行動，且攻擊/魔攻永久下降",
+        "name_en": "Paralysis",
+        "desc_en": "Chance to be unable to act, with a permanent reduction to Attack/Magic Attack"
     },
     "sleep": {
         "name": "睡眠",
         "emoji": "💤",
         "cure_item": "alarm_bell",
-        "desc": "100% 無法行動，但只要受到傷害就會立刻清醒"
+        "desc": "100% 無法行動，但只要受到傷害就會立刻清醒",
+        "name_en": "Sleep",
+        "desc_en": "Completely unable to act, but wakes up immediately upon taking damage"
     },
     "berserk": {
         "name": "狂暴",
         "emoji": "😡",
         "atk_mult": 1.6,
         "cure_item": "calming_incense",
-        "desc": "陷入瘋狂，只能使用普通攻擊，但攻擊力大幅提升"
+        "desc": "陷入瘋狂，只能使用普通攻擊，但攻擊力大幅提升",
+        "name_en": "Berserk",
+        "desc_en": "Driven into a frenzy, can only use basic attacks, but Attack is greatly increased"
     }
 }

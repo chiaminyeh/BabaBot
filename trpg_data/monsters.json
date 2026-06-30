@@ -19,7 +19,8 @@
                 "ai": "none",
                 "drops": {
                     "raw_meat": 0.4
-                }
+                },
+                "name_en": "Cave Rat"
             },
             "vampire_bat": {
                 "id": "vampire_bat",
@@ -36,7 +37,8 @@
                 "ai": "lifesteal",
                 "drops": {
                     "bat_wing": 0.3
-                }
+                },
+                "name_en": "Vampire Bat"
             },
             "spider_queen": {
                 "id": "spider_queen",
@@ -55,7 +57,8 @@
                 "drops": {
                     "poison_stinger": 0.5,
                     "scroll_poison_strike": 0.05
-                }
+                },
+                "name_en": "Venomous Spider Queen"
             },
             "sonic_bat": {
                 "id": "sonic_bat",
@@ -73,7 +76,8 @@
                 "ai": "evasive",
                 "drops": {
                     "bat_wing": 0.6
-                }
+                },
+                "name_en": "Sonic Bat"
             },
             "goblin_scout": {
                 "id": "goblin_scout",
@@ -90,7 +94,8 @@
                 "drops": {
                     "rusty_dagger": 0.1,
                     "slime_jelly": 0.3
-                }
+                },
+                "name_en": "Goblin Scout"
             },
             "slime_blob": {
                 "id": "slime_blob",
@@ -108,7 +113,8 @@
                 "ai": "none",
                 "drops": {
                     "slime_jelly": 0.5
-                }
+                },
+                "name_en": "Sticky Slime"
             }
         },
         "boss_minions": {
@@ -120,7 +126,8 @@
                 "base_def": 2,
                 "base_spd": 9,
                 "ai": "support_healer",
-                "drops": {}
+                "drops": {},
+                "name_en": "Rat King's Priest"
             },
             "rat_brute": {
                 "id": "rat_brute",
@@ -130,7 +137,8 @@
                 "base_def": 4,
                 "base_spd": 7,
                 "ai": "debuffer",
-                "drops": {}
+                "drops": {},
+                "name_en": "Rat King's Guard"
             }
         },
         "boss": {
@@ -164,7 +172,8 @@
                             "rat_shaman",
                             "rat_brute"
                         ]
-                    }
+                    },
+                    "name_en": "Summon Rat Swarm"
                 }
             ],
             "phase2": {
@@ -184,10 +193,14 @@
                         "effect": {
                             "type": "heavy_attack",
                             "mult": 2.2
-                        }
+                        },
+                        "name_en": "Frenzied Bite"
                     }
-                ]
-            }
+                ],
+                "name_suffix_en": "(Enraged)",
+                "transform_text_en": "The King Rat lets out a piercing shriek, slashing wildly with its claws as it charges at you!"
+            },
+            "name_en": "King Rat"
         }
     },
     "tier_2": {
@@ -213,7 +226,8 @@
                 "ai": "none",
                 "drops": {
                     "bone_shard": 0.4
-                }
+                },
+                "name_en": "Skeleton Swordsman"
             },
             "shadow_assassin": {
                 "id": "shadow_assassin",
@@ -232,7 +246,8 @@
                 "drops": {
                     "bone_shard": 0.4,
                     "stolen_gem": 0.2
-                }
+                },
+                "name_en": "Shadow Assassin"
             },
             "crystal_golem": {
                 "id": "crystal_golem",
@@ -256,7 +271,8 @@
                 "ai": "heavy_tank",
                 "drops": {
                     "stolen_gem": 0.5
-                }
+                },
+                "name_en": "Crystal Golem"
             },
             "dark_mage": {
                 "id": "dark_mage",
@@ -274,7 +290,8 @@
                 "ai": "self_heal",
                 "drops": {
                     "ectoplasm": 0.3
-                }
+                },
+                "name_en": "Dark Mage"
             },
             "giant_spider": {
                 "id": "giant_spider",
@@ -294,7 +311,8 @@
                 "status_chance": 0.3,
                 "drops": {
                     "poison_stinger": 0.35
-                }
+                },
+                "name_en": "Giant Spider"
             },
             "shade_wolf": {
                 "id": "shade_wolf",
@@ -313,7 +331,8 @@
                 "ai": "multi_hit_flurry",
                 "drops": {
                     "wolf_fur": 0.3
-                }
+                },
+                "name_en": "Shadow Wolf"
             }
         },
         "boss_minions": {
@@ -325,7 +344,8 @@
                 "base_def": 5,
                 "base_spd": 13,
                 "ai": "debuffer",
-                "drops": {}
+                "drops": {},
+                "name_en": "Skeleton Archer"
             },
             "bone_priest": {
                 "id": "bone_priest",
@@ -335,7 +355,8 @@
                 "base_def": 6,
                 "base_spd": 10,
                 "ai": "support_healer",
-                "drops": {}
+                "drops": {},
+                "name_en": "Skeleton Priest"
             }
         },
         "boss": {
@@ -372,7 +393,8 @@
                             "bone_archer",
                             "bone_priest"
                         ]
-                    }
+                    },
+                    "name_en": "Awaken the Dead"
                 }
             ],
             "phase2": {
@@ -392,10 +414,14 @@
                         "effect": {
                             "type": "heavy_attack",
                             "mult": 2.3
-                        }
+                        },
+                        "name_en": "Soul Harvest"
                     }
-                ]
-            }
+                ],
+                "name_suffix_en": "(Awakened Resentment)",
+                "transform_text_en": "Ghostly green flames ignite in the Skeleton Knight's empty sockets as centuries of resentment burst forth!"
+            },
+            "name_en": "Skeleton Knight"
         }
     },
     "tier_3": {
@@ -420,7 +446,8 @@
                 "status_chance": 0.25,
                 "drops": {
                     "stolen_gem": 0.05
-                }
+                },
+                "name_en": "Orc Brute"
             },
             "harpy": {
                 "id": "harpy",
@@ -442,7 +469,8 @@
                 "status_chance": 0.25,
                 "drops": {
                     "bat_wing": 0.3
-                }
+                },
+                "name_en": "Harpy"
             },
             "stone_golem": {
                 "id": "stone_golem",
@@ -462,7 +490,8 @@
                 "ai": "shield_ally",
                 "drops": {
                     "gargoyle_stone": 0.3
-                }
+                },
+                "name_en": "Stone Golem"
             },
             "void_weaver": {
                 "id": "void_weaver",
@@ -484,7 +513,8 @@
                 "drops": {
                     "ectoplasm": 0.6,
                     "scroll_void_eruption": 0.02
-                }
+                },
+                "name_en": "Void Weaver"
             },
             "ancient_guardian": {
                 "id": "ancient_guardian",
@@ -508,7 +538,8 @@
                 "drops": {
                     "ancient_wood": 0.8,
                     "scroll_earthquake": 0.05
-                }
+                },
+                "name_en": "Ancient Guardian"
             },
             "wraith": {
                 "id": "wraith",
@@ -527,7 +558,8 @@
                 "ai": "none",
                 "drops": {
                     "ectoplasm": 0.4
-                }
+                },
+                "name_en": "Vengeful Spirit"
             }
         },
         "boss_minions": {
@@ -539,7 +571,8 @@
                 "base_def": 9,
                 "base_spd": 13,
                 "ai": "support_healer",
-                "drops": {}
+                "drops": {},
+                "name_en": "Orc Shaman"
             },
             "orc_skirmisher": {
                 "id": "orc_skirmisher",
@@ -549,7 +582,8 @@
                 "base_def": 10,
                 "base_spd": 15,
                 "ai": "debuffer",
-                "drops": {}
+                "drops": {},
+                "name_en": "Orc Skirmisher"
             }
         },
         "boss": {
@@ -578,7 +612,8 @@
                         "type": "buff_self_atk",
                         "mult": 1.3,
                         "turns": 3
-                    }
+                    },
+                    "name_en": "Battle Fervor"
                 },
                 {
                     "id": "muster_troops",
@@ -594,7 +629,8 @@
                             "orc_shaman",
                             "orc_skirmisher"
                         ]
-                    }
+                    },
+                    "name_en": "Rally Troops"
                 }
             ],
             "phase2": {
@@ -614,10 +650,14 @@
                         "effect": {
                             "type": "heavy_attack",
                             "mult": 2.3
-                        }
+                        },
+                        "name_en": "Warlord's Judgment"
                     }
-                ]
-            }
+                ],
+                "name_suffix_en": "(Wrath of the Broken Legion)",
+                "transform_text_en": "The Orc Warlord hurls down his shattered banner and charges alone into the fray!"
+            },
+            "name_en": "Orc Warlord"
         }
     },
     "tier_4": {
@@ -644,7 +684,8 @@
                 "ai": "berserk_low_hp",
                 "drops": {
                     "tainted_blood": 0.3
-                }
+                },
+                "name_en": "Demon Realm Knight"
             },
             "lich_apprentice": {
                 "id": "lich_apprentice",
@@ -664,7 +705,8 @@
                 "ai": "self_heal",
                 "drops": {
                     "lich_soulstone": 0.05
-                }
+                },
+                "name_en": "Lich Apprentice"
             },
             "hellhound": {
                 "id": "hellhound",
@@ -683,7 +725,8 @@
                 "ai": "multi_hit_flurry",
                 "drops": {
                     "tainted_blood": 0.25
-                }
+                },
+                "name_en": "Hellhound"
             },
             "iron_golem": {
                 "id": "iron_golem",
@@ -702,7 +745,8 @@
                 "ai": "shield_ally",
                 "drops": {
                     "gargoyle_stone": 0.4
-                }
+                },
+                "name_en": "Iron Colossus"
             }
         },
         "boss_minions": {
@@ -714,7 +758,8 @@
                 "base_def": 16,
                 "base_spd": 14,
                 "ai": "debuffer",
-                "drops": {}
+                "drops": {},
+                "name_en": "Abyss Devotee"
             },
             "abyss_acolyte": {
                 "id": "abyss_acolyte",
@@ -724,7 +769,8 @@
                 "base_def": 18,
                 "base_spd": 13,
                 "ai": "support_healer",
-                "drops": {}
+                "drops": {},
+                "name_en": "Abyss Acolyte"
             }
         },
         "boss": {
@@ -763,7 +809,8 @@
                     "effect": {
                         "type": "heavy_attack",
                         "mult": 2.2
-                    }
+                    },
+                    "name_en": "Void Smash"
                 },
                 {
                     "id": "abyss_call",
@@ -778,7 +825,8 @@
                             "abyss_cultist",
                             "abyss_acolyte"
                         ]
-                    }
+                    },
+                    "name_en": "Abyssal Summon"
                 }
             ],
             "phase2": {
@@ -798,10 +846,14 @@
                         "effect": {
                             "type": "heavy_attack",
                             "mult": 2.6
-                        }
+                        },
+                        "name_en": "Abyssal Devour"
                     }
-                ]
-            }
+                ],
+                "name_suffix_en": "(Abyssal Awakening)",
+                "transform_text_en": "The Abyss Sovereign's body crumbles and reforms, taking on a purer shape of calamity!"
+            },
+            "name_en": "Abyss Sovereign"
         }
     },
     "tier_5": {
@@ -827,7 +879,8 @@
                 "ai": "heavy_tank",
                 "drops": {
                     "tainted_blood": 0.6
-                }
+                },
+                "name_en": "Abyss Sentinel"
             },
             "demon_warlock": {
                 "id": "demon_warlock",
@@ -846,7 +899,8 @@
                 "ai": "void_mage",
                 "drops": {
                     "void_crystal": 0.4
-                }
+                },
+                "name_en": "Demon Warlock"
             },
             "corrupted_dragon": {
                 "id": "corrupted_dragon",
@@ -869,7 +923,8 @@
                 "ai": "berserk_low_hp",
                 "drops": {
                     "demon_core": 0.5
-                }
+                },
+                "name_en": "Fallen Dragon"
             }
         },
         "boss_minions": {
@@ -881,7 +936,8 @@
                 "base_def": 35,
                 "base_spd": 42,
                 "ai": "kamikaze",
-                "drops": {}
+                "drops": {},
+                "name_en": "Sargeras's Imp"
             }
         },
         "boss": {
@@ -926,7 +982,8 @@
                         "summon_ids": [
                             "sargeras_imp"
                         ]
-                    }
+                    },
+                    "name_en": "Abyssal Summon"
                 },
                 {
                     "id": "void_eruption_boss",
@@ -938,7 +995,8 @@
                     "effect": {
                         "type": "heavy_attack",
                         "mult": 5.5
-                    }
+                    },
+                    "name_en": "Void Burst"
                 },
                 {
                     "id": "divine_thunder_boss",
@@ -951,7 +1009,8 @@
                         "type": "debuff_spd",
                         "mult": 0.5,
                         "turns": 3
-                    }
+                    },
+                    "name_en": "Holy Thunder"
                 },
                 {
                     "id": "blizzard_boss",
@@ -964,7 +1023,8 @@
                         "type": "debuff_atk",
                         "mult": 0.7,
                         "turns": 2
-                    }
+                    },
+                    "name_en": "Blizzard"
                 },
                 {
                     "id": "chaos_storm_boss",
@@ -976,9 +1036,11 @@
                     "effect": {
                         "type": "heavy_attack",
                         "mult": 5.0
-                    }
+                    },
+                    "name_en": "Chaos Storm"
                 }
-            ]
+            ],
+            "name_en": "Demon Lord Sargeras"
         }
     }
 }

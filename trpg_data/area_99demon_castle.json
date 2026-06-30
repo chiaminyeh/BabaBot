@@ -5,9 +5,143 @@
     "emoji": "🏰",
     "explore_cost": 50,
     "monsters": {
-        "abyss_guard": 0.4,
-        "demon_warlock": 0.4,
-        "corrupted_dragon": 0.2
+        "abyss_guard": {
+            "id": "abyss_guard",
+            "name": "深淵守衛",
+            "spawn_rate": 0.4,
+            "max_hp": 9000,
+            "atk": 320,
+            "def": 280,
+            "exp": 28000,
+            "spd": 35,
+            "weakness": [
+                "holy"
+            ],
+            "resistance": [
+                "dark",
+                "physical"
+            ],
+            "drops": {
+                "tainted_blood": 1,
+                "demon_core": 0.08
+            },
+            "money_min": 400,
+            "money_max": 600,
+            "ai": "heavy_tank",
+            "active_skills": [
+                {
+                    "id": "abyss_slam",
+                    "name": "深淵猛擊",
+                    "trigger": {
+                        "type": "chance",
+                        "value": 0.25
+                    },
+                    "effect": {
+                        "type": "heavy_attack",
+                        "mult": 2.2
+                    },
+                    "name_en": "Abyssal Slam"
+                }
+            ],
+            "name_en": "Abyss Guard"
+        },
+        "demon_warlock": {
+            "id": "demon_warlock",
+            "name": "惡魔術士",
+            "spawn_rate": 0.4,
+            "max_hp": 6500,
+            "atk": 180,
+            "def": 140,
+            "exp": 26000,
+            "spd": 55,
+            "magic": 260,
+            "weakness": [
+                "holy"
+            ],
+            "resistance": [
+                "dark",
+                "poison"
+            ],
+            "drops": {
+                "void_crystal": 0.5,
+                "demon_core": 0.1
+            },
+            "money_min": 380,
+            "money_max": 580,
+            "ai": "none",
+            "active_skills": [
+                {
+                    "id": "warlock_dark_orb",
+                    "name": "暗黑之球",
+                    "trigger": {
+                        "type": "interval",
+                        "value": 3
+                    },
+                    "effect": {
+                        "type": "cast_skill",
+                        "skill_id": "dark_orb"
+                    },
+                    "name_en": "Orb of Darkness"
+                },
+                {
+                    "id": "warlock_hypnotic_gaze",
+                    "name": "魅惑之眼",
+                    "trigger": {
+                        "type": "chance",
+                        "value": 0.25
+                    },
+                    "effect": {
+                        "type": "cast_skill",
+                        "skill_id": "hypnotic_gaze"
+                    },
+                    "name_en": "Charming Eye"
+                }
+            ],
+            "name_en": "Demon Warlock"
+        },
+        "corrupted_dragon": {
+            "id": "corrupted_dragon",
+            "name": "墮落巨龍",
+            "spawn_rate": 0.2,
+            "max_hp": 13000,
+            "atk": 400,
+            "def": 230,
+            "exp": 42000,
+            "spd": 50,
+            "magic": 300,
+            "weakness": [
+                "holy",
+                "ice"
+            ],
+            "resistance": [
+                "dark",
+                "fire"
+            ],
+            "drops": {
+                "dragon_plate": 0.4,
+                "void_crystal": 0.6,
+                "demon_core": 0.15
+            },
+            "money_min": 550,
+            "money_max": 850,
+            "ai": "charge_attack",
+            "active_skills": [
+                {
+                    "id": "dragon_breath",
+                    "name": "墮落龍息",
+                    "trigger": {
+                        "type": "hp_below",
+                        "value": 0.6
+                    },
+                    "effect": {
+                        "type": "cast_skill",
+                        "skill_id": "meteor_swarm"
+                    },
+                    "name_en": "Fallen Dragon's Breath"
+                }
+            ],
+            "name_en": "Fallen Dragon"
+        }
     },
     "boss": {
         "id": "sargeras",
@@ -42,12 +176,77 @@
             "void_crystal": 5.0
         },
         "active_skills": [
-            {"id": "summon_imp", "name": "深淵召喚", "trigger": {"type": "interval", "value": 2}, "effect": {"type": "summon_minion", "summon_ids": ["sargeras_imp"]}},
-            {"id": "void_eruption_boss", "name": "虛空爆發", "trigger": {"type": "chance", "value": 0.2}, "effect": {"type": "heavy_attack", "mult": 5.5}},
-            {"id": "divine_thunder_boss", "name": "神聖落雷", "trigger": {"type": "chance", "value": 0.2}, "effect": {"type": "debuff_spd", "mult": 0.5, "turns": 3}},
-            {"id": "blizzard_boss", "name": "暴風雪", "trigger": {"type": "chance", "value": 0.2}, "effect": {"type": "debuff_atk", "mult": 0.7, "turns": 2}},
-            {"id": "chaos_storm_boss", "name": "混沌風暴", "trigger": {"type": "hp_below", "value": 0.4}, "effect": {"type": "heavy_attack", "mult": 5.0}}
-        ]
+            {
+                "id": "summon_imp",
+                "name": "深淵召喚",
+                "trigger": {
+                    "type": "interval",
+                    "value": 2
+                },
+                "effect": {
+                    "type": "summon_minion",
+                    "summon_ids": [
+                        "sargeras_imp"
+                    ]
+                },
+                "name_en": "Abyssal Summon"
+            },
+            {
+                "id": "void_eruption_boss",
+                "name": "虛空爆發",
+                "trigger": {
+                    "type": "chance",
+                    "value": 0.2
+                },
+                "effect": {
+                    "type": "heavy_attack",
+                    "mult": 5.5
+                },
+                "name_en": "Void Burst"
+            },
+            {
+                "id": "divine_thunder_boss",
+                "name": "神聖落雷",
+                "trigger": {
+                    "type": "chance",
+                    "value": 0.2
+                },
+                "effect": {
+                    "type": "debuff_spd",
+                    "mult": 0.5,
+                    "turns": 3
+                },
+                "name_en": "Holy Thunder"
+            },
+            {
+                "id": "blizzard_boss",
+                "name": "暴風雪",
+                "trigger": {
+                    "type": "chance",
+                    "value": 0.2
+                },
+                "effect": {
+                    "type": "debuff_atk",
+                    "mult": 0.7,
+                    "turns": 2
+                },
+                "name_en": "Blizzard"
+            },
+            {
+                "id": "chaos_storm_boss",
+                "name": "混沌風暴",
+                "trigger": {
+                    "type": "hp_below",
+                    "value": 0.4
+                },
+                "effect": {
+                    "type": "heavy_attack",
+                    "mult": 5.0
+                },
+                "name_en": "Chaos Storm"
+            }
+        ],
+        "name_en": "Demon Lord Sargeras"
     },
     "boss_minions": {
         "sargeras_imp": {
@@ -58,12 +257,15 @@
             "base_def": 150,
             "base_spd": 180,
             "ai": "kamikaze",
-            "drops": {}
+            "drops": {},
+            "name_en": "Sargeras's Imp"
         }
     },
     "drops": {
         "void_crystal": 0.3,
         "tainted_blood": 0.5,
         "demon_core": 0.1
-    }
+    },
+    "area_name_en": "Demon Lord's Castle",
+    "desc_en": "[Endgame] The hall of the Abyssal Lord, where the air itself is thick with suffocating magic."
 }

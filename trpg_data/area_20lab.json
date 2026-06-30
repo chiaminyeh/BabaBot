@@ -29,7 +29,8 @@
             "status_chance": 0.2,
             "money_min": 50,
             "money_max": 85,
-            "ai": "berserk_low_hp"
+            "ai": "berserk_low_hp",
+            "name_en": "Failed Experiment"
         },
         "mutant_slime": {
             "id": "mutant_slime",
@@ -59,7 +60,8 @@
             "status_chance": 0.25,
             "money_min": 60,
             "money_max": 100,
-            "ai": "self_heal"
+            "ai": "self_heal",
+            "name_en": "Mutant Slime"
         }
     },
     "boss": {
@@ -99,7 +101,23 @@
         "status_chance": 0.55,
         "ai": "debuffer",
         "active_skills": [
-            {"id": "deploy_clone", "name": "投放實驗體", "trigger": {"type": "interval", "value": 4}, "effect": {"type": "summon_minion", "summon_ids": ["failed_experiment", "lab_medic", "toxic_clone"]}}
+            {
+                "id": "deploy_clone",
+                "name": "投放實驗體",
+                "trigger": {
+                    "type": "interval",
+                    "value": 4
+                },
+                "effect": {
+                    "type": "summon_minion",
+                    "summon_ids": [
+                        "failed_experiment",
+                        "lab_medic",
+                        "toxic_clone"
+                    ]
+                },
+                "name_en": "Deploy Test Subject"
+            }
         ],
         "phase2": {
             "hp_below": 0.5,
@@ -108,22 +126,54 @@
             "heal_pct": 0.08,
             "transform_text": "瘋狂博士打下最後一管藥劇，全身肌肉瞬間暴漲！",
             "active_skills": [
-                {"id": "overdose_strike", "name": "藥劇超載打擊", "trigger": {"type": "hp_below", "value": 0.2}, "effect": {"type": "heavy_attack", "mult": 2.4}}
-            ]
-        }
+                {
+                    "id": "overdose_strike",
+                    "name": "藥劇超載打擊",
+                    "trigger": {
+                        "type": "hp_below",
+                        "value": 0.2
+                    },
+                    "effect": {
+                        "type": "heavy_attack",
+                        "mult": 2.4
+                    },
+                    "name_en": "Overdose Strike"
+                }
+            ],
+            "name_suffix_en": "(Out of Control)",
+            "transform_text_en": "The Mad Doctor slams down the last vial, and his muscles surge and swell in an instant!"
+        },
+        "name_en": "Mad Doctor"
     },
     "boss_minions": {
         "lab_medic": {
-            "id": "lab_medic", "name": "實驗室護理員",
-            "max_hp": 500, "atk": 70, "def": 40, "spd": 22,
-            "exp": 0, "money_min": 0, "money_max": 0, "drops": {},
-            "ai": "support_healer"
+            "id": "lab_medic",
+            "name": "實驗室護理員",
+            "max_hp": 500,
+            "atk": 70,
+            "def": 40,
+            "spd": 22,
+            "exp": 0,
+            "money_min": 0,
+            "money_max": 0,
+            "drops": {},
+            "ai": "support_healer",
+            "name_en": "Lab Attendant"
         },
         "toxic_clone": {
-            "id": "toxic_clone", "name": "毒液複製體",
-            "max_hp": 550, "atk": 90, "def": 45, "spd": 18,
-            "exp": 0, "money_min": 0, "money_max": 0, "drops": {},
-            "ai": "debuffer"
+            "id": "toxic_clone",
+            "name": "毒液複製體",
+            "max_hp": 550,
+            "atk": 90,
+            "def": 45,
+            "spd": 18,
+            "exp": 0,
+            "money_min": 0,
+            "money_max": 0,
+            "drops": {},
+            "ai": "debuffer",
+            "name_en": "Venom Replicant"
         }
-    }
+    },
+    "area_name_en": "Mad Doctor's Laboratory"
 }

@@ -2,5 +2,6 @@
     "area_name": "無盡魔塔",
     "req_level": 15,
     "event_chance": 0.0,
-    "monsters": {} 
+    "monsters": {},
+    "area_name_en": "Endless Tower"
 }

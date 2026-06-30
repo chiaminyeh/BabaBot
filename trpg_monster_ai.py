@@ -4,7 +4,8 @@
 
 monster dict 可選欄位：
 - "active_skills": [{"id","name","trigger":{"type":"chance"|"hp_below"|"interval","value":...},"effect":{...}}]
-  effect.type 支援：heavy_attack / debuff_atk / debuff_def / debuff_spd / buff_self_atk / buff_self_def / buff_self_spd / summon_minion
+  effect.type 支援：heavy_attack / debuff_atk / debuff_def / debuff_spd / buff_self_atk / buff_self_def / buff_self_spd /
+  summon_minion / cast_skill（effect.skill_id 指向 skills.json 任意技能，讓怪物也能用魔法，跟玩家技能共用 execute_skill）
 - "phase2": {"hp_below":0.5,"ai":"...","name_suffix":"...","heal_pct":0.1,"transform_text":"...","active_skills":[...]}
   ——HP 低於門檻時觸發一次性轉變（變更 ai/active_skills/名稱並回一點血），等同 BOSS 二階段。
 - "revive_once": {"turns":3,"hp_pct":0.3} —— 死亡後倒數幾個時間刻度，自動以該比例HP復活一次（僅一次）。
@@ -12,11 +13,14 @@ monster dict 可選欄位：
 
 import random
 
+from trpg_i18n import t, tf
+
 
 def _plain_attack(combat, slot: dict, log: str, atk_mult: float = 1.0) -> str:
     from trpg_combat import calc_monster_damage, get_player_def, get_player_spd
     from trpg_status import try_monster_apply_status
 
+    lang = combat.player.language
     monster = slot["monster"]
     m_atk = int(monster["atk"] * atk_mult)
     if slot["status"].get("paralysis"):
@@ -29,20 +33,20 @@ def _plain_attack(combat, slot: dict, log: str, atk_mult: float = 1.0) -> str:
         m_spd = monster.get("spd", int(10 + combat.player.level * 2.2))
         dodge_chance = min(0.85, max(0.1, 0.3 + (p_spd - m_spd) * 0.015))
         if random.random() < dodge_chance:
-            return log + f"\n💨 {monster['name']} 發動攻擊，被你靈巧地閃避了！"
+            return log + t(lang, "monster_ai.dodge_attack", "\n💨 {name} 發動攻擊，被你靈巧地閃避了！", name=tf(monster, "name", lang))
         else:
-            log += "\n💦 你試圖閃避，但還是被擊中了！"
+            log += t(lang, "monster_ai.dodge_fail", "\n💦 你試圖閃避，但還是被擊中了！")
 
     # 防禦判定
     if combat.is_defending:
         m_dmg = max(1, m_dmg // 2)
-        log += "\n🛡️ 防禦姿態擋下了大量傷害！"
+        log += t(lang, "monster_ai.defend_block", "\n🛡️ 防禦姿態擋下了大量傷害！")
 
     combat.player.current_hp -= m_dmg
-    log += f"\n🥊 {monster['name']} 行動！使你受到了 {m_dmg} 點傷害。"
+    log += t(lang, "monster_ai.attack_hit", "\n🥊 {name} 行動！使你受到了 {dmg} 點傷害。", name=tf(monster, "name", lang), dmg=m_dmg)
 
     from trpg_status import break_sleep_on_damage
-    wake_log = break_sleep_on_damage(combat.player.status_effects)
+    wake_log = break_sleep_on_damage(combat.player.status_effects, combat.player.language)
     if wake_log:
         log += f"\n{wake_log}"
 
@@ -51,7 +55,7 @@ def _plain_attack(combat, slot: dict, log: str, atk_mult: float = 1.0) -> str:
         log += f"\n{status_log}"
 
     if combat.player.current_hp <= 0:
-        return combat.view.process_death(log, f"💀 承受不住 {monster['name']} 的攻擊，你倒下了...")
+        return combat.view.process_death(log, t(lang, "monster_ai.death_attack", "💀 承受不住 {name} 的攻擊，你倒下了...", name=tf(monster, "name", lang)))
     combat.cog.save_players()
     return log
 
@@ -66,6 +70,7 @@ def ai_none(combat, slot, log):
 
 def ai_lifesteal(combat, slot, log):
     """攻擊後依造成傷害的比例回血（吸血蝙蝠、吸血鬼系怪物）。"""
+    lang = combat.player.language
     monster = slot["monster"]
     before_hp = combat.player.current_hp
     log = _plain_attack(combat, slot, log)
@@ -76,39 +81,42 @@ def ai_lifesteal(combat, slot, log):
         slot["hp"] = min(monster["max_hp"], slot["hp"] + heal)
         actual = slot["hp"] - before
         if actual > 0:
-            log += f"\n🩸 {monster['name']} 吸取了你的血肉，回復了 {actual} HP！"
+            log += t(lang, "monster_ai.lifesteal", "\n🩸 {name} 吸取了你的血肉，回復了 {actual} HP！", name=tf(monster, "name", lang), actual=actual)
     return log
 
 
 def ai_berserk_low_hp(combat, slot, log):
     """HP 低於 30% 時攻擊力提升 60%（瀕死反撲）。"""
+    lang = combat.player.language
     monster = slot["monster"]
     hp_pct = slot["hp"] / monster["max_hp"] if monster.get("max_hp") else 1
     if 0 < hp_pct < 0.3:
         log = _plain_attack(combat, slot, log, atk_mult=1.6)
-        log += f"\n🔥 {monster['name']} 陷入瀕死狂暴，攻擊力大幅提升！"
+        log += t(lang, "monster_ai.berserk_low_hp", "\n🔥 {name} 陷入瀕死狂暴，攻擊力大幅提升！", name=tf(monster, "name", lang))
         return log
     return _plain_attack(combat, slot, log)
 
 
 def ai_flee_low_hp(combat, slot, log):
     """HP 低於 20% 時先警告「準備逃跑」，給玩家一回合反應；下次行動才真正逃離（不計入擊殺獎勵）。"""
+    lang = combat.player.language
     monster = slot["monster"]
     if slot.get("telegraph_flee"):
         slot["telegraph_flee"] = False
         slot["hp"] = 0
         slot["fled"] = True
-        return log + f"\n🏃 {monster['name']} 趁機逃離了戰場！"
+        return log + t(lang, "monster_ai.flee", "\n🏃 {name} 趁機逃離了戰場！", name=tf(monster, "name", lang))
 
     hp_pct = slot["hp"] / monster["max_hp"] if monster.get("max_hp") else 1
     if 0 < hp_pct < 0.2 and random.random() < 0.6:
         slot["telegraph_flee"] = True
-        return log + f"\n😰 {monster['name']} 嚇得直打哆嗦，似乎想找機會逃跑！（盡快解決牠，否則牠下回合就會逃走）"
+        return log + t(lang, "monster_ai.flee_telegraph", "\n😰 {name} 嚇得直打哆嗦，似乎想找機會逃跑！（盡快解決牠，否則牠下回合就會逃走）", name=tf(monster, "name", lang))
     return _plain_attack(combat, slot, log)
 
 
 def ai_self_heal(combat, slot, log):
     """每次行動前有機率先回復自身一部分 HP，再進行攻擊。"""
+    lang = combat.player.language
     monster = slot["monster"]
     if slot["hp"] < monster["max_hp"] and random.random() < 0.35:
         heal = max(1, int(monster["max_hp"] * 0.12))
@@ -116,12 +124,13 @@ def ai_self_heal(combat, slot, log):
         slot["hp"] = min(monster["max_hp"], slot["hp"] + heal)
         actual = slot["hp"] - before
         if actual > 0:
-            log += f"\n✨ {monster['name']} 施展了自我治癒，回復了 {actual} HP！"
+            log += t(lang, "monster_ai.self_heal", "\n✨ {name} 施展了自我治癒，回復了 {actual} HP！", name=tf(monster, "name", lang), actual=actual)
     return _plain_attack(combat, slot, log)
 
 
 def ai_shield_ally(combat, slot, log):
     """有機率優先治療場上 HP 比例最低的隊友，而非攻擊（肉盾/支援型怪物）。"""
+    lang = combat.player.language
     allies = [s for s in combat.view.monster_slots if s is not slot and s["hp"] > 0]
     wounded = [s for s in allies if s["hp"] < s["monster"]["max_hp"]]
     if wounded and random.random() < 0.3:
@@ -130,16 +139,17 @@ def ai_shield_ally(combat, slot, log):
         before = target["hp"]
         target["hp"] = min(target["monster"]["max_hp"], target["hp"] + heal)
         actual = target["hp"] - before
-        return log + f"\n💚 {slot['monster']['name']} 守護著同伴，為【{target['monster']['name']}】回復了 {actual} HP！"
+        return log + t(lang, "monster_ai.shield_ally_heal", "\n💚 {healer} 守護著同伴，為【{target}】回復了 {actual} HP！", healer=tf(slot["monster"], "name", lang), target=tf(target["monster"], "name", lang), actual=actual)
     return _plain_attack(combat, slot, log)
 
 
 def ai_multi_hit_flurry(combat, slot, log):
     """有機率連續攻擊兩次（各算一次完整傷害判定，傷害各自降低，避免一次性爆量）。"""
+    lang = combat.player.language
     if random.random() < 0.4:
         log = _plain_attack(combat, slot, log, atk_mult=0.65)
         if combat.player.current_hp > 0:
-            log += f"\n💢 {slot['monster']['name']} 速度太快，竟然連續出手了第二次！"
+            log += t(lang, "monster_ai.multi_hit_flurry", "\n💢 {name} 速度太快，竟然連續出手了第二次！", name=tf(slot["monster"], "name", lang))
             log = _plain_attack(combat, slot, log, atk_mult=0.65)
         return log
     return _plain_attack(combat, slot, log)
@@ -147,6 +157,7 @@ def ai_multi_hit_flurry(combat, slot, log):
 
 def ai_support_healer(combat, slot, log):
     """專職治療型衍生怪：優先治療場上 HP 比例最低的隊友（含 BOSS 本體），治療量與觸發率都比 shield_ally 更高。"""
+    lang = combat.player.language
     allies = [s for s in combat.view.monster_slots if s is not slot and s["hp"] > 0]
     wounded = [s for s in allies if s["hp"] < s["monster"]["max_hp"]]
     if wounded and random.random() < 0.55:
@@ -155,104 +166,116 @@ def ai_support_healer(combat, slot, log):
         before = target["hp"]
         target["hp"] = min(target["monster"]["max_hp"], target["hp"] + heal)
         actual = target["hp"] - before
-        return log + f"\n💚 {slot['monster']['name']} 全力施展治療術，為【{target['monster']['name']}】回復了 {actual} HP！"
+        return log + t(lang, "monster_ai.support_healer", "\n💚 {healer} 全力施展治療術，為【{target}】回復了 {actual} HP！", healer=tf(slot["monster"], "name", lang), target=tf(target["monster"], "name", lang), actual=actual)
     return _plain_attack(combat, slot, log)
 
 
 def ai_buffer(combat, slot, log):
     """支援型衍生怪：優先幫場上還沒被強化過的隊友附加攻擊力buff，而非攻擊。"""
+    lang = combat.player.language
     allies = [s for s in combat.view.monster_slots if s is not slot and s["hp"] > 0]
     candidates = [s for s in allies if not s.get("stat_mods", {}).get("atk")]
     if candidates and random.random() < 0.35:
         target = max(candidates, key=lambda s: s["monster"].get("atk", 0))
         _apply_monster_stat_mod(target, "atk", 1.35, 3)
-        return log + f"\n📯 {slot['monster']['name']} 為【{target['monster']['name']}】注入力量，攻擊力提升了！（3回合）"
+        return log + t(lang, "monster_ai.buffer", "\n📯 {buffer} 為【{target}】注入力量，攻擊力提升了！（3回合）", buffer=tf(slot["monster"], "name", lang), target=tf(target["monster"], "name", lang))
     return _plain_attack(combat, slot, log)
 
 
 def ai_debuffer(combat, slot, log):
     """支援型衍生怪：有機率對玩家施加攻擊力/防禦力/速度其中一項減益，而非直接攻擊。"""
+    lang = combat.player.language
     if random.random() < 0.35:
-        stat_key, stat_name = random.choice([("atk_mult", "攻擊力"), ("def_mult", "防禦力"), ("spd_mult", "速度")])
+        stat_key, stat_name_key, stat_name_zh = random.choice([
+            ("atk_mult", "monster_ai.stat_atk", "攻擊力"),
+            ("def_mult", "monster_ai.stat_def", "防禦力"),
+            ("spd_mult", "monster_ai.stat_spd", "速度"),
+        ])
+        stat_name = t(lang, stat_name_key, stat_name_zh)
         combat.player.combat_debuffs[stat_key] = 0.75
         combat.player.combat_debuffs["turns"] = max(combat.player.combat_debuffs.get("turns", 0), 3)
-        return log + f"\n🌀 {slot['monster']['name']} 對你施加了詛咒，{stat_name}下降了！（3回合）"
+        return log + t(lang, "monster_ai.debuffer", "\n🌀 {name} 對你施加了詛咒，{stat}下降了！（3回合）", name=tf(slot["monster"], "name", lang), stat=stat_name)
     return _plain_attack(combat, slot, log)
 
 
 
 def ai_heavy_tank(combat, slot, log):
     # 高防禦，機率替隊友抵擋傷害 (此處用加防禦來簡化)
+    lang = combat.player.language
     import random
     if random.random() < 0.3 and slot.get("hp", 0) > 0:
         _apply_monster_stat_mod(slot, "def", 2.0, 2)
-        log += f"\n🛡️ {slot['monster']['name']} 舉起了巨盾，進入防禦姿態！防禦力大幅提升！"
+        log += t(lang, "monster_ai.heavy_tank", "\n🛡️ {name} 舉起了巨盾，進入防禦姿態！防禦力大幅提升！", name=tf(slot["monster"], "name", lang))
         return log
     return _plain_attack(combat, slot, log)
 
 def ai_kamikaze(combat, slot, log):
     # 血量低於 30% 自爆
+    lang = combat.player.language
     hp = slot.get("hp", 0)
     max_hp = slot["monster"]["max_hp"]
     if hp > 0 and hp < max_hp * 0.3:
         import random
         if random.random() < 0.8:  # 80% chance
             dmg = hp
-            log += f"\n💥 **{slot['monster']['name']} 體內的魔力失去控制，發生了劇烈自爆！**"
+            log += t(lang, "monster_ai.kamikaze_explode", "\n💥 **{name} 體內的魔力失去控制，發生了劇烈自爆！**", name=tf(slot["monster"], "name", lang))
             combat.player.current_hp -= dmg
-            log += f"\n💥 對你造成了 {dmg} 點真實傷害！"
+            log += t(lang, "monster_ai.kamikaze_damage", "\n💥 對你造成了 {dmg} 點真實傷害！", dmg=dmg)
             from trpg_status import break_sleep_on_damage
-            wake_log = break_sleep_on_damage(combat.player.status_effects)
+            wake_log = break_sleep_on_damage(combat.player.status_effects, combat.player.language)
             if wake_log:
                 log += f"\n{wake_log}"
             slot["hp"] = 0
             if combat.player.current_hp <= 0:
-                return combat.view.process_death(log, f"💀 承受不住 {slot['monster']['name']} 的自爆，你被炸死了...")
+                return combat.view.process_death(log, t(lang, "monster_ai.death_kamikaze", "💀 承受不住 {name} 的自爆，你被炸死了...", name=tf(slot["monster"], "name", lang)))
             return log
     return _plain_attack(combat, slot, log)
 
 def ai_charge_attack(combat, slot, log):
     # 如果已經在蓄力，則這回合打出 3 倍傷害
+    lang = combat.player.language
     if slot.get("is_charging"):
         slot["is_charging"] = False
-        log += f"\n⚡ **{slot['monster']['name']} 釋放了積蓄的能量！**"
+        log += t(lang, "monster_ai.charge_release", "\n⚡ **{name} 釋放了積蓄的能量！**", name=tf(slot["monster"], "name", lang))
         return _plain_attack(combat, slot, log, atk_mult=3.0)
-    
+
     # 機率進入蓄力狀態
     import random
     if random.random() < 0.25:
         slot["is_charging"] = True
-        log += f"\n⚠️ **{slot['monster']['name']} 正在聚集毀滅性的能量，下一回合即將爆發！**"
+        log += t(lang, "monster_ai.charge_warning", "\n⚠️ **{name} 正在聚集毀滅性的能量，下一回合即將爆發！**", name=tf(slot["monster"], "name", lang))
         return log
-    
+
     return _plain_attack(combat, slot, log)
 
 def ai_magic_absorb(combat, slot, log):
     # 機率開啟魔法吸收護盾，如果開啟中，遭受魔法攻擊補血。
     # 這裡我們只在 AI 回合開啟護盾狀態，在 trpg_combat.py 需要判斷這個狀態來改變魔法攻擊邏輯。
     # 由於我們沒有修改戰鬥傷害結算，我們先寫一個會在被打到時由 combat 直接判斷的狀態，或者這回合直接吸血
+    lang = combat.player.language
     import random
     if not slot.get("magic_absorb_shield"):
         if random.random() < 0.3:
             slot["magic_absorb_shield"] = 2  # 持續2回合
-            log += f"\n🌀 {slot['monster']['name']} 展開了【魔法吸收護盾】！接下來將吸收所有魔法傷害轉化為生命值！"
+            log += t(lang, "monster_ai.magic_absorb_on", "\n🌀 {name} 展開了【魔法吸收護盾】！接下來將吸收所有魔法傷害轉化為生命值！", name=tf(slot["monster"], "name", lang))
             return log
     else:
         slot["magic_absorb_shield"] -= 1
         if slot["magic_absorb_shield"] <= 0:
             slot.pop("magic_absorb_shield")
-            log += f"\n🌀 {slot['monster']['name']} 的【魔法吸收護盾】消失了。"
+            log += t(lang, "monster_ai.magic_absorb_off", "\n🌀 {name} 的【魔法吸收護盾】消失了。", name=tf(slot["monster"], "name", lang))
     return _plain_attack(combat, slot, log)
 
 def ai_sargeras(combat, slot, log):
     """魔王本體：召喚交給 active_skills 的 summon_imp（每2回合）負責，
     這裡只負責「身為前排時，趁機縮到最後排躲在小鬼身後」的怯戰行為。"""
+    lang = combat.player.language
     slots = combat.view.monster_slots
     alive_others = [s for s in slots if s is not slot and s["hp"] > 0]
     if alive_others and slots and slots[0] is slot:
         slots.remove(slot)
         slots.append(slot)
-        return log + f"\n👹 {slot['monster']['name']} 冷笑一聲，將小鬼推到了前面擋著，自己退到了最後排！"
+        return log + t(lang, "monster_ai.sargeras_retreat", "\n👹 {name} 冷笑一聲，將小鬼推到了前面擋著，自己退到了最後排！", name=tf(slot["monster"], "name", lang))
     return _plain_attack(combat, slot, log, atk_mult=1.1)
 
 
@@ -304,6 +327,7 @@ def _tick_stat_mods(slot: dict):
 # ---------------------------------------------------------------------------
 
 def _maybe_transform_phase2(combat, slot: dict, log: str) -> str:
+    lang = combat.player.language
     monster = slot["monster"]
     phase2 = monster.get("phase2")
     if not phase2 or slot.get("phase2_triggered") or slot["hp"] <= 0:
@@ -321,12 +345,17 @@ def _maybe_transform_phase2(combat, slot: dict, log: str) -> str:
         slot["skill_turn_counters"] = {}
     if phase2.get("name_suffix") and phase2["name_suffix"] not in monster["name"]:
         monster["name"] = f"{monster['name']}{phase2['name_suffix']}"
+        if monster.get("name_en") and phase2.get("name_suffix_en") and phase2["name_suffix_en"] not in monster["name_en"]:
+            monster["name_en"] = f"{monster['name_en']}{phase2['name_suffix_en']}"
 
     heal_pct = phase2.get("heal_pct", 0)
     if heal_pct > 0:
         slot["hp"] = min(monster["max_hp"], slot["hp"] + int(monster["max_hp"] * heal_pct))
 
-    flavor = phase2.get("transform_text", f"{monster['name']} 的氣息驟然轉變，進入了更危險的狀態！")
+    default_flavor = t(lang, "monster_ai.phase2_default", "{name} 的氣息驟然轉變，進入了更危險的狀態！", name=tf(monster, "name", lang))
+    flavor = phase2.get("transform_text", default_flavor)
+    if lang == "en" and phase2.get("transform_text_en"):
+        flavor = phase2["transform_text_en"]
     return log + f"\n🌀 **{flavor}**"
 
 
@@ -378,18 +407,19 @@ def _find_minion_def(combat, minion_id: str):
 def _execute_summon_minion(combat, slot: dict, skill: dict, log: str) -> str:
     from trpg_monster_pool import instantiate_monster
 
+    lang = combat.player.language
     monster = slot["monster"]
     summon_ids = skill.get("effect", {}).get("summon_ids") or []
     slots = combat.view.monster_slots
     alive_count = sum(1 for s in slots if s["hp"] > 0)
 
     if not summon_ids or alive_count >= 3:
-        return log + f"\n📯 {monster['name']} 想召喚援軍，但戰場已經容不下更多敵人了！"
+        return log + t(lang, "monster_ai.summon_no_room", "\n📯 {name} 想召喚援軍，但戰場已經容不下更多敵人了！", name=tf(monster, "name", lang))
 
     minion_id = random.choice(summon_ids)
     minion_def, source = _find_minion_def(combat, minion_id)
     if not minion_def:
-        return log + f"\n📯 {monster['name']} 的召喚儀式似乎失敗了……"
+        return log + t(lang, "monster_ai.summon_fail", "\n📯 {name} 的召喚儀式似乎失敗了……", name=tf(monster, "name", lang))
 
     if source == "pool":
         floor_hint = max(1, monster.get("level", combat.player.level))
@@ -416,42 +446,73 @@ def _execute_summon_minion(combat, slot: dict, skill: dict, log: str) -> str:
     elif len(slots) < 3:
         slots.insert(0, {"monster": minion, "hp": minion["max_hp"], "av": 0, "status": {}})
     else:
-        return log + f"\n📯 {monster['name']} 想召喚援軍，但戰場已經容不下更多敵人了！"
+        return log + t(lang, "monster_ai.summon_no_room", "\n📯 {name} 想召喚援軍，但戰場已經容不下更多敵人了！", name=tf(monster, "name", lang))
 
-    return log + f"\n📯 {monster['name']} 發動【{skill['name']}】，召喚了【{minion['name']}】加入戰場！"
+    return log + t(lang, "monster_ai.summon_success", "\n📯 {name} 發動【{skill}】，召喚了【{minion}】加入戰場！", name=tf(monster, "name", lang), skill=tf(skill, "name", lang), minion=tf(minion, "name", lang))
+
+
+def _execute_cast_skill(combat, slot: dict, effect: dict, log: str) -> str:
+    """讓怪物的主動技能直接引用 skills.json 裡任何一個技能（含魔法），
+    跟玩家使用技能走同一套 execute_skill 傷害／異常狀態邏輯——怪物想放法術不用再寫第二份公式。"""
+    from trpg_combat import execute_skill
+    from trpg_entity import PlayerCombatant, MonsterCombatant
+
+    lang = combat.player.language
+    monster = slot["monster"]
+    spell = combat.cog.skills.get(effect.get("skill_id"))
+    if not spell:
+        return _plain_attack(combat, slot, log)
+
+    caster = MonsterCombatant(slot, combat.cog.status_effects, combat.player.language)
+    target = PlayerCombatant(combat.player, combat.cog.items, combat.cog.status_effects)
+    skill_log, _ = execute_skill(caster, [target], spell, combat.cog.status_effects)
+    log += t(lang, "monster_ai.cast_skill", "\n🪄 {name} 發動了【{skill}】！\n{skill_log}", name=tf(monster, "name", lang), skill=tf(spell, "name", lang), skill_log=skill_log)
+
+    if combat.player.current_hp <= 0:
+        return combat.view.process_death(log, t(lang, "monster_ai.death_cast_skill", "💀 你被 {name} 的【{skill}】擊倒了...", name=tf(monster, "name", lang), skill=tf(spell, "name", lang)))
+    combat.cog.save_players()
+    return log
 
 
 def _execute_active_skill(combat, slot: dict, skill: dict, log: str) -> str:
+    lang = combat.player.language
     effect = skill.get("effect", {})
     etype = effect.get("type")
     monster = slot["monster"]
 
     if etype == "heavy_attack":
         log = _plain_attack(combat, slot, log, atk_mult=effect.get("mult", 2.0))
-        return log + f"\n💥 【{skill['name']}】命中要害，造成了驚人的傷害！"
+        return log + t(lang, "monster_ai.heavy_attack_hit", "\n💥 【{skill}】命中要害，造成了驚人的傷害！", skill=tf(skill, "name", lang))
 
     if etype in ("debuff_atk", "debuff_def", "debuff_spd"):
         stat_key = {"debuff_atk": "atk_mult", "debuff_def": "def_mult", "debuff_spd": "spd_mult"}[etype]
-        stat_name = {"debuff_atk": "攻擊力", "debuff_def": "防禦力", "debuff_spd": "速度"}[etype]
+        stat_name_key = {"debuff_atk": "monster_ai.stat_atk", "debuff_def": "monster_ai.stat_def", "debuff_spd": "monster_ai.stat_spd"}[etype]
+        stat_name_zh = {"debuff_atk": "攻擊力", "debuff_def": "防禦力", "debuff_spd": "速度"}[etype]
+        stat_name = t(lang, stat_name_key, stat_name_zh)
         turns = effect.get("turns", 3)
         combat.player.combat_debuffs[stat_key] = effect.get("mult", 0.7)
         combat.player.combat_debuffs["turns"] = max(combat.player.combat_debuffs.get("turns", 0), turns)
-        return log + f"\n🌀 {monster['name']} 發動【{skill['name']}】，你的{stat_name}下降了！（{turns}回合）"
+        return log + t(lang, "monster_ai.skill_debuff", "\n🌀 {name} 發動【{skill}】，你的{stat}下降了！（{turns}回合）", name=tf(monster, "name", lang), skill=tf(skill, "name", lang), stat=stat_name, turns=turns)
 
     if etype in ("buff_self_atk", "buff_self_def", "buff_self_spd"):
         stat = etype.rsplit("_", 1)[1]
-        stat_name = {"atk": "攻擊力", "def": "防禦力", "spd": "速度"}[stat]
+        stat_name_key = {"atk": "monster_ai.stat_atk", "def": "monster_ai.stat_def", "spd": "monster_ai.stat_spd"}[stat]
+        stat_name_zh = {"atk": "攻擊力", "def": "防禦力", "spd": "速度"}[stat]
+        stat_name = t(lang, stat_name_key, stat_name_zh)
         turns = effect.get("turns", 3)
         _apply_monster_stat_mod(slot, stat, effect.get("mult", 1.3), turns)
-        return log + f"\n💪 {monster['name']} 發動【{skill['name']}】，自身{stat_name}大幅提升！（{turns}回合）"
+        return log + t(lang, "monster_ai.skill_self_buff", "\n💪 {name} 發動【{skill}】，自身{stat}大幅提升！（{turns}回合）", name=tf(monster, "name", lang), skill=tf(skill, "name", lang), stat=stat_name, turns=turns)
 
     if etype == "summon_minion":
         return _execute_summon_minion(combat, slot, skill, log)
 
+    if etype == "cast_skill":
+        return _execute_cast_skill(combat, slot, effect, log)
+
     return _plain_attack(combat, slot, log)
 
 
-def tick_revive(slot: dict) -> str:
+def tick_revive(slot: dict, lang: str = "zh") -> str:
     """死亡的怪物若設有 revive_once，每經過一次時間刻度倒數一次，時間到了就以一定比例HP復活（僅限一次）。"""
     if slot["hp"] > 0 or slot.get("fled"):
         return ""
@@ -469,10 +530,11 @@ def tick_revive(slot: dict) -> str:
     slot["revived"] = True
     slot.pop("revive_countdown", None)
     slot["status"] = {}
-    return f"\n💀➡️✨ {slot['monster']['name']} 的屍體竟微微抽動——牠重新站了起來！（恢復至 {slot['hp']} HP，僅此一次）"
+    return t(lang, "monster_ai.revive", "\n💀➡️✨ {name} 的屍體竟微微抽動——牠重新站了起來！（恢復至 {hp} HP，僅此一次）", name=tf(slot["monster"], "name", lang), hp=slot["hp"])
 
 
 def run_monster_ai(combat, slot: dict, log: str) -> str:
+    lang = combat.player.language
     slot["turns_acted"] = slot.get("turns_acted", 0) + 1
     _tick_stat_mods(slot)
     log = _maybe_transform_phase2(combat, slot, log)
@@ -490,7 +552,7 @@ def run_monster_ai(combat, slot: dict, log: str) -> str:
     skill = _pick_active_skill(slot)
     if skill:
         slot["telegraph"] = skill
-        return log + f"\n⚠️ {slot['monster']['name']} 開始蓄力，準備發動【{skill['name']}】！下回合請做好準備！"
+        return log + t(lang, "monster_ai.skill_telegraph", "\n⚠️ {name} 開始蓄力，準備發動【{skill}】！下回合請做好準備！", name=tf(slot["monster"], "name", lang), skill=tf(skill, "name", lang))
 
     handler = AI_REGISTRY.get(slot["monster"].get("ai", "none"), ai_none)
     return handler(combat, slot, log)

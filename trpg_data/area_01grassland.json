@@ -15,7 +15,8 @@
             "drops": {
                 "slime_jelly": 1
             },
-            "ai": "none"
+            "ai": "none",
+            "name_en": "Grassland Slime"
         },
         "goblin": {
             "id": "goblin",
@@ -33,7 +34,8 @@
                 "health_potion": 0.2,
                 "leather_armor": 0.4
             },
-            "ai": "none"
+            "ai": "none",
+            "name_en": "Lone Goblin"
         },
         "wild_boar": {
             "id": "wild_boar",
@@ -50,21 +52,38 @@
                 "boar_tusk": 1,
                 "raw_meat": 0.7
             },
-            "ai": "none"
+            "ai": "none",
+            "name_en": "Wild Boar"
         }
     },
     "boss_minions": {
         "goblin_medic": {
-            "id": "goblin_medic", "name": "哥布林藥師",
-            "max_hp": 24, "atk": 8, "def": 2, "spd": 13, "exp": 0,
-            "money_min": 0, "money_max": 0, "drops": {},
-            "ai": "support_healer"
+            "id": "goblin_medic",
+            "name": "哥布林藥師",
+            "max_hp": 24,
+            "atk": 8,
+            "def": 2,
+            "spd": 13,
+            "exp": 0,
+            "money_min": 0,
+            "money_max": 0,
+            "drops": {},
+            "ai": "support_healer",
+            "name_en": "Goblin Apothecary"
         },
         "goblin_raider": {
-            "id": "goblin_raider", "name": "哥布林掠奪者",
-            "max_hp": 28, "atk": 10, "def": 3, "spd": 16, "exp": 0,
-            "money_min": 0, "money_max": 0, "drops": {},
-            "ai": "debuffer"
+            "id": "goblin_raider",
+            "name": "哥布林掠奪者",
+            "max_hp": 28,
+            "atk": 10,
+            "def": 3,
+            "spd": 16,
+            "exp": 0,
+            "money_min": 0,
+            "money_max": 0,
+            "drops": {},
+            "ai": "debuffer",
+            "name_en": "Goblin Raider"
         }
     },
     "boss": {
@@ -84,7 +103,23 @@
         },
         "ai": "berserk_low_hp",
         "active_skills": [
-            {"id": "rally_goblins", "name": "召集同夥", "trigger": {"type": "interval", "value": 4}, "effect": {"type": "summon_minion", "summon_ids": ["goblin", "goblin_medic", "goblin_raider"]}}
+            {
+                "id": "rally_goblins",
+                "name": "召集同夥",
+                "trigger": {
+                    "type": "interval",
+                    "value": 4
+                },
+                "effect": {
+                    "type": "summon_minion",
+                    "summon_ids": [
+                        "goblin",
+                        "goblin_medic",
+                        "goblin_raider"
+                    ]
+                },
+                "name_en": "Rally Allies"
+            }
         ],
         "phase2": {
             "hp_below": 0.5,
@@ -93,8 +128,24 @@
             "heal_pct": 0.06,
             "transform_text": "哥布林首領嗜血的雙眼發紅，舉起武器怒吼！",
             "active_skills": [
-                {"id": "chief_smash", "name": "首領重擊", "trigger": {"type": "hp_below", "value": 0.2}, "effect": {"type": "heavy_attack", "mult": 2.1}}
-            ]
-        }
-    }
+                {
+                    "id": "chief_smash",
+                    "name": "首領重擊",
+                    "trigger": {
+                        "type": "hp_below",
+                        "value": 0.2
+                    },
+                    "effect": {
+                        "type": "heavy_attack",
+                        "mult": 2.1
+                    },
+                    "name_en": "Chief's Smash"
+                }
+            ],
+            "name_suffix_en": "(Bloodthirsty Chieftain)",
+            "transform_text_en": "The Goblin Chief's bloodshot eyes flare red as he raises his weapon and roars!"
+        },
+        "name_en": "Goblin Chief"
+    },
+    "area_name_en": "Village Outskirts"
 }

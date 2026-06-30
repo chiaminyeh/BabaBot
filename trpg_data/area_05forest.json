@@ -24,7 +24,8 @@
                 "wolf_fur": 1,
                 "bronze_sword": 0.3
             },
-            "ai": "multi_hit_flurry"
+            "ai": "multi_hit_flurry",
+            "name_en": "Feral Black Wolf"
         },
         "orc": {
             "id": "orc",
@@ -48,21 +49,38 @@
                 "leather_armor": 0.55,
                 "health_potion": 0.4
             },
-            "ai": "berserk_low_hp"
+            "ai": "berserk_low_hp",
+            "name_en": "Orc Raider"
         }
     },
     "boss_minions": {
         "forest_sprite": {
-            "id": "forest_sprite", "name": "森林精靈",
-            "max_hp": 90, "atk": 20, "def": 8, "spd": 22,
-            "exp": 0, "money_min": 0, "money_max": 0, "drops": {},
-            "ai": "support_healer"
+            "id": "forest_sprite",
+            "name": "森林精靈",
+            "max_hp": 90,
+            "atk": 20,
+            "def": 8,
+            "spd": 22,
+            "exp": 0,
+            "money_min": 0,
+            "money_max": 0,
+            "drops": {},
+            "ai": "support_healer",
+            "name_en": "Forest Sprite"
         },
         "thorn_vine": {
-            "id": "thorn_vine", "name": "荊棘蔓藤",
-            "max_hp": 110, "atk": 28, "def": 14, "spd": 8,
-            "exp": 0, "money_min": 0, "money_max": 0, "drops": {},
-            "ai": "debuffer"
+            "id": "thorn_vine",
+            "name": "荊棘蔓藤",
+            "max_hp": 110,
+            "atk": 28,
+            "def": 14,
+            "spd": 8,
+            "exp": 0,
+            "money_min": 0,
+            "money_max": 0,
+            "drops": {},
+            "ai": "debuffer",
+            "name_en": "Thorned Vines"
         }
     },
     "boss": {
@@ -91,7 +109,23 @@
         },
         "ai": "self_heal",
         "active_skills": [
-            {"id": "call_of_the_forest", "name": "森林之喚", "trigger": {"type": "interval", "value": 5}, "effect": {"type": "summon_minion", "summon_ids": ["dire_wolf", "forest_sprite", "thorn_vine"]}}
+            {
+                "id": "call_of_the_forest",
+                "name": "森林之喚",
+                "trigger": {
+                    "type": "interval",
+                    "value": 5
+                },
+                "effect": {
+                    "type": "summon_minion",
+                    "summon_ids": [
+                        "dire_wolf",
+                        "forest_sprite",
+                        "thorn_vine"
+                    ]
+                },
+                "name_en": "Call of the Forest"
+            }
         ],
         "phase2": {
             "hp_below": 0.5,
@@ -100,8 +134,24 @@
             "heal_pct": 0.08,
             "transform_text": "迷霧林王身上的藤蔓暴漲，化作猛獸般的姿態！",
             "active_skills": [
-                {"id": "wild_rampage", "name": "蠻荒踐踏", "trigger": {"type": "hp_below", "value": 0.2}, "effect": {"type": "heavy_attack", "mult": 2.3}}
-            ]
-        }
-    }
+                {
+                    "id": "wild_rampage",
+                    "name": "蠻荒踐踏",
+                    "trigger": {
+                        "type": "hp_below",
+                        "value": 0.2
+                    },
+                    "effect": {
+                        "type": "heavy_attack",
+                        "mult": 2.3
+                    },
+                    "name_en": "Savage Trample"
+                }
+            ],
+            "name_suffix_en": "(Wrath of the Forest)",
+            "transform_text_en": "The vines covering the Mistwood King surge and swell, twisting him into a beastlike form!"
+        },
+        "name_en": "Mistwood King"
+    },
+    "area_name_en": "Misty Forest"
 }

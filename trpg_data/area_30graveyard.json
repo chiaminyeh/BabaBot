@@ -23,7 +23,8 @@
             },
             "money_min": 80,
             "money_max": 130,
-            "ai": "none"
+            "ai": "none",
+            "name_en": "Awakened Skeleton Soldier"
         },
         "grave_goblin": {
             "id": "grave_goblin",
@@ -41,7 +42,8 @@
                 "stolen_gem": 0.5,
                 "high_health_potion": 0.25
             },
-            "ai": "flee_low_hp"
+            "ai": "flee_low_hp",
+            "name_en": "Tomb-Raiding Goblin"
         },
         "ghost": {
             "id": "ghost",
@@ -69,7 +71,8 @@
             "status_chance": 0.25,
             "money_min": 90,
             "money_max": 150,
-            "ai": "lifesteal"
+            "ai": "lifesteal",
+            "name_en": "Wandering Wraith"
         }
     },
     "boss": {
@@ -107,9 +110,28 @@
         ],
         "status_chance": 0.5,
         "ai": "lifesteal",
-        "revive_once": {"turns": 3, "hp_pct": 0.3},
+        "revive_once": {
+            "turns": 3,
+            "hp_pct": 0.3
+        },
         "active_skills": [
-            {"id": "raise_legion", "name": "亡靈軍團", "trigger": {"type": "interval", "value": 4}, "effect": {"type": "summon_minion", "summon_ids": ["skeleton", "bone_priest", "grave_wraith"]}}
+            {
+                "id": "raise_legion",
+                "name": "亡靈軍團",
+                "trigger": {
+                    "type": "interval",
+                    "value": 4
+                },
+                "effect": {
+                    "type": "summon_minion",
+                    "summon_ids": [
+                        "skeleton",
+                        "bone_priest",
+                        "grave_wraith"
+                    ]
+                },
+                "name_en": "Undead Legion"
+            }
         ],
         "phase2": {
             "hp_below": 0.5,
@@ -118,22 +140,54 @@
             "heal_pct": 0.1,
             "transform_text": "亡靈巫妖的法袍化作骷髏之風，墓地裡的亡靈紛紛甦醒共鳴！",
             "active_skills": [
-                {"id": "death_nova", "name": "死亡波動", "trigger": {"type": "hp_below", "value": 0.15}, "effect": {"type": "heavy_attack", "mult": 2.4}}
-            ]
-        }
+                {
+                    "id": "death_nova",
+                    "name": "死亡波動",
+                    "trigger": {
+                        "type": "hp_below",
+                        "value": 0.15
+                    },
+                    "effect": {
+                        "type": "heavy_attack",
+                        "mult": 2.4
+                    },
+                    "name_en": "Death Pulse"
+                }
+            ],
+            "name_suffix_en": "(Undead Awakening)",
+            "transform_text_en": "The Undead Lich's robes billow into a skeletal wind, and the dead across the graveyard stir and rise in resonance!"
+        },
+        "name_en": "Undead Lich"
     },
     "boss_minions": {
         "bone_priest": {
-            "id": "bone_priest", "name": "墓地祭司",
-            "max_hp": 700, "atk": 90, "def": 55, "spd": 28,
-            "exp": 0, "money_min": 0, "money_max": 0, "drops": {},
-            "ai": "support_healer"
+            "id": "bone_priest",
+            "name": "墓地祭司",
+            "max_hp": 700,
+            "atk": 90,
+            "def": 55,
+            "spd": 28,
+            "exp": 0,
+            "money_min": 0,
+            "money_max": 0,
+            "drops": {},
+            "ai": "support_healer",
+            "name_en": "Graveyard Priest"
         },
         "grave_wraith": {
-            "id": "grave_wraith", "name": "墓穴亡魂",
-            "max_hp": 750, "atk": 120, "def": 50, "spd": 35,
-            "exp": 0, "money_min": 0, "money_max": 0, "drops": {},
-            "ai": "debuffer"
+            "id": "grave_wraith",
+            "name": "墓穴亡魂",
+            "max_hp": 750,
+            "atk": 120,
+            "def": 50,
+            "spd": 35,
+            "exp": 0,
+            "money_min": 0,
+            "money_max": 0,
+            "drops": {},
+            "ai": "debuffer",
+            "name_en": "Crypt Wraith"
         }
-    }
+    },
+    "area_name_en": "The Forgotten Graveyard"
 }

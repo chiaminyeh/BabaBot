@@ -10,68 +10,150 @@
     "nodes": {
         "entrance": {
             "desc": "你站在傳說洞窟的入口，潮濕陰冷的空氣中夾雜著詭異的魔力波動，每一次呼吸都讓人隱隱不安。",
-            "exits": {"forward": "c1", "left": "c2", "right": "c3"}
+            "exits": {
+                "forward": "c1",
+                "left": "c2",
+                "right": "c3"
+            },
+            "desc_en": "You stand at the entrance to the Legendary Cave. The damp, cold air carries an eerie pulse of magic, and every breath leaves you faintly uneasy."
         },
         "c1": {
             "desc": "狹窄的通道向前延伸，牆上的螢光苔蘚發出微弱的光，勉強照亮腳下的路。",
-            "exits": {"forward": "c4", "left": "c5", "right": null}
+            "exits": {
+                "forward": "c4",
+                "left": "c5",
+                "right": null
+            },
+            "desc_en": "A narrow passage stretches onward. Faintly glowing moss on the walls casts just enough light to make out the path beneath your feet."
         },
         "c2": {
             "desc": "一條死路，盡頭只有不斷滲水的石壁。",
-            "exits": {"forward": "c6", "left": null, "right": null}
+            "exits": {
+                "forward": "c6",
+                "left": null,
+                "right": null
+            },
+            "desc_en": "A dead end. Nothing here but a stone wall continually seeping with water."
         },
         "c3": {
             "desc": "岔路口瀰漫著刺鼻的硫磺味，令人頭暈目眩。",
-            "exits": {"forward": null, "left": "c7", "right": "entrance"}
+            "exits": {
+                "forward": null,
+                "left": "c7",
+                "right": "entrance"
+            },
+            "desc_en": "A pungent smell of sulfur fills this fork in the path, leaving you dizzy and disoriented."
         },
         "c4": {
             "desc": "腳下的地面開始向下傾斜，魔力的氣息愈發濃郁，皮膚傳來陣陣刺痛。",
-            "exits": {"forward": null, "left": "c8", "right": "c9"}
+            "exits": {
+                "forward": null,
+                "left": "c8",
+                "right": "c9"
+            },
+            "desc_en": "The ground beneath your feet begins to slope downward. The scent of magic grows thicker, and your skin prickles with stinging pain."
         },
         "c5": {
             "desc": "盡頭是一灘發黑的積水，散發著腐朽的氣味，沒有路可以再走了。",
-            "exits": {"forward": null, "left": null, "right": null}
+            "exits": {
+                "forward": null,
+                "left": null,
+                "right": null
+            },
+            "desc_en": "The path ends in a pool of blackened water reeking of decay. There is nowhere left to go."
         },
         "c6": {
             "desc": "盡頭堆著一堆風化的骸骨，似乎是先前挑戰者留下的……你不敢多看。",
-            "exits": {"forward": null, "left": null, "right": null}
+            "exits": {
+                "forward": null,
+                "left": null,
+                "right": null
+            },
+            "desc_en": "A pile of weathered bones lies at the dead end, likely the remains of some past challenger... you dare not look too closely."
         },
         "c7": {
             "desc": "牆壁上刻著古老的符文，幽幽發著光，但路到此為止。",
-            "exits": {"forward": null, "left": null, "right": null}
+            "exits": {
+                "forward": null,
+                "left": null,
+                "right": null
+            },
+            "desc_en": "Ancient runes are carved into the wall, glowing faintly, but the path ends here."
         },
         "c8": {
             "desc": "通道在此一分為二，其中一側隱約透出柔和的微光。",
-            "exits": {"forward": "c10", "left": null, "right": "c11"}
+            "exits": {
+                "forward": "c10",
+                "left": null,
+                "right": "c11"
+            },
+            "desc_en": "The passage splits into two here. One side faintly glimmers with a soft light."
         },
         "c9": {
             "desc": "死路，地面散落著破碎的劍鞘碎片，看來不是第一個來到這裡的人。",
-            "exits": {"forward": null, "left": null, "right": null}
+            "exits": {
+                "forward": null,
+                "left": null,
+                "right": null
+            },
+            "desc_en": "A dead end. Shattered fragments of a sword sheath litter the ground — it seems you are not the first to come this way."
         },
         "c10": {
             "desc": "盡頭只有一面光滑的石牆，什麼都沒有，連回音都顯得格外空洞。",
-            "exits": {"forward": null, "left": null, "right": null}
+            "exits": {
+                "forward": null,
+                "left": null,
+                "right": null
+            },
+            "desc_en": "Nothing but a smooth stone wall at the end. There's nothing here at all — even the echo feels hollow."
         },
         "c11": {
             "desc": "微弱的聖光從遠處透出，奇妙的是，周圍濃郁的魔力波動似乎也跟著減弱了一些。",
-            "exits": {"forward": "c12", "left": "c13", "right": null}
+            "exits": {
+                "forward": "c12",
+                "left": "c13",
+                "right": null
+            },
+            "desc_en": "A faint holy light shines from somewhere ahead. Strangely, the thick pulse of magic around you seems to weaken a little as well."
         },
         "c12": {
             "desc": "聖光越來越清晰，你的腳步聲在空洞的石室中迴盪，心跳也隨之加快。",
-            "exits": {"forward": "c14", "left": null, "right": "sword_room"}
+            "exits": {
+                "forward": "c14",
+                "left": null,
+                "right": "sword_room"
+            },
+            "desc_en": "The holy light grows clearer. Your footsteps echo through the hollow stone chamber, and your heartbeat quickens."
         },
         "c13": {
             "desc": "死路，只有冰冷的石壁回應著你的腳步聲。",
-            "exits": {"forward": null, "left": null, "right": null}
+            "exits": {
+                "forward": null,
+                "left": null,
+                "right": null
+            },
+            "desc_en": "A dead end. Only the cold stone walls answer the sound of your footsteps."
         },
         "c14": {
             "desc": "死路，地上有一個破碎的石碑，碑文已經風化難以辨認。",
-            "exits": {"forward": null, "left": null, "right": null}
+            "exits": {
+                "forward": null,
+                "left": null,
+                "right": null
+            },
+            "desc_en": "A dead end. A shattered stone tablet lies on the ground, its inscription too weathered to read."
         },
         "sword_room": {
             "desc": "你來到了一座圓形石室，正中央的石墩上，插著一把散發著聖潔光輝的長劍——【勇者之劍】！",
             "is_sword_room": true,
-            "exits": {"forward": null, "left": null, "right": null}
+            "exits": {
+                "forward": null,
+                "left": null,
+                "right": null
+            },
+            "desc_en": "You arrive in a round stone chamber. Upon a pedestal at its center stands a longsword radiating holy light — the [Hero's Sword]!"
         }
-    }
+    },
+    "area_name_en": "The Legendary Cave",
+    "desc_en": "[Main Quest] The legendary cave spoken of by bards, said to hold deep within it the Hero's Sword capable of driving back the Demon Lord."
 }

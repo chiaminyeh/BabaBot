@@ -26,7 +26,8 @@
             },
             "money_min": 120,
             "money_max": 200,
-            "ai": "lifesteal"
+            "ai": "lifesteal",
+            "name_en": "Giant Vampire Bat"
         },
         "gargoyle": {
             "id": "gargoyle",
@@ -52,7 +53,8 @@
             },
             "money_min": 130,
             "money_max": 220,
-            "ai": "shield_ally"
+            "ai": "shield_ally",
+            "name_en": "Guardian Gargoyle"
         },
         "vampire_servant": {
             "id": "vampire_servant",
@@ -81,7 +83,8 @@
             "status_chance": 0.3,
             "money_min": 150,
             "money_max": 250,
-            "ai": "multi_hit_flurry"
+            "ai": "multi_hit_flurry",
+            "name_en": "Bloodkin Servant"
         }
     },
     "boss": {
@@ -120,7 +123,23 @@
         "status_chance": 0.6,
         "ai": "lifesteal",
         "active_skills": [
-            {"id": "summon_brood", "name": "召喚血族", "trigger": {"type": "interval", "value": 4}, "effect": {"type": "summon_minion", "summon_ids": ["vampire_servant", "blood_acolyte", "night_stalker"]}}
+            {
+                "id": "summon_brood",
+                "name": "召喚血族",
+                "trigger": {
+                    "type": "interval",
+                    "value": 4
+                },
+                "effect": {
+                    "type": "summon_minion",
+                    "summon_ids": [
+                        "vampire_servant",
+                        "blood_acolyte",
+                        "night_stalker"
+                    ]
+                },
+                "name_en": "Summon Bloodkin"
+            }
         ],
         "phase2": {
             "hp_below": 0.5,
@@ -129,22 +148,54 @@
             "heal_pct": 0.1,
             "transform_text": "吸血鬼真祖捨棄了人形的偽裝，化作純粹的嗜血怪物！",
             "active_skills": [
-                {"id": "crimson_devour", "name": "緋紅吞噬", "trigger": {"type": "hp_below", "value": 0.2}, "effect": {"type": "heavy_attack", "mult": 2.5}}
-            ]
-        }
+                {
+                    "id": "crimson_devour",
+                    "name": "緋紅吞噬",
+                    "trigger": {
+                        "type": "hp_below",
+                        "value": 0.2
+                    },
+                    "effect": {
+                        "type": "heavy_attack",
+                        "mult": 2.5
+                    },
+                    "name_en": "Crimson Devour"
+                }
+            ],
+            "name_suffix_en": "(Progenitor's Awakening - Bloodthirsty Rage)",
+            "transform_text_en": "The Vampire Progenitor casts aside its human disguise, transforming into a creature of pure bloodlust!"
+        },
+        "name_en": "Vampire Progenitor"
     },
     "boss_minions": {
         "blood_acolyte": {
-            "id": "blood_acolyte", "name": "血祭侍僧",
-            "max_hp": 3200, "atk": 150, "def": 90, "spd": 50,
-            "exp": 0, "money_min": 0, "money_max": 0, "drops": {},
-            "ai": "support_healer"
+            "id": "blood_acolyte",
+            "name": "血祭侍僧",
+            "max_hp": 3200,
+            "atk": 150,
+            "def": 90,
+            "spd": 50,
+            "exp": 0,
+            "money_min": 0,
+            "money_max": 0,
+            "drops": {},
+            "ai": "support_healer",
+            "name_en": "Blood Ritual Acolyte"
         },
         "night_stalker": {
-            "id": "night_stalker", "name": "暗夜潛行者",
-            "max_hp": 3400, "atk": 190, "def": 95, "spd": 65,
-            "exp": 0, "money_min": 0, "money_max": 0, "drops": {},
-            "ai": "debuffer"
+            "id": "night_stalker",
+            "name": "暗夜潛行者",
+            "max_hp": 3400,
+            "atk": 190,
+            "def": 95,
+            "spd": 65,
+            "exp": 0,
+            "money_min": 0,
+            "money_max": 0,
+            "drops": {},
+            "ai": "debuffer",
+            "name_en": "Nightstalker"
         }
-    }
+    },
+    "area_name_en": "Vampire Castle"
 }

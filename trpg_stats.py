@@ -1,4 +1,6 @@
 """TRPG 屬性點與數值重算。"""
+from trpg_i18n import t
+
 STAT_KEYS = ("atk", "vit", "int", "spd", "res")
 POINTS_PER_LEVEL = 2
 
@@ -156,10 +158,13 @@ def migrate_player_stats(player, items: dict):
 def format_stat_alloc_summary(player) -> str:
     alloc = getattr(player, "stat_alloc", default_stat_alloc())
     unspent = get_unspent_points(player)
+    lang = getattr(player, "language", "zh")
     lines = [
         # 👇 全部改用安全的 .get() 抓法
-        f"⚔️攻擊 {alloc.get('atk', 0)} | 🛡️體力 {alloc.get('vit', 0)} | ✨智力 {alloc.get('int', 0)}",
-        f"💨速度 {alloc.get('spd', 0)} | 🔰抗性 {alloc.get('res', 0)} | 剩餘點數 {unspent}",
+        t(lang, "stats.alloc_line1", "⚔️攻擊 {atk} | 🛡️體力 {vit} | ✨智力 {int}",
+          atk=alloc.get('atk', 0), vit=alloc.get('vit', 0), int=alloc.get('int', 0)),
+        t(lang, "stats.alloc_line2", "💨速度 {spd} | 🔰抗性 {res} | 剩餘點數 {unspent}",
+          spd=alloc.get('spd', 0), res=alloc.get('res', 0), unspent=unspent),
     ]
     return "\n".join(lines)
 
