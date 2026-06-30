@@ -320,5 +320,86 @@
         "magic_scaling": 2.5,
         "name_en": "Earthquake Strike",
         "desc_en": "Deals 250 base earth damage to all enemies, ignoring 70% of defense and inflicting Paralysis (CD: 5, requires Lv.20)"
+    },
+    "iron_skin": {
+        "name": "鋼鐵之軀",
+        "desc": "提升自身防禦力 2 倍，持續 3 回合（CD: 4）",
+        "type": "support",
+        "buff": {
+            "def_mult": 2.0,
+            "turns": 3
+        },
+        "mp_cost": 20,
+        "cd": 4,
+        "req_level": 5,
+        "name_en": "Iron Skin",
+        "desc_en": "Doubles your defense for 3 turns — a defensive shield (CD: 4)."
+    },
+    "battle_cry": {
+        "name": "戰吼",
+        "desc": "提升自身攻擊力 40%、速度 20%，持續 3 回合（CD: 5）",
+        "type": "support",
+        "buff": {
+            "atk_mult": 1.4,
+            "spd_mult": 1.2,
+            "turns": 3
+        },
+        "mp_cost": 25,
+        "cd": 5,
+        "req_level": 8,
+        "name_en": "Battle Cry",
+        "desc_en": "Raises your ATK by 40% and SPD by 20% for 3 turns (CD: 5)."
+    },
+    "regeneration": {
+        "name": "再生術",
+        "desc": "每回合回復 8% 最大 HP，持續 4 回合（CD: 5）",
+        "type": "support",
+        "regen": {
+            "pct": 0.08,
+            "turns": 4
+        },
+        "mp_cost": 22,
+        "cd": 5,
+        "req_level": 6,
+        "name_en": "Regeneration",
+        "desc_en": "Restores 8% max HP each turn for 4 turns (CD: 5)."
+    },
+    "purify": {
+        "name": "淨化術",
+        "desc": "清除自身所有異常狀態與減益，並回復 10% 最大 HP（CD: 4）",
+        "type": "support",
+        "cleanse": true,
+        "heal_percent": 0.1,
+        "mp_cost": 18,
+        "cd": 4,
+        "req_level": 7,
+        "name_en": "Purify",
+        "desc_en": "Removes all your ailments and debuffs, and restores 10% max HP (CD: 4)."
+    },
+    "mana_surge": {
+        "name": "魔力湧泉",
+        "desc": "立即回復 80 點 MP（CD: 6）",
+        "type": "support",
+        "mp_restore": 80,
+        "mp_cost": 0,
+        "cd": 6,
+        "req_level": 10,
+        "name_en": "Mana Surge",
+        "desc_en": "Instantly restores 80 MP (CD: 6)."
+    },
+    "blade_dance": {
+        "name": "劍舞",
+        "desc": "對前排目標進行 3 次連擊，每擊造成 0.6 倍物理傷害，暴擊率提升（CD: 3）",
+        "type": "physical",
+        "element": "physical",
+        "hits": 3,
+        "power_multiplier": 0.6,
+        "crit_bonus": 0.1,
+        "mp_cost": 18,
+        "cd": 3,
+        "req_level": 9,
+        "target_type": "front",
+        "name_en": "Blade Dance",
+        "desc_en": "Strikes the front target 3 times for 0.6x physical damage each, with bonus crit chance (CD: 3)."
     }
 }

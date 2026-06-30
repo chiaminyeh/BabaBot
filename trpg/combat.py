@@ -4,9 +4,11 @@ import random
 
 from datetime import datetime
 
-from trpg_i18n import t, tf
+from trpg.i18n import t, tf
 
-from trpg_status import (
+from trpg.balance import XP_CURVE_BASE, XP_CURVE_EXP, PHYSICAL_CRIT_CHANCE, SKILL_CRIT_CHANCE
+
+from trpg.status import (
 
     process_turn_start,
 
@@ -26,7 +28,7 @@ from trpg_status import (
 
 )
 
-from trpg_stats import (
+from trpg.stats import (
 
     recalc_player_stats,
 
@@ -34,7 +36,7 @@ from trpg_stats import (
 
 )
 
-from trpg_entity import PlayerCombatant, MonsterCombatant
+from trpg.entity import PlayerCombatant, MonsterCombatant
 
 
 
@@ -42,7 +44,7 @@ from trpg_entity import PlayerCombatant, MonsterCombatant
 
 def exp_to_next_level(level: int) -> int:
 
-    return int(50 * (level ** 1.8))
+    return int(XP_CURVE_BASE * (level ** XP_CURVE_EXP))
 
 
 
@@ -62,6 +64,9 @@ def get_player_atk(player, items: dict, status_defs: dict = None) -> int:
     combat_debuffs = getattr(player, "combat_debuffs", None)
     if combat_debuffs and combat_debuffs.get("atk_mult"):
         atk = max(1, int(atk * combat_debuffs["atk_mult"]))
+    combat_buffs = getattr(player, "combat_buffs", None)
+    if combat_buffs and combat_buffs.get("turns", 0) > 0 and combat_buffs.get("atk_mult"):
+        atk = int(atk * combat_buffs["atk_mult"])
     return atk
 
 
@@ -76,6 +81,9 @@ def get_player_def(player, items: dict) -> int:
     combat_debuffs = getattr(player, "combat_debuffs", None)
     if combat_debuffs and combat_debuffs.get("def_mult"):
         df = max(0, int(df * combat_debuffs["def_mult"]))
+    combat_buffs = getattr(player, "combat_buffs", None)
+    if combat_buffs and combat_buffs.get("turns", 0) > 0 and combat_buffs.get("def_mult"):
+        df = int(df * combat_buffs["def_mult"])
     return df
 
 
@@ -84,6 +92,9 @@ def get_player_spd(player) -> int:
     combat_debuffs = getattr(player, "combat_debuffs", None)
     if combat_debuffs and combat_debuffs.get("spd_mult"):
         spd = max(1, int(spd * combat_debuffs["spd_mult"]))
+    combat_buffs = getattr(player, "combat_buffs", None)
+    if combat_buffs and combat_buffs.get("turns", 0) > 0 and combat_buffs.get("spd_mult"):
+        spd = int(spd * combat_buffs["spd_mult"])
     return spd
 
 
@@ -214,7 +225,7 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
                 dmg = max(1, int(dmg * ele_mult))
 
             # 物理跟 HP 獻祭流都可以暴擊，魔法傷害不會
-            if skill_type != "magic" and random.random() < (0.12 + crit_bonus):
+            if skill_type != "magic" and random.random() < (SKILL_CRIT_CHANCE + crit_bonus):
                 dmg = int(dmg * 1.5)
                 hit_logs.append(t(target.lang, "combat.skill_hit_crit", "  第{n}擊暴擊 {dmg} 點！", n=i + 1, dmg=dmg))
             else:
@@ -270,6 +281,7 @@ class TRPGCombat:
         self.is_defending = False
         self.is_dodging = False
         self.player.combat_debuffs = {}
+        self.player.combat_buffs = {}
 
     def _all_monsters_dead(self) -> bool:
         for slot in self.view.monster_slots:
@@ -345,11 +357,44 @@ class TRPGCombat:
             if debuffs["turns"] <= 0:
                 self.player.combat_debuffs = {}
 
+        buff_log = self._tick_combat_buffs()
+
         log, can_act = process_turn_start(self.player, self.cog.status_effects)
+        if buff_log:
+            log = f"{buff_log}\n{log}" if log else buff_log
         if self.player.current_hp <= 0:
             log = self.view.process_death(log, t(self.player.language, "combat.death_by_status", "💀 異常狀態將你折磨至死..."))
             return log, False
         return log, can_act
+
+    def _tick_combat_buffs(self) -> str:
+        """結算玩家自身的戰鬥增益：持續治癒（HoT）回血，並倒數攻防速強化的回合數。"""
+        buffs = getattr(self.player, "combat_buffs", None)
+        if not isinstance(buffs, dict) or not buffs:
+            return ""
+        lang = self.player.language
+        parts = []
+        # 持續治癒（HoT）
+        if buffs.get("regen_turns", 0) > 0:
+            heal = int(self.player.max_hp * buffs.get("regen_pct", 0)) + buffs.get("regen_amount", 0)
+            if heal > 0 and self.player.current_hp > 0:
+                before = self.player.current_hp
+                self.player.current_hp = min(self.player.max_hp, self.player.current_hp + heal)
+                gained = self.player.current_hp - before
+                if gained > 0:
+                    parts.append(t(lang, "combat.regen_tick", "🌿 持續治癒回復了 {heal} 點 HP。", heal=gained))
+            buffs["regen_turns"] -= 1
+            if buffs["regen_turns"] <= 0:
+                for k in ("regen_pct", "regen_amount", "regen_turns"):
+                    buffs.pop(k, None)
+        # 攻防速強化倒數
+        if buffs.get("turns", 0) > 0:
+            buffs["turns"] -= 1
+            if buffs["turns"] <= 0:
+                for k in ("atk_mult", "def_mult", "spd_mult", "turns"):
+                    buffs.pop(k, None)
+                parts.append(t(lang, "combat.buff_expired", "💨 你的強化效果消退了。"))
+        return "\n".join(parts)
     
     def advance_time(self, log: str) -> str:
         """推進時間條：玩家 AV 滿 100 前，場上每隻活著的怪物各自依自己的速度累積 AV 並行動。"""
@@ -361,7 +406,7 @@ class TRPGCombat:
 
             for slot in list(self.view.monster_slots):
                 if slot["hp"] <= 0:
-                    from trpg_monster_ai import tick_revive
+                    from trpg.monster_ai import tick_revive
                     log += tick_revive(slot, self.player.language)
                     continue
                 m_base = 15 if slot["monster"].get("is_boss") else 10
@@ -380,8 +425,8 @@ class TRPGCombat:
 
 
     def _monster_act_slot(self, slot: dict, log: str) -> str:
-        from trpg_status import process_monster_status
-        from trpg_monster_ai import run_monster_ai
+        from trpg.status import process_monster_status
+        from trpg.monster_ai import run_monster_ai
         status_log, m_can_act = process_monster_status(slot, self.cog.status_effects, self.player.language)
         if status_log: log += f"\n{status_log}"
         if slot["hp"] <= 0 or not m_can_act: return log
@@ -458,7 +503,7 @@ class TRPGCombat:
         flee_chance = min(0.95, max(0.2, 0.4 + (p_spd - m_spd) * 0.015))
 
         if random.random() < flee_chance:
-            from trpg_status import clear_all_status
+            from trpg.status import clear_all_status
             clear_all_status(self.player)
             self._clear_battle_state()
             if self.monster.get("is_dungeon", False):
@@ -511,7 +556,7 @@ class TRPGCombat:
         # 👇 套用屬性倍率
         p_dmg = max(1, int(p_dmg * ele_mult))
 
-        crit_rate = 0.1 + crit_bonus
+        crit_rate = PHYSICAL_CRIT_CHANCE + crit_bonus
         if random.random() < crit_rate:
             p_dmg = int(p_dmg * 1.6)
             return p_dmg, t(self.player.language, "combat.player_crit_hit", "💥 暴擊！造成 {dmg} 點傷害！", dmg=p_dmg)
@@ -572,17 +617,11 @@ class TRPGCombat:
             log += t(lang, "combat.skill_hp_sacrifice", "🩸 你殘忍地獻祭了自己 {cost} 點生命值！\n", cost=actual_hp_cost)
 
         if skill_type == "support":
-            if skill_id == "heal_light":
-                heal = int(self.player.max_hp * 0.20 + 50)
-            else:
-                heal = skill.get("heal_amount", 20)
-            before = self.player.current_hp
-            self.player.current_hp = min(self.player.max_hp, self.player.current_hp + heal)
-            log += t(lang, "combat.skill_heal", "✨ 【{skill}】回復了 {heal} 點 HP！", skill=skill_name, heal=self.player.current_hp - before)
+            log += self._apply_support_skill(skill, skill_id, skill_name, lang)
         elif skill_type == "flee":
             flee_chance = skill.get("flee_chance", 0.85)
             if random.random() < flee_chance:
-                from trpg_status import clear_all_status
+                from trpg.status import clear_all_status
                 clear_all_status(self.player)
                 self._clear_battle_state()
                 self.view.build_main_menu()
@@ -610,6 +649,62 @@ class TRPGCombat:
         return self.advance_time(log) # 👈 修正：統一交給時間條推進
 
 
+
+    def _apply_support_skill(self, skill: dict, skill_id: str, skill_name: str, lang: str) -> str:
+        """資料驅動的輔助技能：治癒 / 回魔 / 攻防速強化 / 持續治癒(HoT) / 淨化。
+        在 skills.json 加上對應欄位即可組合多種效果，不需改程式。"""
+        p = self.player
+        parts = []
+
+        # 立即治癒：heal_percent（最大HP比例）+ heal_amount（固定值）
+        heal = 0
+        if skill.get("heal_percent"):
+            heal += int(p.max_hp * skill["heal_percent"])
+        if skill.get("heal_amount"):
+            heal += skill["heal_amount"]
+        # 相容舊資料：heal_light 沒帶數值時用原本的預設公式
+        if heal == 0 and skill_id == "heal_light":
+            heal = int(p.max_hp * 0.20 + 50)
+        if heal > 0:
+            before = p.current_hp
+            p.current_hp = min(p.max_hp, p.current_hp + heal)
+            parts.append(t(lang, "combat.skill_heal", "✨ 【{skill}】回復了 {heal} 點 HP！", skill=skill_name, heal=p.current_hp - before))
+
+        # 回魔
+        if skill.get("mp_restore"):
+            before = p.current_mp
+            p.current_mp = min(p.max_mp, p.current_mp + skill["mp_restore"])
+            parts.append(t(lang, "combat.skill_mp_restore", "🔷 【{skill}】回復了 {mp} 點 MP！", skill=skill_name, mp=p.current_mp - before))
+
+        if not isinstance(getattr(p, "combat_buffs", None), dict):
+            p.combat_buffs = {}
+
+        # 攻防速強化（buff）：{"atk_mult":..,"def_mult":..,"spd_mult":..,"turns":..}
+        buff = skill.get("buff")
+        if buff:
+            for k in ("atk_mult", "def_mult", "spd_mult"):
+                if buff.get(k):
+                    p.combat_buffs[k] = buff[k]
+            p.combat_buffs["turns"] = max(p.combat_buffs.get("turns", 0), buff.get("turns", 3))
+            parts.append(t(lang, "combat.skill_buff", "💪 【{skill}】強化了你的戰鬥能力！（{turns}回合）", skill=skill_name, turns=buff.get("turns", 3)))
+
+        # 持續治癒（HoT）：{"pct":..,"amount":..,"turns":..}
+        regen = skill.get("regen")
+        if regen:
+            p.combat_buffs["regen_pct"] = regen.get("pct", 0)
+            p.combat_buffs["regen_amount"] = regen.get("amount", 0)
+            p.combat_buffs["regen_turns"] = regen.get("turns", 3)
+            parts.append(t(lang, "combat.skill_regen", "🌿 【{skill}】賦予了你持續治癒之力！（{turns}回合）", skill=skill_name, turns=regen.get("turns", 3)))
+
+        # 淨化：清除身上的異常狀態與戰鬥減益
+        if skill.get("cleanse"):
+            p.status_effects.clear()
+            p.combat_debuffs = {}
+            parts.append(t(lang, "combat.skill_cleanse", "🧼 【{skill}】淨化了你身上的異常狀態與減益！", skill=skill_name))
+
+        if not parts:
+            parts.append(t(lang, "combat.skill_cast_generic", "✨ 你施放了【{skill}】。", skill=skill_name))
+        return "\n".join(parts)
 
     def use_potion(self, item_id: str) -> str:
         lang = self.player.language

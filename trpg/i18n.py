@@ -3,7 +3,7 @@
 import json
 import os
 
-_DATA_DIR = os.path.join(os.path.dirname(__file__), "trpg_data")
+_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "trpg_data")
 _CATALOG_PATH = os.path.join(_DATA_DIR, "locale_en.json")
 _catalog = {}
 

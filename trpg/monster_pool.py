@@ -4,6 +4,11 @@ import json
 import os
 import random
 
+from trpg.balance import (
+    MONSTER_HP_PER_FLOOR, MONSTER_ATK_PER_FLOOR, MONSTER_DEF_PER_FLOOR,
+    BOSS_HP_MULT, BOSS_ATK_MULT, BOSS_DEF_BONUS, BOSS_EXP_MULT, BOSS_MONEY_MULT,
+)
+
 
 def load_monster_pool(data_dir: str) -> dict:
     path = os.path.join(data_dir, "monsters.json")
@@ -33,31 +38,33 @@ def instantiate_monster(monster_def: dict, floor: int, is_boss: bool = False, fl
     base_def = monster_def.get("base_def", 3)
     base_spd = monster_def.get("base_spd", 10)
 
-    hp = int(base_hp + eff_floor * 28 + eff_floor ** 1.3)
-    atk = int(base_atk + eff_floor * 7 + eff_floor ** 1.15)
-    df = int(base_def + eff_floor * 4)
+    hp = int(base_hp + eff_floor * MONSTER_HP_PER_FLOOR + eff_floor ** 1.3)
+    atk = int(base_atk + eff_floor * MONSTER_ATK_PER_FLOOR + eff_floor ** 1.15)
+    df = int(base_def + eff_floor * MONSTER_DEF_PER_FLOOR)
     spd = int(base_spd + eff_floor // 8)
     exp = int(12 + eff_floor * 14)
     money_min = int(8 + eff_floor * 4)
     money_max = int(16 + eff_floor * 7)
 
     if is_boss:
-        hp = int(hp * 3.0)
-        atk = int(atk * 1.7)
-        df += 15
-        exp = int(exp * 4.0)
-        money_min *= 4
-        money_max *= 4
+        hp = int(hp * BOSS_HP_MULT)
+        atk = int(atk * BOSS_ATK_MULT)
+        df += BOSS_DEF_BONUS
+        exp = int(exp * BOSS_EXP_MULT)
+        money_min *= BOSS_MONEY_MULT
+        money_max *= BOSS_MONEY_MULT
 
-    name = monster_def.get("name", monster_def.get("id", "未知怪物"))
-    if is_boss:
-        name = f"💀 {name} (Lv.{floor})"
-    else:
-        name = f"{name} (Lv.{floor})"
+    zh_name = monster_def.get("name", monster_def.get("id", "未知怪物"))
+    en_name = monster_def.get("name_en") or zh_name
+    prefix = "💀 " if is_boss else ""
+    suffix = f" (Lv.{floor})"
+    name = f"{prefix}{zh_name}{suffix}"
+    name_en = f"{prefix}{en_name}{suffix}"
 
     instance = {
         "id": monster_def.get("id"),
         "name": name,
+        "name_en": name_en,
         "max_hp": max(1, hp),
         "atk": max(1, atk),
         "def": max(0, df),
@@ -98,7 +105,7 @@ def pick_random_monster(pool: dict, floor: int, want_boss: bool = False, floor_s
     tier = pick_tier_for_floor(pool, floor)
     if not tier:
         # 完全沒有資料時的保底怪物，避免炸掉戰鬥流程
-        fallback = {"id": "unknown", "name": "迷霧怪影", "base_hp": 20, "base_atk": 8, "base_def": 2, "base_spd": 10}
+        fallback = {"id": "unknown", "name": "迷霧怪影", "name_en": "Mist Phantom", "base_hp": 20, "base_atk": 8, "base_def": 2, "base_spd": 10}
         return instantiate_monster(fallback, floor, want_boss, floor_scale)
 
     if want_boss and tier.get("boss"):
@@ -106,7 +113,7 @@ def pick_random_monster(pool: dict, floor: int, want_boss: bool = False, floor_s
 
     monsters = tier.get("monsters", {})
     if not monsters:
-        return instantiate_monster(tier.get("boss", {"id": "unknown", "name": "迷霧怪影"}), floor, want_boss, floor_scale)
+        return instantiate_monster(tier.get("boss", {"id": "unknown", "name": "迷霧怪影", "name_en": "Mist Phantom"}), floor, want_boss, floor_scale)
 
     monster_def = random.choice(list(monsters.values()))
     return instantiate_monster(monster_def, floor, False, floor_scale)

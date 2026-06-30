@@ -1,0 +1,163 @@
+"""Player save model: TRPGPlayer, shop-level gating, and the dungeon stat wrapper."""
+
+from trpg.stats import default_stat_alloc, recalc_player_stats
+from trpg.combat import exp_to_next_level
+
+# Bump this when you change the save schema in a way that needs real migration
+# logic (not just a new defaulted field). Stored on every player save.
+SCHEMA_VERSION = 1
+
+# Immutable scalar defaults (safe to share — never mutated in place).
+_SCALAR_DEFAULTS = {
+    "level": 1,
+    "exp": 0,
+    "max_hp": 60,
+    "current_hp": 60,
+    "base_atk": 12,
+    "base_def": 4,
+    "base_magic": 0,
+    "base_res": 0,
+    "max_mp": 25,
+    "current_mp": 25,
+    "weapon": None,
+    "armor": None,
+    "accessory": None,
+    "weapon_upgrade": 0,
+    "armor_upgrade": 0,
+    "current_area": "area_00village",
+    "last_shop_refresh": "",
+    "jester_immunity_date": "",
+    "mystery_merchant_date": "",
+    "mystery_shop_active": False,
+    "tower_floor": 1,
+    "dungeon_floor": 1,
+    "prestige_count": 0,
+    "last_quest_popup_ts": 0,
+    "sargeras_defeat_count": 0,
+    "legend_cave_unlocked": False,
+    "language": "zh",  # 顯示語言："zh" 或 "en"
+}
+
+
+def _fresh_containers() -> dict:
+    """Per-player mutable defaults — a NEW copy each call so saves never alias."""
+    return {
+        "inventory": {"health_potion": 2},  # 新玩家初始送兩罐藥水
+        "shop_items": [],
+        "stats": {"monsters_killed": 0, "total_deaths": 0, "money_spent": 0},
+        "achievements": [],          # 已解鎖成就 ID
+        "active_quests": {},         # {"quest_001": {"progress": 2}}
+        "completed_quests": [],      # 已完成任務 ID
+        "skills": [],                # 已學技能 ID
+        "equipped_skills": [],       # 裝備中的技能（上限 8）
+        "daily_boss_kills": {},      # {"area_grassland": "2026-06-01"}
+        "killed_bosses": [],
+        "tower_milestones": [],
+        "trophies": [],
+        "combat_history": [],
+        "status_effects": {},        # {"poison": {"turns": 3}}
+        "trade_inbox": [],
+        "stat_alloc": default_stat_alloc(),
+        "mystery_shop_items": [],
+        "dungeon_state": {"floor": 1, "choices": [], "in_run": False},
+        "hidden_quest_progress": {},
+        "dungeon_buffs": {},
+        "combat_debuffs": {},      # 怪物技能造成的戰鬥內減益
+        "combat_buffs": {},        # 玩家技能給的戰鬥內增益（攻防速強化 / 持續治癒）
+        "cave_state": {"current_node": "entrance", "history": []},
+    }
+
+
+class TRPGPlayer:
+    def __init__(self, user_id):
+        self.id = str(user_id)
+        for key, val in _SCALAR_DEFAULTS.items():
+            setattr(self, key, val)
+        for key, val in _fresh_containers().items():
+            setattr(self, key, val)
+        self.schema_version = SCHEMA_VERSION
+
+    def remove_item(self, item_id: str, amount: int = 1) -> bool:
+        current = self.inventory.get(item_id, 0)
+        if current < amount:
+            return False
+        self.inventory[item_id] -= amount
+        if self.inventory[item_id] <= 0:
+            if item_id in self.inventory:
+                del self.inventory[item_id]
+        return True
+
+    def add_exp(self, amount, items=None):
+        self.exp += amount
+        needed = exp_to_next_level(self.level)
+        leveled_up = False
+
+        while self.exp >= needed:
+            self.exp -= needed
+            self.level += 1
+            needed = exp_to_next_level(self.level)
+            leveled_up = True
+
+        recalc_player_stats(self, items or {}, heal_full=leveled_up)
+        return leveled_up
+
+    def to_dict(self):
+        return self.__dict__
+
+    @classmethod
+    def from_dict(cls, data):
+        # __init__ seeds every field with its default, so any field missing from
+        # an older save is already correct. We then overlay the saved values.
+        player = cls(data["id"])
+        container_defaults = _fresh_containers()
+        for key, val in data.items():
+            if key == "id":
+                continue
+            # Guard: a saved null/None must not clobber a container default with
+            # the wrong type (older saves occasionally stored null for these).
+            if key in container_defaults and not isinstance(val, type(container_defaults[key])):
+                continue
+            setattr(player, key, val)
+        # Special case preserved from the old logic: if a save predates the
+        # equipped-skills system, seed it from the first 8 learned skills.
+        if "equipped_skills" not in data and player.skills:
+            player.equipped_skills = player.skills[:8]
+        player.schema_version = SCHEMA_VERSION
+        return player
+
+
+def _item_shop_level_ok(player, item_id: str, item_data: dict, skills: dict) -> bool:
+    if item_data.get("mystery_only"):
+        return False
+    req = item_data.get("exclusive_level", 0)
+    if req > player.level:
+        return False
+    if item_data.get("type") == "skill_scroll":
+        skill = skills.get(item_data.get("teaches", ""), {})
+        if skill.get("req_level", 1) > player.level:
+            return False
+    return True
+
+
+
+class RoguePlayerWrapper:
+    def __init__(self, real_player):
+        self.real_player = real_player
+
+    def __getattr__(self, name):
+        if getattr(self.real_player, 'current_area', '') == 'area_dungeon' and self.real_player.dungeon_state.get('in_run'):
+            if name in ['level', 'exp', 'max_hp', 'current_hp', 'base_atk', 'base_def', 'base_spd', 'base_magic', 
+                        'inventory', 'skills', 'equipped_skills', 'stat_alloc', 'weapon', 'armor', 'accessory']:
+                return self.real_player.dungeon_state.get(name)
+        return getattr(self.real_player, name)
+    
+    def __setattr__(self, name, value):
+        if name == 'real_player':
+            super().__setattr__(name, value)
+            return
+        if getattr(self.real_player, 'current_area', '') == 'area_dungeon' and self.real_player.dungeon_state.get('in_run'):
+            if name in ['level', 'exp', 'max_hp', 'current_hp', 'base_atk', 'base_def', 'base_spd', 'base_magic', 
+                        'inventory', 'skills', 'equipped_skills', 'stat_alloc', 'weapon', 'armor', 'accessory']:
+                self.real_player.dungeon_state[name] = value
+                return
+        setattr(self.real_player, name, value)

@@ -45,7 +45,6 @@
     "召喚蜂群": "Summon Swarm",
     "召喚血族": "Summon Bloodkin",
     "召喚鼠群": "Summon Rat Swarm",
-    "召集同夥": "Rally Allies",
     "召集部隊": "Rally Troops",
     "史萊姆果凍": "Slime Jelly",
     "吸血蝙蝠": "Vampire Bat",
@@ -236,5 +235,19 @@
     "鼠王祭司": "Rat King's Priest",
     "鼠王衛兵": "Rat King's Guard",
     "龍骨毀滅劍": "Dragonbone Ruin Blade",
-    "龍鱗重甲": "Dragonscale Plate Armor"
+    "龍鱗重甲": "Dragonscale Plate Armor",
+    "鋼鐵之軀": "Iron Skin",
+    "戰吼": "Battle Cry",
+    "再生術": "Regeneration",
+    "淨化術": "Purify",
+    "魔力湧泉": "Mana Surge",
+    "劍舞": "Blade Dance",
+    "守護者戰錘": "Guardian Warhammer",
+    "守護者鎧甲": "Guardian Plate",
+    "守護者護符": "Guardian Charm",
+    "大法師法杖": "Archmage Staff",
+    "大法師長袍": "Archmage Robe",
+    "大法師魔導球": "Archmage Orb",
+    "馭風墜飾": "Windrunner Pendant",
+    "狂戰士巨斧": "Berserker Axe"
 }

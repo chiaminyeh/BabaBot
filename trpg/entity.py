@@ -9,7 +9,7 @@ Combatant 是玩家／怪物共同實作的介面：hp、mp、atk、def_、magic
 """
 
 
-from trpg_i18n import t, tf
+from trpg.i18n import t, tf
 
 
 class Combatant:
@@ -116,22 +116,22 @@ class PlayerCombatant(Combatant):
 
     @property
     def atk(self) -> int:
-        from trpg_combat import get_player_atk
+        from trpg.combat import get_player_atk
         return get_player_atk(self.player, self.items, self.status_defs)
 
     @property
     def def_(self) -> int:
-        from trpg_combat import get_player_def
+        from trpg.combat import get_player_def
         return get_player_def(self.player, self.items)
 
     @property
     def magic(self) -> int:
-        from trpg_combat import get_player_magic
+        from trpg.combat import get_player_magic
         return get_player_magic(self.player, self.items, self.status_defs)
 
     @property
     def spd(self) -> int:
-        from trpg_combat import get_player_spd
+        from trpg.combat import get_player_spd
         return get_player_spd(self.player)
 
     @property

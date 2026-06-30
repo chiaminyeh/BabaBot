@@ -1,16 +1,9 @@
 """TRPG 屬性點與數值重算。"""
-from trpg_i18n import t
+from trpg.i18n import t
+from trpg.balance import ALLOC_BONUS, STAT_POINTS_PER_LEVEL, PRESTIGE_BONUS_PER_LEVEL, SET_BONUSES
 
 STAT_KEYS = ("atk", "vit", "int", "spd", "res")
-POINTS_PER_LEVEL = 2
-
-ALLOC_BONUS = {
-    "atk": 3,
-    "vit": 1,  # 1點體力 = +12血量 & +2防禦
-    "int": 1,  # 1點智力 = +4魔攻 & +3最大MP
-    "spd": 3,  # 1點速度 = +3速度
-    "res": 2,
-}
+POINTS_PER_LEVEL = STAT_POINTS_PER_LEVEL  # 相容別名，調整請改 trpg/balance.py
 
 
 def default_stat_alloc() -> dict:
@@ -33,6 +26,7 @@ def get_unspent_points(player) -> int:
 def get_equipment_bonuses(player, items: dict) -> dict:
     # 直接手動展開需要的裝備加成欄位，避免跟新的配點 STAT_KEYS 衝突
     bonuses = {"atk": 0, "def": 0, "hp": 0, "magic": 0, "res": 0, "spd": 0, "mp": 0}
+    set_counts = {}
     for slot in (
         getattr(player, "weapon", None),
         getattr(player, "armor", None),
@@ -47,7 +41,32 @@ def get_equipment_bonuses(player, items: dict) -> dict:
             bonuses["res"] += eq.get("res_bonus", 0)
             bonuses["spd"] += eq.get("spd_bonus", 0)
             bonuses["mp"] += eq.get("mp_bonus", 0)
+            set_name = eq.get("set")
+            if set_name:
+                set_counts[set_name] = set_counts.get(set_name, 0) + 1
+
+    # 套裝加成：湊齊同一 set 的多件裝備，疊加所有達標門檻的加成
+    for set_name, count in set_counts.items():
+        for need, set_bonus in SET_BONUSES.get(set_name, {}).items():
+            if count >= need:
+                for stat, val in set_bonus.items():
+                    bonuses[stat] = bonuses.get(stat, 0) + val
     return bonuses
+
+
+def active_set_bonuses(player, items: dict) -> list:
+    """回傳目前已啟用的套裝列表 [(set_name, pieces_equipped), ...]，給 UI 顯示用。"""
+    set_counts = {}
+    for slot in (getattr(player, "weapon", None), getattr(player, "armor", None), getattr(player, "accessory", None)):
+        if slot and slot in items:
+            s = items[slot].get("set")
+            if s:
+                set_counts[s] = set_counts.get(s, 0) + 1
+    active = []
+    for set_name, count in set_counts.items():
+        if any(count >= need for need in SET_BONUSES.get(set_name, {})):
+            active.append((set_name, count))
+    return active
 
 
 def recalc_player_stats(player, items: dict = None, heal_full: bool = False):
@@ -56,7 +75,7 @@ def recalc_player_stats(player, items: dict = None, heal_full: bool = False):
     alloc = getattr(player, "stat_alloc", None) or default_stat_alloc()
     eq = get_equipment_bonuses(player, items or {})
     prestige = getattr(player, "prestige_count", 0)
-    prestige_mult = 1.0 + prestige * 0.10  # 每級轉生提升 10% 全屬性
+    prestige_mult = 1.0 + prestige * PRESTIGE_BONUS_PER_LEVEL  # 每級轉生提升的全屬性（見 balance.py）
 
     base_atk = 10 + level * 2 + alloc.get("atk", 0) * ALLOC_BONUS["atk"] + eq["atk"]
     if getattr(player, "weapon", None):
@@ -132,12 +151,8 @@ def migrate_player_stats(player, items: dict):
     if not hasattr(player, "base_spd"): player.base_spd = 5 + player.level
 
     if not hasattr(player, "equipped_skills") or player.equipped_skills is None:
-        player.equipped_skills = []
-        if getattr(player, "skills", None):
-            # Take up to 8 active skills
-            from trpg_data import skills as default_skills_dict  # not available easily here, we'll just take top 8
-            # wait, trpg_stats doesn't have access to skills dict easily, we'll just take the first 8
-            player.equipped_skills = player.skills[:8]
+        # 取最多 8 個已學技能作為預設裝備技能
+        player.equipped_skills = player.skills[:8] if getattr(player, "skills", None) else []
 
 
     if not getattr(player, "stat_alloc", None):

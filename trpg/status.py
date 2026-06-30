@@ -13,8 +13,8 @@ _tick_status() 加一個 elif 分支，玩家與怪物會同時套用。
 import random
 from datetime import datetime
 
-from trpg_entity import PlayerCombatant, MonsterCombatant
-from trpg_i18n import t, tf
+from trpg.entity import PlayerCombatant, MonsterCombatant
+from trpg.i18n import t, tf
 
 
 def format_status_list(status_effects: dict, status_defs: dict, lang: str = "zh") -> str:

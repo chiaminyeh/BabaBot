@@ -12,7 +12,7 @@ import random
 
 import discord
 
-from trpg_i18n import t, tf
+from trpg.i18n import t, tf
 
 COOLDOWN_SECONDS = 90
 OFFER_CHANCE = 0.15

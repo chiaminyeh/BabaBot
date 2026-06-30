@@ -13,12 +13,12 @@ monster dict 可選欄位：
 
 import random
 
-from trpg_i18n import t, tf
+from trpg.i18n import t, tf
 
 
 def _plain_attack(combat, slot: dict, log: str, atk_mult: float = 1.0) -> str:
-    from trpg_combat import calc_monster_damage, get_player_def, get_player_spd
-    from trpg_status import try_monster_apply_status
+    from trpg.combat import calc_monster_damage, get_player_def, get_player_spd
+    from trpg.status import try_monster_apply_status
 
     lang = combat.player.language
     monster = slot["monster"]
@@ -45,7 +45,7 @@ def _plain_attack(combat, slot: dict, log: str, atk_mult: float = 1.0) -> str:
     combat.player.current_hp -= m_dmg
     log += t(lang, "monster_ai.attack_hit", "\n🥊 {name} 行動！使你受到了 {dmg} 點傷害。", name=tf(monster, "name", lang), dmg=m_dmg)
 
-    from trpg_status import break_sleep_on_damage
+    from trpg.status import break_sleep_on_damage
     wake_log = break_sleep_on_damage(combat.player.status_effects, combat.player.language)
     if wake_log:
         log += f"\n{wake_log}"
@@ -221,7 +221,7 @@ def ai_kamikaze(combat, slot, log):
             log += t(lang, "monster_ai.kamikaze_explode", "\n💥 **{name} 體內的魔力失去控制，發生了劇烈自爆！**", name=tf(slot["monster"], "name", lang))
             combat.player.current_hp -= dmg
             log += t(lang, "monster_ai.kamikaze_damage", "\n💥 對你造成了 {dmg} 點真實傷害！", dmg=dmg)
-            from trpg_status import break_sleep_on_damage
+            from trpg.status import break_sleep_on_damage
             wake_log = break_sleep_on_damage(combat.player.status_effects, combat.player.language)
             if wake_log:
                 log += f"\n{wake_log}"
@@ -391,7 +391,7 @@ def _pick_active_skill(slot: dict):
 
 def _find_minion_def(combat, minion_id: str):
     """召喚目標可能在魔塔/地下城怪物池（含 boss_minions），也可能是目前區域的怪物或區域專屬衍生怪。"""
-    from trpg_monster_pool import find_monster_def
+    from trpg.monster_pool import find_monster_def
 
     pool_def = find_monster_def(combat.cog.monster_pool, minion_id)
     if pool_def:
@@ -405,7 +405,7 @@ def _find_minion_def(combat, minion_id: str):
 
 
 def _execute_summon_minion(combat, slot: dict, skill: dict, log: str) -> str:
-    from trpg_monster_pool import instantiate_monster
+    from trpg.monster_pool import instantiate_monster
 
     lang = combat.player.language
     monster = slot["monster"]
@@ -454,8 +454,8 @@ def _execute_summon_minion(combat, slot: dict, skill: dict, log: str) -> str:
 def _execute_cast_skill(combat, slot: dict, effect: dict, log: str) -> str:
     """讓怪物的主動技能直接引用 skills.json 裡任何一個技能（含魔法），
     跟玩家使用技能走同一套 execute_skill 傷害／異常狀態邏輯——怪物想放法術不用再寫第二份公式。"""
-    from trpg_combat import execute_skill
-    from trpg_entity import PlayerCombatant, MonsterCombatant
+    from trpg.combat import execute_skill
+    from trpg.entity import PlayerCombatant, MonsterCombatant
 
     lang = combat.player.language
     monster = slot["monster"]
