@@ -81,6 +81,20 @@ def get_player_def(player, items: dict) -> int:
     return df
 
 
+def get_player_mdef(player, items: dict) -> int:
+    mdf = getattr(player, "base_mdef", 0)
+    dungeon_buffs = getattr(player, "dungeon_buffs", None)
+    if dungeon_buffs and dungeon_buffs.get("mdef_mult"):
+        mdf = int(mdf * dungeon_buffs["mdef_mult"])
+    combat_debuffs = getattr(player, "combat_debuffs", None)
+    if combat_debuffs and combat_debuffs.get("mdef_mult"):
+        mdf = max(0, int(mdf * combat_debuffs["mdef_mult"]))
+    combat_buffs = getattr(player, "combat_buffs", None)
+    if combat_buffs and combat_buffs.get("turns", 0) > 0 and combat_buffs.get("mdef_mult"):
+        mdf = int(mdf * combat_buffs["mdef_mult"])
+    return mdf
+
+
 def get_player_spd(player) -> int:
     spd = max(5, getattr(player, "base_spd", 10))
     combat_debuffs = getattr(player, "combat_debuffs", None)
@@ -116,8 +130,9 @@ def get_sell_price(item_id: str, items: dict) -> int:
 
 
 def calc_physical_damage(atk: int, defense: int, multiplier: float = 1.0) -> int:
-
-    dmg = max(1, int((atk - defense) * multiplier))
+    # 👇 倍率要先套用在攻擊力上，再扣防禦：(atk - def) * mult 會讓高倍率技能對付高防禦
+    # 目標時完全打不動（甚至可能倍率越高、扣掉防禦後反而更接近下限傷害）。
+    dmg = max(1, int(atk * multiplier - defense))
 
     return int(dmg * random.uniform(0.85, 1.15))
 
@@ -190,6 +205,7 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
     def_pierce = skill.get("def_pierce", 0.5)
     crit_bonus = skill.get("crit_bonus", 0)
     hp_scaling_mult = skill.get("hp_scaling_multiplier")
+    debuff_target = skill.get("debuff_target")
     atk = caster.atk
     magic = caster.magic
 
@@ -197,8 +213,20 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
     target_blocks = []
 
     for target in targets:
+        debuff_msg = ""
+        # 「先削弱、再攻擊」的物理技能：debuff_target 在算傷害前就把目標的對應數值降低，
+        # 這一擊本身就會吃到變弱後的數值（不用另外補一顆技能才能達成削防再打）。
+        if debuff_target and hasattr(target, "slot"):
+            from trpg.monster_ai import _apply_monster_stat_mod
+            stat = debuff_target.get("stat", "def")
+            mult = debuff_target.get("mult", 0.75)
+            turns = debuff_target.get("turns", 2)
+            _apply_monster_stat_mod(target.slot, stat, mult, turns)
+            stat_name = {"def": t(target.lang, "monster_ai.stat_def", "防禦力"), "atk": t(target.lang, "monster_ai.stat_atk", "攻擊力"), "spd": t(target.lang, "monster_ai.stat_spd", "速度")}.get(stat, stat)
+            debuff_msg = t(target.lang, "combat.debuff_target_applied", "🔻 {target} 的{stat}被削弱了！（{turns}回合）\n", target=target.name, stat=stat_name, turns=turns)
+
         if target.magic_absorb_shield > 0 and skill_type == "magic":
-            dmg = calc_magic_damage(magic, target.def_, base_power, def_pierce, magic_scaling)
+            dmg = calc_magic_damage(magic, target.mdef, base_power, def_pierce, magic_scaling)
             heal = max(1, int(dmg * hits))
             target.hp = min(target.max_hp, target.hp + heal)
             target_blocks.append(t(target.lang, "combat.shield_absorb_magic", "🌀 {target} 的護盾吸收了魔法！回復了 {heal} HP！", target=target.name, heal=heal))
@@ -212,7 +240,7 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
             if hp_scaling_mult:
                 dmg = max(1, int(hp_cost * hp_scaling_mult * ele_mult))
             elif skill_type == "magic":
-                dmg = calc_magic_damage(magic, target.def_, base_power, def_pierce, magic_scaling)
+                dmg = calc_magic_damage(magic, target.mdef, base_power, def_pierce, magic_scaling)
                 dmg = max(1, int(dmg * ele_mult))
             else:
                 dmg = calc_physical_damage(atk, target.def_, multiplier)
@@ -229,7 +257,7 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
         target.hp -= t_dmg
         total_dmg += t_dmg
 
-        block = t(target.lang, "combat.deal_damage", "對 {target} 造成 {dmg} 點傷害！", target=target.name, dmg=t_dmg)
+        block = debuff_msg + t(target.lang, "combat.deal_damage", "對 {target} 造成 {dmg} 點傷害！", target=target.name, dmg=t_dmg)
         if ele_msg: block += f"\n   ↳ {ele_msg}"
         if hits > 1: block += "\n" + "\n".join(hit_logs)
 
@@ -664,6 +692,18 @@ class TRPGCombat:
         if self.skill_cds.get(skill_id, 0) > 0:
             return t(lang, "combat.skill_on_cooldown", "⏳ 【{skill}】冷卻中！（剩餘 {turns} 回合）", skill=skill_name, turns=self.skill_cds[skill_id])
 
+        # 👇 資源檢查必須在 _player_turn_start() 之前：否則 MP/HP 不足而施放失敗時，
+        # 回合根本沒有真的發生（怪物不會行動），卻已經先扣了增益/冷卻的剩餘回合數。
+        mp_cost = skill.get("mp_cost", 0)
+        hp_cost_pct = skill.get("hp_cost_percent", 0.0)
+        actual_hp_cost = int(self.player.max_hp * hp_cost_pct)
+
+        if mp_cost > 0 and self.player.current_mp < mp_cost:
+            return t(lang, "combat.skill_mp_insufficient", "❌ MP 不足！需要 {cost} 點，目前只有 {have} 點。", cost=mp_cost, have=self.player.current_mp)
+        if actual_hp_cost > 0:
+            if self.player.current_hp <= actual_hp_cost:
+                return t(lang, "combat.skill_hp_insufficient", "❌ HP 不足！【{skill}】需要獻祭 {cost} 點生命，你會把自己抽乾的！", skill=skill_name, cost=actual_hp_cost)
+
         dot_log, can_act = self._player_turn_start()
         if self.player.current_hp <= 0: return dot_log
         log = f"{dot_log}\n" if dot_log else ""
@@ -671,16 +711,6 @@ class TRPGCombat:
         if not can_act:
             self.cog.save_players()
             return self.advance_time(log) # 👈 修正：拔掉 _monster_counter
-
-        mp_cost = skill.get("mp_cost", 0)
-        hp_cost_pct = skill.get("hp_cost_percent", 0.0)
-        actual_hp_cost = int(self.player.max_hp * hp_cost_pct)
-
-        if mp_cost > 0 and self.player.current_mp < mp_cost:
-            return log + t(lang, "combat.skill_mp_insufficient", "❌ MP 不足！需要 {cost} 點，目前只有 {have} 點。", cost=mp_cost, have=self.player.current_mp)
-        if actual_hp_cost > 0:
-            if self.player.current_hp <= actual_hp_cost:
-                return log + t(lang, "combat.skill_hp_insufficient", "❌ HP 不足！【{skill}】需要獻祭 {cost} 點生命，你會把自己抽乾的！", skill=skill_name, cost=actual_hp_cost)
 
         if skill.get("cd", 0) > 0: self.skill_cds[skill_id] = skill["cd"]
 
@@ -788,14 +818,16 @@ class TRPGCombat:
 
         item_data = self.cog.items.get(item_id, {})
         heal_target = get_potion_heal_target(item_data, item_id)
+
+        # 👇 同樣的道理：喝藥水前先檢查滿血/滿魔，失敗就不算一個回合，不要先扣增益/冷卻。
+        if heal_target == "mp" and self.player.current_mp >= self.player.max_mp:
+            return t(lang, "combat.potion_mp_full", "❓ 魔力已經滿了，別浪費藥水。")
+        if heal_target == "hp" and self.player.current_hp >= self.player.max_hp:
+            return t(lang, "combat.potion_hp_full", "❓ 生命值已經滿了，別浪費藥水。")
+
         dot_log, can_act = self._player_turn_start()
         if self.player.current_hp <= 0: return dot_log
         log = f"{dot_log}\n" if dot_log else ""
-
-        if heal_target == "mp" and self.player.current_mp >= self.player.max_mp:
-            return log + t(lang, "combat.potion_mp_full", "❓ 魔力已經滿了，別浪費藥水。")
-        if heal_target == "hp" and self.player.current_hp >= self.player.max_hp:
-            return log + t(lang, "combat.potion_hp_full", "❓ 生命值已經滿了，別浪費藥水。")
 
         self.player.inventory[item_id] -= 1
         if self.player.inventory[item_id] <= 0: del self.player.inventory[item_id]

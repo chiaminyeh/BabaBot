@@ -1,9 +1,17 @@
 """TRPG 屬性點與數值重算。"""
 from trpg.i18n import t
-from trpg.balance import ALLOC_BONUS, STAT_POINTS_PER_LEVEL, PRESTIGE_BONUS_PER_LEVEL, SET_BONUSES
+from trpg.balance import (
+    ALLOC_BONUS, STAT_POINTS_PER_LEVEL, PRESTIGE_BONUS_PER_LEVEL, SET_BONUSES,
+    PRESTIGE_BASE_LEVEL, PRESTIGE_LEVEL_STEP,
+)
 
 STAT_KEYS = ("atk", "vit", "int", "spd", "res")
 POINTS_PER_LEVEL = STAT_POINTS_PER_LEVEL  # 相容別名，調整請改 trpg/balance.py
+
+
+def prestige_required_level(prestige_count: int) -> int:
+    """轉生所需等級隨已轉生次數提高（30 -> 31 -> 32 ...），避免越轉越輕鬆。"""
+    return PRESTIGE_BASE_LEVEL + prestige_count * PRESTIGE_LEVEL_STEP
 
 
 def default_stat_alloc() -> dict:
@@ -25,7 +33,7 @@ def get_unspent_points(player) -> int:
 
 def get_equipment_bonuses(player, items: dict) -> dict:
     # 直接手動展開需要的裝備加成欄位，避免跟新的配點 STAT_KEYS 衝突
-    bonuses = {"atk": 0, "def": 0, "hp": 0, "magic": 0, "res": 0, "spd": 0, "mp": 0}
+    bonuses = {"atk": 0, "def": 0, "mdef": 0, "hp": 0, "magic": 0, "res": 0, "spd": 0, "mp": 0}
     set_counts = {}
     for slot in (
         getattr(player, "weapon", None),
@@ -36,6 +44,7 @@ def get_equipment_bonuses(player, items: dict) -> dict:
             eq = items[slot]
             bonuses["atk"] += eq.get("atk_bonus", 0)
             bonuses["def"] += eq.get("def_bonus", 0)     # 抓取裝備的防禦
+            bonuses["mdef"] += eq.get("mdef_bonus", 0)   # 抓取裝備的魔法防禦
             bonuses["hp"] += eq.get("hp_bonus", 0)       # 抓取裝備的血量
             bonuses["magic"] += eq.get("magic_bonus", 0) # 抓取裝備的魔力(智力)
             bonuses["res"] += eq.get("res_bonus", 0)
@@ -97,7 +106,12 @@ def recalc_player_stats(player, items: dict = None, heal_full: bool = False):
     # 👇 智力 (int) 統一管理魔法攻擊與 MP
     base_int = 10 + int(level * 2.5) + alloc.get("int", 0) * 4 + eq["magic"]
     player.base_int = int(base_int * prestige_mult)
-    
+
+    # 👇 魔法防禦：主要吃 int 配點（懂魔法的人也更會抵禦魔法），體力配點給一點點分潤，
+    # 讓純戰士不會對法術毫無抵抗力，但真正的抗法還是要走 int 或裝備 mdef_bonus。
+    base_mdef = 2 + level * 1.0 + alloc.get("int", 0) * 1.5 + alloc.get("vit", 0) * 0.5 + eq["mdef"]
+    player.base_mdef = int(base_mdef * prestige_mult)
+
     old_max_mp = getattr(player, "max_mp", 25)
     base_max_mp = 40 + level * 6 + alloc.get("int", 0) * 3 + eq["mp"]
     player.max_mp = int(base_max_mp * prestige_mult)
@@ -149,6 +163,7 @@ def migrate_player_stats(player, items: dict):
     if hasattr(player, "base_magic"): del player.base_magic
     if not hasattr(player, "base_res"): player.base_res = 0
     if not hasattr(player, "base_spd"): player.base_spd = 5 + player.level
+    if not hasattr(player, "base_mdef"): player.base_mdef = 0
 
     if not hasattr(player, "equipped_skills") or player.equipped_skills is None:
         # 取最多 8 個已學技能作為預設裝備技能

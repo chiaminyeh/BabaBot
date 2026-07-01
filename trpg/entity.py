@@ -52,6 +52,10 @@ class Combatant:
         raise NotImplementedError
 
     @property
+    def mdef(self) -> int:
+        raise NotImplementedError
+
+    @property
     def magic(self) -> int:
         raise NotImplementedError
 
@@ -125,6 +129,11 @@ class PlayerCombatant(Combatant):
         return get_player_def(self.player, self.items)
 
     @property
+    def mdef(self) -> int:
+        from trpg.combat import get_player_mdef
+        return get_player_mdef(self.player, self.items)
+
+    @property
     def magic(self) -> int:
         from trpg.combat import get_player_magic
         return get_player_magic(self.player, self.items, self.status_defs)
@@ -157,6 +166,8 @@ class PlayerCombatant(Combatant):
 
 # 怪物身上沒有獨立的「魔攻」數值時，套用這個比例反推（讓舊怪物資料不用全部補欄位也能施法）
 _MONSTER_MAGIC_FALLBACK_RATIO = 1.0
+# 怪物身上沒有獨立的「魔防」欄位時，用物防的比例反推
+_MONSTER_MDEF_FALLBACK_RATIO = 0.6
 
 
 class MonsterCombatant(Combatant):
@@ -213,6 +224,11 @@ class MonsterCombatant(Combatant):
     @property
     def def_(self) -> int:
         return self.monster_dict.get("def", 0)
+
+    @property
+    def mdef(self) -> int:
+        # 舊怪物資料沒有獨立的魔防欄位時，用物防的比例反推，不用全部怪物補欄位
+        return self.monster_dict.get("mdef", int(self.monster_dict.get("def", 0) * _MONSTER_MDEF_FALLBACK_RATIO))
 
     @property
     def magic(self) -> int:

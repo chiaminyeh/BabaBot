@@ -1,4 +1,17 @@
 {
+    "d_starter_bow": {
+        "name": "地城短弓",
+        "name_en": "Dungeon Shortbow",
+        "desc": "攻擊+7、速度+7、暴擊+8%",
+        "desc_en": "+7 ATK, +7 SPD, +8% crit",
+        "type": "weapon",
+        "rarity": "common",
+        "build": "ranger",
+        "starter": true,
+        "atk_bonus": 7,
+        "spd_bonus": 7,
+        "crit_bonus": 0.08
+    },
     "d_rusty_blade": {
         "name": "地城鏽劍",
         "name_en": "Dungeon Rusty Blade",

@@ -18,6 +18,11 @@ ALLOC_BONUS = {"atk": 3, "vit": 1, "int": 1, "spd": 3, "res": 2}
 # --- Prestige / rebirth -----------------------------------------------------
 # Every prestige level multiplies all base stats by (1 + this).
 PRESTIGE_BONUS_PER_LEVEL = 0.10
+# Level required to prestige climbs by PRESTIGE_LEVEL_STEP each time you do it
+# (30, 31, 32, ...) — leveling gets faster as prior prestiges make you stronger,
+# so the level requirement keeps pace instead of staying a fixed Lv.30 forever.
+PRESTIGE_BASE_LEVEL = 30
+PRESTIGE_LEVEL_STEP = 1
 
 # --- Combat -----------------------------------------------------------------
 # Base crit chance before per-skill/weapon crit bonuses.
@@ -51,15 +56,17 @@ SET_BONUSES = {
 
 # --- Dungeon (roguelike mode) ----------------------------------------------
 DUNGEON_MAX_FLOOR = 15
-DUNGEON_AP_PER_FLOOR = 3
 DUNGEON_BOSS_FLOOR = 15
+# Mini-boss checkpoints: forced boss fights that grant a relic choice (not a run-ending fight).
+DUNGEON_MINIBOSS_FLOORS = (5, 10)
 # Sealed level-1 starting character for a dungeon run.
 DUNGEON_START_STATS = {
-    "max_hp": 60, "base_atk": 12, "base_def": 5,
+    "max_hp": 60, "base_atk": 12, "base_def": 5, "base_mdef": 3,
     "base_spd": 10, "base_magic": 8, "base_res": 0, "max_mp": 30,
 }
-# Stat points granted per dungeon floor cleared (spent in 整備, free of AP).
-DUNGEON_STAT_POINTS_PER_FLOOR = 3
+# Sealed character's "level" is fixed (no in-run leveling) — set high enough that
+# dungeon-pool skills up to req_level 10 are always usable once picked up.
+DUNGEON_SEALED_LEVEL = 10
 
 # Dungeon monster scaling — deliberately gentle on floor 1 so a fresh sealed
 # character (12 atk / 5 def / 60 hp) comfortably beats a floor-1 monster.

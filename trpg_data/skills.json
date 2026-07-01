@@ -9,7 +9,41 @@
         "cd": 2,
         "req_level": 1,
         "name_en": "Power Slash",
-        "desc_en": "Deals 1.5x physical damage (CD: 2)"
+        "desc_en": "Deals 1.5x physical damage (CD: 2)",
+        "dungeon_pool": true
+    },
+    "sunder_strike": {
+        "name": "破甲斬",
+        "desc": "先劈開敵人的防禦再攻擊：造成 1.1 倍物理傷害，並使敵人防禦力下降 30%（2回合，CD: 3）",
+        "type": "physical",
+        "element": "physical",
+        "power_multiplier": 1.1,
+        "debuff_target": {
+            "stat": "def",
+            "mult": 0.7,
+            "turns": 2
+        },
+        "cd": 3,
+        "req_level": 3,
+        "dungeon_pool": true,
+        "name_en": "Sunder Strike",
+        "desc_en": "Cracks the enemy's defense before striking: deals 1.1x physical damage and lowers their DEF by 30% for 2 turns (CD: 3)"
+    },
+    "battle_focus": {
+        "name": "戰意昂揚",
+        "desc": "凝聚戰意，接下來 3 回合攻擊力 +25%、速度 +15%（CD: 5）",
+        "type": "support",
+        "mp_cost": 10,
+        "buff": {
+            "atk_mult": 1.25,
+            "spd_mult": 1.15,
+            "turns": 3
+        },
+        "cd": 5,
+        "req_level": 3,
+        "dungeon_pool": true,
+        "name_en": "Battle Focus",
+        "desc_en": "Rally your fighting spirit: for the next 3 turns, ATK +25% and SPD +15% (CD: 5)"
     },
     "heal_light": {
         "name": "初級治療",
@@ -20,7 +54,8 @@
         "cd": 4,
         "req_level": 1,
         "name_en": "Basic Heal",
-        "desc_en": "Restores 100 HP to yourself (CD: 4)"
+        "desc_en": "Restores 100 HP to yourself (CD: 4)",
+        "dungeon_pool": true
     },
     "double_strike": {
         "name": "連環快斬",
@@ -32,7 +67,23 @@
         "cd": 2,
         "req_level": 1,
         "name_en": "Rapid Slash Combo",
-        "desc_en": "Swiftly strikes twice in succession, each hit dealing 0.75x damage (CD: 2)"
+        "desc_en": "Swiftly strikes twice in succession, each hit dealing 0.75x damage (CD: 2)",
+        "dungeon_pool": true
+    },
+    "twin_shot": {
+        "name": "雙矢連射",
+        "desc": "快速射出兩箭，每箭 0.7 倍傷害，並有機率使敵人中毒（CD: 3）",
+        "type": "physical",
+        "element": "physical",
+        "power_multiplier": 0.7,
+        "hits": 2,
+        "cd": 3,
+        "req_level": 1,
+        "apply_status": "poison",
+        "status_turns": 2,
+        "dungeon_pool": true,
+        "name_en": "Twin Shot",
+        "desc_en": "Fires two rapid arrows, each dealing 0.7x damage, with a chance to Poison the enemy (CD: 3)"
     },
     "combo_attack": {
         "name": "連續攻擊",
@@ -41,7 +92,8 @@
         "req_level": 8,
         "extra_attack_multiplier": 0.75,
         "name_en": "Combo Strike",
-        "desc_en": "Passive: basic attacks strike one extra time (0.75x damage, requires Lv.8)"
+        "desc_en": "Passive: basic attacks strike one extra time (0.75x damage, requires Lv.8)",
+        "dungeon_pool": true
     },
     "shadow_step": {
         "name": "暗影步",
@@ -64,7 +116,8 @@
         "cd": 4,
         "req_level": 10,
         "name_en": "Blood Sacrifice",
-        "desc_en": "Costs 20% max HP, dealing true dark damage equal to 2.5x the HP sacrificed (CD: 4, requires Lv.10)"
+        "desc_en": "Costs 20% max HP, dealing true dark damage equal to 2.5x the HP sacrificed (CD: 4, requires Lv.10)",
+        "dungeon_pool": true
     },
     "fireball": {
         "name": "火球術",
@@ -80,7 +133,8 @@
         "base_power": 60,
         "magic_scaling": 0.8,
         "name_en": "Fireball",
-        "desc_en": "Deals 60 base fire damage, inflicting Burn on the enemy for 2 turns (CD: 3)"
+        "desc_en": "Deals 60 base fire damage, inflicting Burn on the enemy for 2 turns (CD: 3)",
+        "dungeon_pool": true
     },
     "ice_spear": {
         "name": "寒冰矛",
@@ -96,7 +150,8 @@
         "base_power": 50,
         "magic_scaling": 0.8,
         "name_en": "Ice Spear",
-        "desc_en": "Deals 50 base ice damage, with a high chance to Freeze the enemy for 1 turn (CD: 4)"
+        "desc_en": "Deals 50 base ice damage, with a high chance to Freeze the enemy for 1 turn (CD: 4)",
+        "dungeon_pool": true
     },
     "thunder_strike": {
         "name": "落雷術",
@@ -112,7 +167,8 @@
         "base_power": 80,
         "magic_scaling": 0.8,
         "name_en": "Lightning Bolt",
-        "desc_en": "Deals 80 base thunder damage, inflicting Paralysis for 2 turns (CD: 5)"
+        "desc_en": "Deals 80 base thunder damage, inflicting Paralysis for 2 turns (CD: 5)",
+        "dungeon_pool": true
     },
     "water_ball": {
         "name": "水球術",
@@ -333,7 +389,8 @@
         "cd": 4,
         "req_level": 5,
         "name_en": "Iron Skin",
-        "desc_en": "Doubles your defense for 3 turns — a defensive shield (CD: 4)."
+        "desc_en": "Doubles your defense for 3 turns — a defensive shield (CD: 4).",
+        "dungeon_pool": true
     },
     "battle_cry": {
         "name": "戰吼",
@@ -348,7 +405,8 @@
         "cd": 5,
         "req_level": 8,
         "name_en": "Battle Cry",
-        "desc_en": "Raises your ATK by 40% and SPD by 20% for 3 turns (CD: 5)."
+        "desc_en": "Raises your ATK by 40% and SPD by 20% for 3 turns (CD: 5).",
+        "dungeon_pool": true
     },
     "regeneration": {
         "name": "再生術",
@@ -362,7 +420,8 @@
         "cd": 5,
         "req_level": 6,
         "name_en": "Regeneration",
-        "desc_en": "Restores 8% max HP each turn for 4 turns (CD: 5)."
+        "desc_en": "Restores 8% max HP each turn for 4 turns (CD: 5).",
+        "dungeon_pool": true
     },
     "purify": {
         "name": "淨化術",
@@ -374,7 +433,8 @@
         "cd": 4,
         "req_level": 7,
         "name_en": "Purify",
-        "desc_en": "Removes all your ailments and debuffs, and restores 10% max HP (CD: 4)."
+        "desc_en": "Removes all your ailments and debuffs, and restores 10% max HP (CD: 4).",
+        "dungeon_pool": true
     },
     "mana_surge": {
         "name": "魔力湧泉",
@@ -385,7 +445,8 @@
         "cd": 6,
         "req_level": 10,
         "name_en": "Mana Surge",
-        "desc_en": "Instantly restores 80 MP (CD: 6)."
+        "desc_en": "Instantly restores 80 MP (CD: 6).",
+        "dungeon_pool": true
     },
     "blade_dance": {
         "name": "劍舞",
@@ -400,6 +461,7 @@
         "req_level": 9,
         "target_type": "front",
         "name_en": "Blade Dance",
-        "desc_en": "Strikes the front target 3 times for 0.6x physical damage each, with bonus crit chance (CD: 3)."
+        "desc_en": "Strikes the front target 3 times for 0.6x physical damage each, with bonus crit chance (CD: 3).",
+        "dungeon_pool": true
     }
 }

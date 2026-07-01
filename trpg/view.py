@@ -9,10 +9,10 @@ from trpg.combat import TRPGCombat, exp_to_next_level, get_sell_price, get_playe
 from trpg.status import format_status_list, activate_jester_immunity, clear_all_status, get_daily_jester_immunity
 from trpg.monster_pool import pick_random_monster
 from trpg.quest_popup import process_quest_popups
-from trpg.stats import default_stat_alloc, recalc_player_stats, get_unspent_points, format_stat_alloc_summary, get_potion_heal_target
+from trpg.stats import default_stat_alloc, recalc_player_stats, get_unspent_points, format_stat_alloc_summary, get_potion_heal_target, prestige_required_level
 from trpg.player import RoguePlayerWrapper, _item_shop_level_ok
 from trpg import dungeon as dg
-from trpg.balance import DUNGEON_MAX_FLOOR, DUNGEON_AP_PER_FLOOR, DUNGEON_BOSS_FLOOR, DUNGEON_STAT_POINTS_PER_FLOOR
+from trpg.balance import DUNGEON_MAX_FLOOR, DUNGEON_BOSS_FLOOR, DUNGEON_MINIBOSS_FLOORS, PRESTIGE_LEVEL_STEP
 from trpg.modals import StatAllocModal, ElderChiefModal, BuyItemModal, SellItemModal
 from trpg.recipes import CRAFTING_RECIPES, UPGRADE_COSTS
 
@@ -49,7 +49,20 @@ class TRPGGameView(discord.ui.View):
         self.inventory_page = 0
         self.current_menu_state = "main"
         self.viewing_leaderboard = False
-        self.build_main_menu()
+
+        # 👇 若上次面板關閉/逾時時還有一場沒打完的戰鬥，接回去，而不是讓 /trpg 變成免費逃跑。
+        real_player = getattr(self.player, "real_player", self.player)
+        pending_battle = getattr(real_player, "active_battle", None)
+        if pending_battle and pending_battle.get("monster_slots"):
+            self.monster_slots = pending_battle["monster_slots"]
+            self.combat.player_av = pending_battle.get("player_av", 100)
+            self.combat.skill_cds = pending_battle.get("skill_cds", {})
+            self.combat.is_defending = pending_battle.get("is_defending", False)
+            self.combat.is_dodging = pending_battle.get("is_dodging", False)
+            self.log_message = t(self.player.language, "menu.battle_restored", "⚔️ 你回到了先前未完成的戰鬥，敵人依然虎視眈眈！")
+            self.build_battle_menu()
+        else:
+            self.build_main_menu()
 
     # --- 多怪物欄位（最多 3 格）：前排永遠是還活著的第一格 ---
 
@@ -103,7 +116,8 @@ class TRPGGameView(discord.ui.View):
 
                 lang = getattr(self.player, "language", "zh")
                 embed = self.generate_embed()
-                embed.description = f"```\n{t(lang, 'menu.timeout_notice', '⌛ 此冒險面板已因超時（10分鐘未操作）而關閉並自動存檔。\n請重新輸入 `/trpg` 來繼續冒險！')}\n```"
+                timeout_notice = t(lang, "menu.timeout_notice", "⌛ 此冒險面板已因超時（10分鐘未操作）而關閉並自動存檔。\n請重新輸入 `/trpg` 來繼續冒險！")
+                embed.description = f"```\n{timeout_notice}\n```"
                 await self.message.edit(embed=embed, view=self)
             except Exception:
                 pass
@@ -141,16 +155,14 @@ class TRPGGameView(discord.ui.View):
         "btn_leaderboard": {"m": "handle_leaderboard"},
         "btn_quest_hall": {"m": "handle_quest_hall"},
         "btn_daily_claim": {"m": "handle_daily_claim"},
+        "btn_achievements": {"m": "handle_achievements", "await": False},
         "btn_combat_history": {"m": "handle_combat_history", "i": True},
         "btn_rest": {"m": "handle_rest"},
         "btn_shop_menu": {"m": "handle_shop_menu"},
         "btn_shop_refresh": {"m": "handle_shop_refresh"},
         "btn_shop_sell": {"m": "handle_sell_menu"},
         "btn_equip_menu": {"m": "handle_equip_menu"},
-        "btn_dung_explore": {"m": "handle_dung_explore"},
-        "btn_dung_prep": {"m": "handle_dung_prep"},
         "btn_dung_next": {"m": "handle_dung_next"},
-        "btn_back_dungeon": {"m": "build_dungeon_menu", "await": False},
         "btn_boss_explore": {"m": "handle_boss_explore"},
         "btn_skill_learn": {"m": "handle_learn_skill_menu"},
         "btn_stat_alloc": {"m": "handle_stat_alloc_menu"},
@@ -185,10 +197,10 @@ class TRPGGameView(discord.ui.View):
     # custom_id, "int_tail" = int of the last underscore segment.
     _PREFIX_ROUTES = [
         ("move_to_", {"m": "handle_move_execute", "arg": "full"}),
-        ("dung_enter_", {"m": "handle_dung_enter", "arg": "int_tail"}),
-        ("dprep_", {"m": "handle_dung_prep_add", "arg": "suffix"}),
+        ("darch_", {"m": "handle_dung_archetype", "arg": "suffix"}),
         ("dpick_", {"m": "handle_dung_loot_pick", "arg": "suffix"}),
         ("drelic_", {"m": "handle_dung_relic_pick", "arg": "suffix"}),
+        ("dskill_", {"m": "handle_dung_skill_pick", "arg": "suffix"}),
         ("equip_skill_", {"m": "handle_skill_equip_action", "arg": "suffix", "k": {"equip": True}}),
         ("unequip_skill_", {"m": "handle_skill_equip_action", "arg": "suffix", "k": {"equip": False}}),
         ("equip_", {"m": "handle_equip_action", "arg": "suffix", "k": {"equip": True}}),
@@ -267,6 +279,22 @@ class TRPGGameView(discord.ui.View):
                 if not await self._run_route(spec, interaction, custom_id, prefix):
                     return
 
+        # 👇 每次互動後同步戰鬥快照：in_battle 就存檔，戰鬥結束就清掉。
+        # 這是唯一能防止玩家靠重打 /trpg 或晾著面板逾時來免費逃跑的地方——
+        # 所有戰鬥中的按鈕互動最終都會走到這裡。
+        real_player = getattr(self.player, "real_player", self.player)
+        if getattr(self, "in_battle", False) and self.monster_slots:
+            real_player.active_battle = {
+                "monster_slots": self.monster_slots,
+                "player_av": self.combat.player_av,
+                "skill_cds": self.combat.skill_cds,
+                "is_defending": self.combat.is_defending,
+                "is_dodging": self.combat.is_dodging,
+            }
+        else:
+            real_player.active_battle = None
+        self.cog.save_players()
+
         # 先即時更新冒險面板，讓玩家動作立刻有回饋。
         # （任務彈窗可能會呼叫 LLM 產生 NPC 對話，若放在更新畫面前會讓殺怪後卡一下）
         try:
@@ -318,7 +346,12 @@ class TRPGGameView(discord.ui.View):
             self.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.secondary, custom_id="btn_equip_menu", row=0, emoji="🛡️")
             self.add_action_button(label=t(lang, "menu.btn_potions", "藥水"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=1, emoji="🎒")
             self.add_action_button(label=t(lang, "menu.btn_log", "記錄"), style=discord.ButtonStyle.secondary, custom_id="btn_combat_history", row=1, emoji="📝")
-            self.add_action_button(label=t(lang, "menu.btn_area_boss", "區域BOSS"), style=discord.ButtonStyle.danger, custom_id="btn_boss_explore", row=1, emoji="👹")
+            today_str = datetime.today().strftime("%Y-%m-%d")
+            boss_done_today = self.player.daily_boss_kills.get(self.player.current_area) == today_str
+            if boss_done_today:
+                self.add_action_button(label=t(lang, "menu.btn_area_boss_done", "✅ 已討伐"), style=discord.ButtonStyle.secondary, custom_id="btn_boss_explore", row=1, emoji="👹", disabled=True)
+            else:
+                self.add_action_button(label=t(lang, "menu.btn_area_boss", "區域BOSS"), style=discord.ButtonStyle.danger, custom_id="btn_boss_explore", row=1, emoji="👹")
 
     def build_artisan_menu(self):
         self.clear_items()
@@ -328,12 +361,23 @@ class TRPGGameView(discord.ui.View):
         self.add_action_button(label=t(lang, "menu.btn_craft_workshop", "手藝工坊"), style=discord.ButtonStyle.primary, custom_id="btn_craft_menu", emoji="🔨")
         self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
+    def _daily_claimed_today(self) -> bool:
+        baba = getattr(self.cog.bot, "baba", None)
+        if baba is None or not hasattr(baba, "daily_claims"):
+            return False
+        today_str = datetime.today().strftime("%Y-%m-%d")
+        return baba.daily_claims.get(int(self.user_id)) == today_str
+
     def build_guild_menu(self):
         self.clear_items()
         lang = self.player.language
         self.log_message = t(lang, "menu.guild_prompt", "🏛️ 【冒險者公會】\n請選擇你要進行的公會服務：")
-        self.add_action_button(label=t(lang, "menu.btn_daily", "每日簽到"), style=discord.ButtonStyle.success, custom_id="btn_daily_claim", emoji="🎁")
+        if self._daily_claimed_today():
+            self.add_action_button(label=t(lang, "menu.btn_daily_claimed", "✅ 已簽到"), style=discord.ButtonStyle.secondary, custom_id="btn_daily_claim", emoji="🎁", disabled=True)
+        else:
+            self.add_action_button(label=t(lang, "menu.btn_daily", "每日簽到"), style=discord.ButtonStyle.success, custom_id="btn_daily_claim", emoji="🎁")
         self.add_action_button(label=t(lang, "menu.btn_quest_hall", "任務大廳"), style=discord.ButtonStyle.success, custom_id="btn_quest_hall", emoji="📜")
+        self.add_action_button(label=t(lang, "menu.btn_achievements", "成就"), style=discord.ButtonStyle.primary, custom_id="btn_achievements", emoji="🏅")
         self.add_action_button(label=t(lang, "menu.btn_leaderboard", "排行榜"), style=discord.ButtonStyle.secondary, custom_id="btn_leaderboard", emoji="🏆")
         self.add_action_button(label=t(lang, "menu.btn_stat_alloc", "屬性分配"), style=discord.ButtonStyle.primary, custom_id="btn_stat_alloc", emoji="📊")
         self.add_action_button(label=t(lang, "menu.btn_combat_history", "戰鬥記錄"), style=discord.ButtonStyle.secondary, custom_id="btn_combat_history", emoji="📝")
@@ -342,14 +386,46 @@ class TRPGGameView(discord.ui.View):
     async def handle_daily_claim(self):
         lang = self.player.language
         baba = getattr(self.cog.bot, "baba", None)
-        self.build_guild_menu()  # 先重建公會選單（會設定預設 log_message），再覆蓋成簽到結果
         if baba is None or not hasattr(baba, "claim_daily"):
+            self.build_guild_menu()
             return
         ok, reward, total = baba.claim_daily(self.user_id)
+        self.build_guild_menu()  # 重建公會選單，讓已簽到按鈕立刻反映新狀態，再覆蓋成簽到結果訊息
         if ok:
             self.log_message = t(lang, "menu.daily_claimed", "🎁 每日簽到成功！獲得 {reward} {money}，目前共有 {total}。", reward=reward, money=baba.money_name, total=total)
         else:
             self.log_message = t(lang, "menu.daily_already", "❌ 今天已經簽到過了，明天再來吧！")
+
+    def handle_achievements(self):
+        self.clear_items()
+        lang = self.player.language
+        p = self.player
+        unlocked_ids = set(getattr(p, "achievements", []) or [])
+        achievements_config = getattr(self.cog, "achievements", {})
+
+        lines = [t(lang, "achievements.title", "🏅 【成就總覽】")]
+        if unlocked_ids:
+            lines.append(t(lang, "achievements.unlocked_header", "\n── 已解鎖 ──"))
+        for achv_id, info in achievements_config.items():
+            if achv_id not in unlocked_ids:
+                continue
+            lines.append(f"✅ {tf(info, 'name', lang)} — {tf(info, 'desc', lang)}")
+
+        lines.append(t(lang, "achievements.locked_header", "\n── 未解鎖 ──"))
+        any_locked = False
+        for achv_id, info in achievements_config.items():
+            if achv_id in unlocked_ids:
+                continue
+            any_locked = True
+            achv_type = info.get("type")
+            threshold = info.get("threshold", 0)
+            current_val = p.stats.get(achv_type, 0)
+            lines.append(f"🔒 {tf(info, 'name', lang)} — {tf(info, 'desc', lang)} ({min(current_val, threshold)}/{threshold})")
+        if not any_locked:
+            lines.append(t(lang, "achievements.all_unlocked", "🎉 已解鎖所有成就！"))
+
+        self.log_message = "\n".join(lines)
+        self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_guild_menu", emoji="🔙")
 
     def build_quest_hall_menu(self, notice=""):
         """公會任務大廳：列出進行中任務的進度，以及可接取的看板委託。"""
@@ -1500,12 +1576,26 @@ class TRPGGameView(discord.ui.View):
             cost_str = " (" + ", ".join(cost_texts) + ")" if cost_texts else ""
             cd_text = f" [CD:{cd_left}]" if cd_left > 0 else ""
 
-            disabled = cd_left > 0
+            mp_cost = skill.get("mp_cost", 0)
+            hp_cost_pct = skill.get("hp_cost_percent", 0.0)
+            actual_hp_cost = int(self.player.max_hp * hp_cost_pct)
+            cant_afford = (mp_cost > 0 and self.player.current_mp < mp_cost) or (
+                actual_hp_cost > 0 and self.player.current_hp <= actual_hp_cost
+            )
+            disabled = cd_left > 0 or cant_afford
+
+            if cd_left > 0:
+                style = discord.ButtonStyle.secondary
+            elif cant_afford:
+                style = discord.ButtonStyle.danger
+            else:
+                style = discord.ButtonStyle.success
 
             self.add_action_button(
                 label=f"{skill_name}{cost_str}{cd_text}"[:80],
-                style=discord.ButtonStyle.secondary if disabled else discord.ButtonStyle.success,
+                style=style,
                 custom_id=f"skill_{skill_id}",
+                disabled=disabled,
             )
         self.log_message = "\n".join(lines)
         self.add_action_button(label=t(lang, "battle.btn_back_to_battle", "返回戰鬥"), style=discord.ButtonStyle.secondary, custom_id="btn_back_battle", emoji="🔙")
@@ -1954,71 +2044,83 @@ class TRPGGameView(discord.ui.View):
         d_state = self._dstate()
 
         # 沒有進行中的 run，或偵測到「舊格式」的 run（缺少改版後的欄位）→ 重新開一場乾淨的探索
-        stale = "relics" not in d_state or "max_mp" not in d_state
+        stale = "relics" not in d_state or "max_mp" not in d_state or "archetype" not in d_state
         if not d_state.get("in_run") or stale:
             dg.start_run(d_state)
-            dg.recompute_loadout(self.player, d_state, self.cog)
-            self.log_message = t(lang, "dungeon.intro", "🕳️ **【無盡深淵地下城】**\n你的真實力量在此被封印，將從零開始。靠著這裡撿到的裝備與遺物(relic)打造流派，撐到第 15 層擊敗深淵領主！只有通關或死亡才會結算真實獎勵。")
+            self.log_message = t(lang, "dungeon.intro", "🕳️ **【無盡深淵地下城】**\n你的真實力量在此被封印，將從零開始。靠著撿到的裝備、遺物(relic)與菁英傳授的技能打造流派，撐到第 15 層擊敗深淵領主！只有通關或死亡才會結算真實獎勵。")
+            self.cog.save_players()
 
+        if not d_state.get("archetype"):
+            self.build_archetype_menu()
+            return
+
+        if d_state.get("floor_state") == "resolved":
+            self._render_floor_resolved_menu()
+            return
+
+        self._resolve_floor_room()
+
+    def build_archetype_menu(self):
+        self.clear_items()
+        lang = self.player.language
+        lines = [self.log_message, "", t(lang, "dungeon.archetype_prompt", "⚔️ 在踏入深淵之前，選擇你的起手流派（之後仍可靠戰利品與菁英傳授的技能轉型）：")]
+        for aid, adef in dg.ARCHETYPES.items():
+            name = tf(adef, "name", lang)
+            desc = tf(adef, "desc", lang)
+            lines.append(f"• **{name}** — {desc}")
+            self.add_action_button(label=name, style=discord.ButtonStyle.primary, custom_id=f"darch_{aid}")
+        self.log_message = "\n".join(lines)
+
+    async def handle_dung_archetype(self, archetype_id: str):
+        lang = self.player.language
+        d_state = self._dstate()
+        if not dg.apply_archetype(self.player, d_state, self.cog, archetype_id):
+            self.build_archetype_menu()
+            return
+        adef = dg.ARCHETYPES[archetype_id]
+        self.log_message = t(lang, "dungeon.archetype_chosen", "✅ 你選擇了【{name}】流派！{desc}", name=tf(adef, "name", lang), desc=tf(adef, "desc", lang))
+        self.cog.save_players()
+        self.build_dungeon_menu()
+
+    def _render_floor_resolved_menu(self):
+        lang = self.player.language
+        d_state = self._dstate()
         floor = d_state.get("floor", 1)
-        ap = d_state.get("ap", 0)
         relics = len(d_state.get("relics", []))
-        pts = d_state.get("stat_points", 0)
         hp_line = f"{d_state.get('current_hp', 0)}/{d_state.get('max_hp', 0)}"
-
-        self.log_message += t(
-            lang, "dungeon.floor_status",
-            "\n\n🏰 **深淵地下城 - 第 {floor}/{maxf} 層**\n❤️ {hp} | ⏳ AP {ap} | 🗿 遺物 {relics} | 🎯 點數 {pts}\n你想做什麼？",
-            floor=floor, maxf=DUNGEON_MAX_FLOOR, hp=hp_line, ap=ap, relics=relics, pts=pts,
+        prefix = f"{self.log_message}\n\n" if self.log_message else ""
+        self.log_message = prefix + t(
+            lang, "dungeon.floor_cleared_status",
+            "🏰 **深淵地下城 - 第 {floor}/{maxf} 層**\n❤️ {hp} | 🗿 遺物 {relics}",
+            floor=floor, maxf=DUNGEON_MAX_FLOOR, hp=hp_line, relics=relics,
         )
-
-        if ap > 0:
-            self.add_action_button(label=t(lang, "dungeon.btn_explore_room", "🚪 探索房間 (1 AP)"), style=discord.ButtonStyle.primary, custom_id="btn_dung_explore")
-        else:
-            self.add_action_button(label=t(lang, "dungeon.btn_next_floor", "🪜 前往下一層"), style=discord.ButtonStyle.primary, custom_id="btn_dung_next")
-        self.add_action_button(label=t(lang, "dungeon.btn_prep", "📊 整備配點 (免 AP)"), style=discord.ButtonStyle.success, custom_id="btn_dung_prep")
+        self.add_action_button(label=t(lang, "dungeon.btn_next_floor", "🪜 前往下一層"), style=discord.ButtonStyle.primary, custom_id="btn_dung_next")
         self.add_action_button(label=t(lang, "dungeon.btn_abandon", "放棄探索"), style=discord.ButtonStyle.danger, custom_id="btn_dung_flee", emoji="🏃")
 
-    _ROOM_META = {
-        "monster": ("dungeon.room_monster", "怪物通道", "👹"),
-        "elite": ("dungeon.room_elite", "菁英房間（掉遺物）", "💠"),
-        "rest": ("dungeon.room_rest", "休息房間", "🔥"),
-        "event": ("dungeon.room_event", "隨機事件", "🌟"),
-    }
-
-    async def handle_dung_explore(self):
+    def _resolve_floor_room(self):
+        """每層只有一個房間：一進層就立刻結算（戰鬥／休息／事件），不再有 AP 或開門選擇，
+        流派、戰利品與遺物才是力量的唯一來源。"""
         lang = self.player.language
         d_state = self._dstate()
-        if d_state.get("ap", 0) <= 0:
-            return
-        self.clear_items()
-        if not d_state.get("choices"):
-            d_state["choices"] = [dg.roll_room(d_state.get("floor", 1)) for _ in range(3)]
-            self.cog.save_players()
-        self.log_message = t(lang, "dungeon.three_doors", "🚪 你來到三扇門前，每扇門通往不同的房間。要進入哪一扇？（進入房間消耗 1 AP）")
-        for i, rt in enumerate(d_state["choices"]):
-            key, zh, emo = self._ROOM_META.get(rt, ("dungeon.room_unknown", "未知房間", "❓"))
-            self.add_action_button(label=t(lang, "dungeon.btn_enter_room", "進入 {room_label}", room_label=t(lang, key, zh)), style=discord.ButtonStyle.primary, custom_id=f"dung_enter_{i}", emoji=emo)
-        self.add_action_button(label=t(lang, "char.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_dungeon")
-
-    async def handle_dung_enter(self, idx: int):
-        lang = self.player.language
-        d_state = self._dstate()
-        if d_state.get("ap", 0) <= 0:
-            return
-        choices = d_state.get("choices", [])
-        if idx >= len(choices):
-            return
-        rt = choices[idx]
-        d_state["ap"] -= 1
-        d_state["choices"] = []
         floor = d_state.get("floor", 1)
 
+        boss_kind = dg.forced_boss_kind(floor)
+        if boss_kind:
+            mon = dg.build_monster(self.cog, floor, "boss")
+            self.start_combat([mon])
+            if boss_kind == "final_boss":
+                self.log_message = t(lang, "dungeon.boss_floor_arrival", "🪜 你來到了第 {floor} 層... 深處傳來恐怖的咆哮聲——深淵領主就在前方！", floor=floor)
+            else:
+                self.log_message = t(lang, "dungeon.miniboss_floor_arrival", "🪜 你來到了第 {floor} 層... 一名地下城守衛頭目擋住了去路！擊敗牠將獲得一個遺物。", floor=floor)
+            self.build_battle_menu()
+            return
+
+        rt = dg.roll_room(floor)
         if rt in ("monster", "elite"):
-            mon = dg.build_monster(self.cog, floor, "elite" if rt == "elite" else "monster")
+            mon = dg.build_monster(self.cog, floor, rt)
             self.start_combat([mon])
             if rt == "elite":
-                self.log_message = t(lang, "dungeon.elite_encounter", "💠 菁英怪物擋住去路！擊敗牠能獲得更好的戰利品（含稀有裝備）！\n你遇到了 {monster_name}！", monster_name=tf(mon, "name", lang))
+                self.log_message = t(lang, "dungeon.elite_encounter", "💠 菁英怪物擋住去路！擊敗牠能學會一個新技能！\n你遇到了 {monster_name}！", monster_name=tf(mon, "name", lang))
             else:
                 self.log_message = t(lang, "dungeon.monster_encounter", "⚔️ 遭遇戰鬥！你遇到了 {monster_name}！", monster_name=tf(mon, "name", lang))
             self.build_battle_menu()
@@ -2028,84 +2130,53 @@ class TRPGGameView(discord.ui.View):
             heal = int(d_state["max_hp"] * 0.4)
             d_state["current_hp"] = min(d_state["max_hp"], d_state.get("current_hp", 0) + heal)
             self.log_message = t(lang, "dungeon.room_rest_done", "🔥 你在房間裡升起營火好好休息，回復了 {heal} 點 HP！", heal=heal)
+            d_state["floor_state"] = "resolved"
             self.cog.save_players()
             self.build_dungeon_menu()
             return
 
-        # event：純治療或陷阱（不再給金幣）
-        import random
-        if random.random() < 0.55:
+        # event：治療、陷阱，或直接遭遇一般怪物的伏擊（隨機事件不再只有安全的兩種結果）
+        roll = random.random()
+        if roll < 0.4:
             heal = int(d_state["max_hp"] * 0.3)
             d_state["current_hp"] = min(d_state["max_hp"], d_state.get("current_hp", 0) + heal)
             self.log_message = t(lang, "dungeon.event_heal", "✨ 你發現一池散發柔光的泉水，回復了 {heal} 點 HP！", heal=heal)
-        else:
+            d_state["floor_state"] = "resolved"
+            self.cog.save_players()
+            self.build_dungeon_menu()
+            return
+        if roll < 0.7:
             dmg = int(d_state["max_hp"] * 0.15)
             d_state["current_hp"] -= dmg
             self.log_message = t(lang, "dungeon.event_trap", "💥 不小心踩到陷阱！受到了 {dmg} 點傷害！", dmg=dmg)
             if d_state["current_hp"] <= 0:
                 self._dungeon_run_over(t(lang, "dungeon.death_in_run", "\n💀 你在地下城中喪命了...所有臨時力量都消散了。"))
                 return
-        self.cog.save_players()
-        self.build_dungeon_menu()
+            d_state["floor_state"] = "resolved"
+            self.cog.save_players()
+            self.build_dungeon_menu()
+            return
+        # 30%：隨機事件其實是普通怪物的伏擊
+        mon = dg.build_monster(self.cog, floor, "monster")
+        self.start_combat([mon])
+        self.log_message = t(lang, "dungeon.event_ambush", "😱 這根本是陷阱！一隻怪物從暗處撲了出來！\n你遇到了 {monster_name}！", monster_name=tf(mon, "name", lang))
+        self.build_battle_menu()
 
     async def handle_dung_next(self):
-        lang = self.player.language
         d_state = self._dstate()
         d_state["floor"] = d_state.get("floor", 1) + 1
-        d_state["ap"] = DUNGEON_AP_PER_FLOOR
-        d_state["choices"] = []
-        d_state["stat_points"] = d_state.get("stat_points", 0) + DUNGEON_STAT_POINTS_PER_FLOOR
+        d_state["floor_state"] = "pending"
         dg.recompute_loadout(self.player, d_state, self.cog)
-
-        if d_state["floor"] >= DUNGEON_BOSS_FLOOR:
-            mon = dg.build_monster(self.cog, d_state["floor"], "boss")
-            self.start_combat([mon])
-            self.log_message = t(lang, "dungeon.boss_floor_arrival", "🪜 你來到了第 {floor} 層... 深處傳來恐怖的咆哮聲——深淵領主就在前方！", floor=d_state['floor'])
-            self.build_battle_menu()
-            return
-        self.log_message = t(lang, "dungeon.descend_floor", "🪜 你走下階梯來到了第 {floor} 層。（獲得 {pts} 點整備點數）", floor=d_state['floor'], pts=DUNGEON_STAT_POINTS_PER_FLOOR)
+        self.log_message = ""
         self.cog.save_players()
         self.build_dungeon_menu()
-
-    async def handle_dung_prep(self, notice=""):
-        lang = self.player.language
-        d_state = self._dstate()
-        self.clear_items()
-        pts = d_state.get("stat_points", 0)
-        alloc = d_state.get("stat_alloc", {})
-        prefix = notice + "\n\n" if notice else ""
-        self.log_message = prefix + t(
-            lang, "dungeon.prep_title",
-            "📊 **整備配點**（免 AP）\n剩餘點數：{pts}\n目前：⚔️攻擊 {atk} | 🛡️體力 {vit} | ✨智力 {int} | 💨速度 {spd} | 🔰抗性 {res}\n"
-            "目前數值：ATK {b_atk} / DEF {b_def} / HP {hp} / MAG {mag} / SPD {spd2} / RES {b_res}",
-            pts=pts, atk=alloc.get("atk", 0), vit=alloc.get("vit", 0), int=alloc.get("int", 0),
-            spd=alloc.get("spd", 0), res=alloc.get("res", 0),
-            b_atk=d_state.get("base_atk", 0), b_def=d_state.get("base_def", 0), hp=d_state.get("max_hp", 0),
-            mag=d_state.get("base_int", 0), spd2=d_state.get("base_spd", 0), b_res=d_state.get("base_res", 0),
-        )
-        if pts > 0:
-            for stat, label in (("atk", "⚔️攻擊+1"), ("vit", "🛡️體力+1"), ("int", "✨智力+1"), ("spd", "💨速度+1"), ("res", "🔰抗性+1")):
-                self.add_action_button(label=t(lang, f"dungeon.prep_btn_{stat}", label), style=discord.ButtonStyle.primary, custom_id=f"dprep_{stat}")
-        self.add_action_button(label=t(lang, "char.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_dungeon")
-
-    async def handle_dung_prep_add(self, stat: str):
-        lang = self.player.language
-        d_state = self._dstate()
-        if d_state.get("stat_points", 0) <= 0 or stat not in ("atk", "vit", "int", "spd", "res"):
-            await self.handle_dung_prep()
-            return
-        alloc = d_state.setdefault("stat_alloc", {"atk": 0, "vit": 0, "int": 0, "spd": 0, "res": 0})
-        alloc[stat] = alloc.get(stat, 0) + 1
-        d_state["stat_points"] -= 1
-        dg.recompute_loadout(self.player, d_state, self.cog)
-        self.cog.save_players()
-        await self.handle_dung_prep(t(lang, "dungeon.prep_added", "✅ 已投入 1 點到 {stat}！", stat=stat))
 
     def on_dungeon_victory(self, is_elite=False, is_boss=False, base_log=""):
         lang = self.player.language
         d_state = self._dstate()
+        floor = d_state.get("floor", 1)
 
-        if is_boss:
+        if is_boss and floor >= DUNGEON_BOSS_FLOOR:
             real = self.player.real_player if hasattr(self.player, 'real_player') else self.player
             reward_gold = real.level * 2000
             reward_exp = real.level * 1500
@@ -2122,16 +2193,28 @@ class TRPGGameView(discord.ui.View):
             self.build_main_menu()
             return
 
-        # 菁英怪 → 遺物三選一（遺物只從菁英取得，避免太浮濫）；一般怪 → 裝備三選一
-        if is_elite:
-            relics = dg.roll_relics(self.cog, d_state, d_state.get("floor", 1), 3)
+        d_state["floor_state"] = "resolved"
+
+        # 樓層 5/10 的守衛頭目 → 遺物三選一（遺物只從這兩個頭目取得，避免太浮濫）；
+        # 菁英 → 技能三選一（讓玩家中途轉型流派）；一般怪 → 裝備三選一。
+        if is_boss and floor in DUNGEON_MINIBOSS_FLOORS:
+            relics = dg.roll_relics(self.cog, d_state, floor, 3)
             if relics:
                 d_state["pending_relics"] = relics
                 self.cog.save_players()
                 self.build_dungeon_relic_menu(base_log)
                 return
             # 遺物已收集完 → 退而給裝備
-        loot = dg.roll_loot(self.cog, d_state.get("floor", 1), 3)
+        elif is_elite:
+            skills = dg.roll_dungeon_skills(self.cog, d_state, 3)
+            if skills:
+                d_state["pending_skills"] = skills
+                self.cog.save_players()
+                self.build_dungeon_skill_menu(base_log)
+                return
+            # 技能池已收集完 → 退而給裝備
+
+        loot = dg.roll_loot(self.cog, floor, 3)
         d_state["pending_loot"] = loot
         self.cog.save_players()
         self.build_dungeon_loot_menu(base_log)
@@ -2174,7 +2257,7 @@ class TRPGGameView(discord.ui.View):
         lang = self.player.language
         d_state = self._dstate()
         relics = d_state.get("pending_relics", [])
-        lines = [base_log, "", t(lang, "dungeon.relic_header", "💠 擊敗菁英！選擇一個遺物（永久強化本次探索）：")]
+        lines = [base_log, "", t(lang, "dungeon.relic_header", "💠 擊敗守衛頭目！選擇一個遺物（永久強化本次探索）：")]
         for i, rid in enumerate(relics):
             rdef = self.cog.dungeon_relics.get(rid, {})
             name = tf(rdef, "name", lang)
@@ -2199,6 +2282,38 @@ class TRPGGameView(discord.ui.View):
                 rdef = self.cog.dungeon_relics.get(relics[idx], {})
                 self.log_message = t(lang, "dungeon.relic_taken", "🗿 你獲得了遺物【{name}】！\n{desc}", name=tf(rdef, "name", lang), desc=tf(rdef, "desc", lang))
         d_state["pending_relics"] = []
+        self.cog.save_players()
+        self.build_dungeon_menu()
+
+    def build_dungeon_skill_menu(self, base_log=""):
+        self.clear_items()
+        lang = self.player.language
+        d_state = self._dstate()
+        skills = d_state.get("pending_skills", [])
+        lines = [base_log, "", t(lang, "dungeon.skill_header", "💠 擊敗菁英！選擇一個技能學會（立即可用，能讓你臨時轉換流派）：")]
+        for i, sid in enumerate(skills):
+            sdef = self.cog.skills.get(sid, {})
+            name = tf(sdef, "name", lang)
+            desc = tf(sdef, "desc", lang)
+            lines.append(f"{i+1}. ✨ {name} — {desc}")
+            self.add_action_button(label=f"✨ {name}"[:70], style=discord.ButtonStyle.success, custom_id=f"dskill_{i}")
+        self.add_action_button(label=t(lang, "dungeon.skill_skip", "略過"), style=discord.ButtonStyle.secondary, custom_id="dskill_skip")
+        self.log_message = "\n".join(lines)
+
+    async def handle_dung_skill_pick(self, arg: str):
+        lang = self.player.language
+        d_state = self._dstate()
+        skills = d_state.get("pending_skills", [])
+        if arg != "skip":
+            try:
+                idx = int(arg)
+            except ValueError:
+                idx = -1
+            if 0 <= idx < len(skills):
+                dg.grant_skill(d_state, skills[idx])
+                sdef = self.cog.skills.get(skills[idx], {})
+                self.log_message = t(lang, "dungeon.skill_learned", "✨ 你學會了技能【{name}】！\n{desc}", name=tf(sdef, "name", lang), desc=tf(sdef, "desc", lang))
+        d_state["pending_skills"] = []
         self.cog.save_players()
         self.build_dungeon_menu()
 
@@ -2313,40 +2428,44 @@ class TRPGGameView(discord.ui.View):
 
         prestige = getattr(self.player, "prestige_count", 0)
         bonus = prestige * 10
+        req_level = prestige_required_level(prestige)
 
         self.log_message = (
             prefix
             + t(lang, "prestige.hall_title", "🌟 【轉生殿堂】\n")
             + t(lang, "prestige.hall_intro", "在這裡，你可以超越冒險者的極限，重獲新生！\n")
-            + t(lang, "prestige.current_level", "• 當前等級：Lv.{level} (轉生需要 Lv.30)\n", level=self.player.level)
+            + t(lang, "prestige.current_level", "• 當前等級：Lv.{level} (轉生需要 Lv.{req})\n", level=self.player.level, req=req_level)
             + t(lang, "prestige.current_count", "• 當前轉生次數：{prestige} 轉\n", prestige=prestige)
             + t(lang, "prestige.current_bonus", "• 當前轉生被動增幅：全屬性 +{bonus}%\n\n", bonus=bonus)
             + t(lang, "prestige.rules_title", "⚠️ 【轉生規則說明】\n")
             + t(lang, "prestige.rule_1", "1. 轉生將使你的等級重置回 Lv.1，EXP 歸零，並重置屬性配點。\n")
             + t(lang, "prestige.rule_2", "2. 轉生後你將獲得 1 層永久被動增幅，所有戰鬥屬性額外 +10%！\n")
             + t(lang, "prestige.rule_3", "3. 轉生會卸下你身上的武器、防具與飾品，並重置魔塔／地下城的目前樓層（已達成的里程碑勳章與獎杯不會消失）。\n")
-            + t(lang, "prestige.rule_4", "4. 轉生不會清除你的背包道具、金幣與已學會的技能。")
+            + t(lang, "prestige.rule_4", "4. 轉生不會清除你的背包道具、金幣與已學會的技能。\n")
+            + t(lang, "prestige.rule_5", "5. 每次轉生後，下一次轉生所需的等級都會提高 {step} 級。", step=PRESTIGE_LEVEL_STEP)
         )
 
-        if self.player.level >= 30:
-            self.add_action_button(label=t(lang, "prestige.btn_confirm", "確認轉生 (Lv.30+)"), style=discord.ButtonStyle.danger, custom_id="btn_prestige_confirm", emoji="🌟")
+        if self.player.level >= req_level:
+            self.add_action_button(label=t(lang, "prestige.btn_confirm", "確認轉生 (Lv.{req}+)", req=req_level), style=discord.ButtonStyle.danger, custom_id="btn_prestige_confirm", emoji="🌟")
         else:
-            disabled_btn = discord.ui.Button(label=t(lang, "prestige.btn_level_locked", "等級不足 Lv.30"), style=discord.ButtonStyle.secondary, disabled=True, emoji="❌")
+            disabled_btn = discord.ui.Button(label=t(lang, "prestige.btn_level_locked", "等級不足 Lv.{req}", req=req_level), style=discord.ButtonStyle.secondary, disabled=True, emoji="❌")
             self.add_item(disabled_btn)
 
         self.add_action_button(label=t(lang, "prestige.btn_back_village", "返回村莊"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
     async def handle_prestige_confirm(self):
         lang = self.player.language
-        if self.player.level < 30:
-            self.log_message = t(lang, "prestige.fail_level", "❌ 轉生失敗：你的等級不足 Lv.30！")
+        prestige = getattr(self.player, "prestige_count", 0)
+        req_level = prestige_required_level(prestige)
+        if self.player.level < req_level:
+            self.log_message = t(lang, "prestige.fail_level", "❌ 轉生失敗：你的等級不足 Lv.{req}！", req=req_level)
             await self.handle_prestige_menu()
             return
 
         self.player.level = 1
         self.player.exp = 0
         self.player.stat_alloc = default_stat_alloc()
-        self.player.prestige_count = getattr(self.player, "prestige_count", 0) + 1
+        self.player.prestige_count = prestige + 1
 
         # 👇 轉生重置：魔塔/地下城回到第一層、清空地下城暫時加成、卸下所有裝備（避免轉生後因殘留裝備直接過強）
         self.player.tower_floor = 1
@@ -2355,6 +2474,7 @@ class TRPGGameView(discord.ui.View):
         self.player.weapon = None
         self.player.armor = None
         self.player.accessory = None
+        self.player.daily_boss_kills = {}
         self.tower_safe_room_visited = False
 
         recalc_player_stats(self.player, self.cog.items, heal_full=True)

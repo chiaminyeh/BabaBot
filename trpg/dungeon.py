@@ -16,59 +16,99 @@ roll_loot / roll_relic / grant_relic / equip_item / end_run。
 import random
 
 from trpg.balance import (
-    DUNGEON_AP_PER_FLOOR, DUNGEON_START_STATS, DUNGEON_ROOM_WEIGHTS,
+    DUNGEON_START_STATS, DUNGEON_SEALED_LEVEL, DUNGEON_ROOM_WEIGHTS,
     DUNGEON_MON_HP_BASE, DUNGEON_MON_HP_PER_FLOOR, DUNGEON_MON_ATK_BASE,
     DUNGEON_MON_ATK_PER_FLOOR, DUNGEON_MON_DEF_PER_FLOOR, DUNGEON_MON_SPD_BASE,
     DUNGEON_MON_SPD_PER_FLOOR, DUNGEON_MON_EXP_BASE, DUNGEON_MON_EXP_PER_FLOOR,
     DUNGEON_ELITE_HP_MULT, DUNGEON_ELITE_ATK_MULT, DUNGEON_ELITE_DEF_BONUS,
     DUNGEON_BOSS_HP_MULT, DUNGEON_BOSS_ATK_MULT, DUNGEON_BOSS_DEF_BONUS,
-    DUNGEON_BOSS_FLOOR, CORROSION_BASE_DMG, CORROSION_DMG_PER_FLOOR,
-    ALLOC_BONUS,
+    DUNGEON_BOSS_FLOOR, DUNGEON_MINIBOSS_FLOORS, CORROSION_BASE_DMG, CORROSION_DMG_PER_FLOOR,
 )
 from trpg.monster_pool import pick_tier_for_floor
 
 # dungeon_state 裡屬於「封印臨時角色」的欄位（RoguePlayerWrapper 會把這些轉址過去）。
 SEALED_FIELDS = [
     "level", "exp", "max_hp", "current_hp", "max_mp", "current_mp",
-    "base_atk", "base_def", "base_spd", "base_magic", "base_int", "base_res",
-    "inventory", "skills", "equipped_skills", "stat_alloc",
+    "base_atk", "base_def", "base_mdef", "base_spd", "base_magic", "base_int", "base_res",
+    "inventory", "skills", "equipped_skills",
     "weapon", "armor", "accessory", "status_effects", "combat_debuffs", "combat_buffs",
 ]
 
+# 流派選擇（取代舊版「每層配點」）：選一套起手武器+技能，之後靠戰利品/遺物/菁英技能
+# 選擇繼續往該流派疊，或臨時轉點別的流派（參考殺戮尖塔式的路線選擇）。
+ARCHETYPES = {
+    "warrior": {
+        "name": "戰士", "name_en": "Warrior",
+        "desc": "近戰肉盾，高HP與防禦，靠破防技能穩定磨死敵人。",
+        "desc_en": "Melee tank with high HP/DEF, wears enemies down with armor-shredding skills.",
+        "weapon": "d_rusty_blade", "skill": "sunder_strike",
+    },
+    "mage": {
+        "name": "法師", "name_en": "Mage",
+        "desc": "魔法爆發，高MP與魔力，靠元素法術從遠處消滅敵人。",
+        "desc_en": "Magic burst with high MP/MAG, blasts enemies from range with elemental spells.",
+        "weapon": "d_arcane_staff", "skill": "fireball",
+    },
+    "ranger": {
+        "name": "遊俠", "name_en": "Ranger",
+        "desc": "敏捷連擊，高速度與暴擊，靠連續攻擊與中毒慢慢磨死敵人。",
+        "desc_en": "Agile striker with high SPD/crit, wears enemies down with rapid hits and poison.",
+        "weapon": "d_starter_bow", "skill": "twin_shot",
+    },
+}
+
+
+def apply_archetype(player, d_state: dict, cog, archetype_id: str) -> bool:
+    """套用起手流派：裝上起手武器、學會起手技能。之後仍可透過戰利品/菁英技能轉型。"""
+    archetype = ARCHETYPES.get(archetype_id)
+    if not archetype:
+        return False
+    d_state["archetype"] = archetype_id
+    equip_item(player, d_state, cog, archetype["weapon"])
+    skill_id = archetype["skill"]
+    if skill_id not in d_state["skills"]:
+        d_state["skills"].append(skill_id)
+    if skill_id not in d_state["equipped_skills"]:
+        d_state["equipped_skills"].append(skill_id)
+    d_state["floor_state"] = "pending"
+    recompute_loadout(player, d_state, cog)
+    return True
+
 # 彙整時：直接加到基礎數值的平面欄位 / 每層成長 / 倍率 / 戰鬥 hook
-_FLAT_KEYS = {"atk", "def", "hp", "magic", "res", "spd", "mp"}
+_FLAT_KEYS = {"atk", "def", "mdef", "hp", "magic", "res", "spd", "mp"}
 _PER_FLOOR_KEYS = {"hp_per_floor", "def_per_floor", "atk_per_floor"}
 _MULT_KEYS = {"atk_mult", "def_mult", "magic_mult"}
 _HOOK_KEYS = {"crit_bonus", "lifesteal", "on_kill_heal_pct", "regen_pct",
               "corrosion_on_hit", "corrosion_dmg_bonus"}
 # 裝備上的數值欄位 -> 彙整鍵
 _ITEM_STAT_FIELDS = {
-    "atk_bonus": "atk", "def_bonus": "def", "hp_bonus": "hp",
+    "atk_bonus": "atk", "def_bonus": "def", "mdef_bonus": "mdef", "hp_bonus": "hp",
     "magic_bonus": "magic", "res_bonus": "res", "spd_bonus": "spd", "mp_bonus": "mp",
 }
 
 
 def start_run(d_state: dict):
-    """初始化一場全新的地下城（封印角色 + 空遺物 + 第一層）。"""
+    """初始化一場全新的地下城（封印角色 + 空遺物 + 第一層）。流派尚未選擇，
+    由呼叫端接著顯示流派選擇畫面，選定後呼叫 apply_archetype()。"""
     s = DUNGEON_START_STATS
     d_state.clear()
     d_state.update({
         "in_run": True,
         "floor": 1,
-        "ap": DUNGEON_AP_PER_FLOOR,
-        "level": 1, "exp": 0,
+        "floor_state": "pending",
+        "archetype": None,
+        "level": DUNGEON_SEALED_LEVEL, "exp": 0,
         "max_hp": s["max_hp"], "current_hp": s["max_hp"],
         "max_mp": s["max_mp"], "current_mp": s["max_mp"],
-        "base_atk": s["base_atk"], "base_def": s["base_def"], "base_spd": s["base_spd"],
+        "base_atk": s["base_atk"], "base_def": s["base_def"], "base_mdef": s["base_mdef"], "base_spd": s["base_spd"],
         "base_magic": s["base_magic"], "base_int": s["base_magic"], "base_res": s["base_res"],
         "inventory": {}, "skills": [], "equipped_skills": [],
-        "stat_alloc": {"atk": 0, "vit": 0, "int": 0, "spd": 0, "res": 0},
-        "stat_points": 0,
         "weapon": None, "armor": None, "accessory": None,
         "status_effects": {}, "combat_debuffs": {}, "combat_buffs": {},
         "relics": [],
-        "choices": [],
         "pending_loot": [],
+        "pending_relics": [],
+        "pending_skills": [],
     })
 
 
@@ -128,22 +168,24 @@ def _aggregate(d_state: dict, cog) -> tuple:
 
 
 def recompute_loadout(player, d_state: dict, cog):
-    """依封印起始值 + 配點 + 裝備 + 遺物，重算臨時角色的所有數值與戰鬥 hook。"""
+    """依封印起始值 + 裝備 + 遺物，重算臨時角色的所有數值與戰鬥 hook。
+    地下城不再有配點小遊戲——強度純粹來自撿到的武器/防具/遺物與流派選擇。"""
     s = DUNGEON_START_STATS
     floor = d_state.get("floor", 1)
-    alloc = d_state.get("stat_alloc") or {"atk": 0, "vit": 0, "int": 0, "spd": 0, "res": 0}
     flat, per_floor, mult, hook = _aggregate(d_state, cog)
 
-    base_atk = s["base_atk"] + alloc.get("atk", 0) * ALLOC_BONUS["atk"] + flat["atk"] + int(per_floor["atk_per_floor"] * floor)
-    base_def = s["base_def"] + alloc.get("vit", 0) * 2 + flat["def"] + int(per_floor["def_per_floor"] * floor)
-    max_hp = s["max_hp"] + alloc.get("vit", 0) * 12 + flat["hp"] + int(per_floor["hp_per_floor"] * floor)
-    max_mp = s["max_mp"] + alloc.get("int", 0) * 3 + flat["mp"]
-    base_int = s["base_magic"] + alloc.get("int", 0) * 4 + flat["magic"]
-    base_spd = s["base_spd"] + alloc.get("spd", 0) * ALLOC_BONUS["spd"] + flat["spd"]
-    base_res = s["base_res"] + alloc.get("res", 0) * ALLOC_BONUS["res"] + flat["res"]
+    base_atk = s["base_atk"] + flat["atk"] + int(per_floor["atk_per_floor"] * floor)
+    base_def = s["base_def"] + flat["def"] + int(per_floor["def_per_floor"] * floor)
+    base_mdef = s["base_mdef"] + flat["mdef"]
+    max_hp = s["max_hp"] + flat["hp"] + int(per_floor["hp_per_floor"] * floor)
+    max_mp = s["max_mp"] + flat["mp"]
+    base_int = s["base_magic"] + flat["magic"]
+    base_spd = s["base_spd"] + flat["spd"]
+    base_res = s["base_res"] + flat["res"]
 
     d_state["base_atk"] = max(1, base_atk)
     d_state["base_def"] = max(0, base_def)
+    d_state["base_mdef"] = max(0, int(base_mdef))
     d_state["max_hp"] = max(1, max_hp)
     d_state["max_mp"] = max(0, max_mp)
     d_state["base_magic"] = max(0, base_int)
@@ -178,6 +220,17 @@ def _flavor_monster(cog, floor: int, want_boss: bool):
     return tier.get("boss") or {"id": "unknown", "name": "迷霧怪影", "name_en": "Mist Phantom"}
 
 
+# 菁英怪物的「流派」：不是單純放大數值的同一隻怪，而是各自有鮮明的招牌機制
+# （全部重用 monster_ai.AI_REGISTRY 現成的行為，不需要新的 AI 引擎）。
+ELITE_ARCHETYPES = [
+    {"ai": "heavy_tank", "suffix": "・守護者", "suffix_en": " the Guardian", "hp_mult": 1.1, "def_mult": 1.5, "spd_mult": 0.9},
+    {"ai": "berserk_low_hp", "suffix": "・狂戰士", "suffix_en": " the Berserker", "atk_mult": 1.1, "spd_mult": 1.2},
+    {"ai": "lifesteal", "suffix": "・嗜血者", "suffix_en": " the Bloodletter", "hp_mult": 1.15},
+    {"ai": "multi_hit_flurry", "suffix": "・刺客", "suffix_en": " the Assassin", "spd_mult": 1.35, "atk_mult": 0.85},
+    {"ai": "debuffer", "suffix": "・咒術師", "suffix_en": " the Warlock", "atk_mult": 0.9},
+]
+
+
 def build_monster(cog, floor: int, kind: str = "monster") -> dict:
     """產生一隻平衡過的地下城怪物。floor 1 必須能被封印起始角色打贏。"""
     flavor = _flavor_monster(cog, floor, want_boss=(kind == "boss"))
@@ -188,15 +241,24 @@ def build_monster(cog, floor: int, kind: str = "monster") -> dict:
     exp = int(DUNGEON_MON_EXP_BASE + floor * DUNGEON_MON_EXP_PER_FLOOR)
 
     prefix = ""
+    ai = flavor.get("ai", "none")
+    suffix_zh, suffix_en = "", ""
     if kind == "elite":
         hp = int(hp * DUNGEON_ELITE_HP_MULT); atk = int(atk * DUNGEON_ELITE_ATK_MULT); df += DUNGEON_ELITE_DEF_BONUS
         prefix = "💠 "
+        archetype = random.choice(ELITE_ARCHETYPES)
+        ai = archetype["ai"]
+        suffix_zh, suffix_en = archetype["suffix"], archetype["suffix_en"]
+        hp = int(hp * archetype.get("hp_mult", 1.0))
+        atk = int(atk * archetype.get("atk_mult", 1.0))
+        df = int(df * archetype.get("def_mult", 1.0))
+        spd = int(spd * archetype.get("spd_mult", 1.0))
     elif kind == "boss":
         hp = int(hp * DUNGEON_BOSS_HP_MULT); atk = int(atk * DUNGEON_BOSS_ATK_MULT); df += DUNGEON_BOSS_DEF_BONUS
         prefix = "💀 "
 
-    zh = f"{prefix}{flavor.get('name', flavor.get('id', '怪物'))}"
-    en = f"{prefix}{flavor.get('name_en') or flavor.get('name', flavor.get('id', 'Monster'))}"
+    zh = f"{prefix}{flavor.get('name', flavor.get('id', '怪物'))}{suffix_zh}"
+    en = f"{prefix}{flavor.get('name_en') or flavor.get('name', flavor.get('id', 'Monster'))}{suffix_en}"
     return {
         "id": flavor.get("id", "unknown"),
         "name": zh, "name_en": en,
@@ -205,12 +267,21 @@ def build_monster(cog, floor: int, kind: str = "monster") -> dict:
         "is_boss": kind == "boss",
         "max_hp": max(1, hp), "atk": max(1, atk), "def": max(0, df), "spd": max(5, spd),
         "exp": exp, "money_min": 0, "money_max": 0, "drops": {},
-        "ai": flavor.get("ai", "none"),
+        "ai": ai,
         "weakness": flavor.get("weakness", []), "resistance": flavor.get("resistance", []),
     }
 
 
 # --- 房間 / 戰利品 / 遺物 ----------------------------------------------------
+
+def forced_boss_kind(floor: int) -> str:
+    """樓層 5/10/15 強制打王，不再擲房間類型；回傳 "miniboss"/"final_boss"，其他樓層回傳空字串。"""
+    if floor >= DUNGEON_BOSS_FLOOR:
+        return "final_boss"
+    if floor in DUNGEON_MINIBOSS_FLOORS:
+        return "miniboss"
+    return ""
+
 
 def roll_room(floor: int) -> str:
     weights = DUNGEON_ROOM_WEIGHTS
@@ -229,8 +300,9 @@ def _rarity_weight(rarity: str, floor: int) -> float:
 
 
 def roll_loot(cog, floor: int, count: int = 3, guarantee_rare: bool = False) -> list:
-    """抽出 count 個地下城裝備 id。guarantee_rare：至少含一件 rare 以上。"""
-    ids = list(cog.dungeon_items.keys())
+    """抽出 count 個地下城裝備 id。guarantee_rare：至少含一件 rare 以上。
+    標記 starter 的流派起手武器不進一般戰利品池，避免跟菁英/一般怪重複發放。"""
+    ids = [i for i, idef in cog.dungeon_items.items() if not idef.get("starter")]
     if not ids:
         return []
     chosen = []
@@ -269,9 +341,28 @@ def roll_relics(cog, d_state: dict, floor: int = 1, count: int = 3) -> list:
     return chosen
 
 
+def roll_dungeon_skills(cog, d_state: dict, count: int = 3) -> list:
+    """抽出 count 個尚未擁有、標記 dungeon_pool 的技能 id（給菁英戰後的三選一）。
+    菁英不再掉遺物、改掉技能——讓玩家能中途轉型（例如戰士撿到火球術），
+    像 Slay the Spire 那樣靠戰鬥中的選擇塑造流派，而不是靠配點。"""
+    owned = set(d_state.get("skills", []))
+    pool = [sid for sid, sdef in cog.skills.items() if sdef.get("dungeon_pool") and sid not in owned]
+    if not pool:
+        return []
+    random.shuffle(pool)
+    return pool[:count]
+
+
 def grant_relic(player, d_state: dict, cog, relic_id: str):
     d_state.setdefault("relics", []).append(relic_id)
     recompute_loadout(player, d_state, cog)
+
+
+def grant_skill(d_state: dict, skill_id: str):
+    if skill_id not in d_state["skills"]:
+        d_state["skills"].append(skill_id)
+    if skill_id not in d_state["equipped_skills"]:
+        d_state["equipped_skills"].append(skill_id)
 
 
 def equip_item(player, d_state: dict, cog, item_id: str) -> str:
