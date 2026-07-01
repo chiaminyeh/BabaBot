@@ -3,7 +3,7 @@ from discord import app_commands
 from discord.ext import commands,tasks
 from discord import DMChannel
 from datetime import datetime, timedelta
-import os, asyncio
+import os, asyncio, json
 from dotenv import load_dotenv
 import random
 load_dotenv()
@@ -21,31 +21,87 @@ bot = commands.Bot(command_prefix=["baba ","BABA ","Baba "], intents=intents)
 # bot.run(os.getenv('DISCORD_TOKEN'))
     
 
+BANK_FILE = "bank.json"
+DAILY_FILE = "daily.json"
+DAILY_REWARD = 100
+
+
 class Baba():
     def __init__(self):
-        self.bank = {}
+        self.bank = {}          # {uid(int): (money(int), claimed_bool)}  ← 保持元組格式，相容其他 cog
+        self.daily_claims = {}  # {uid(int): "YYYY-MM-DD"}  ← 依日期判斷每日簽到，重載/重啟都安全
         self.load_bank()
+        self.load_daily_claims()
         self.hunger = 100
         self.boredom = 50
         self.energy = 100
         self.money_name = "bababucks"
 
     def load_bank(self):
+        # 優先讀 JSON；沒有 JSON 時，從舊的 bank.txt 遷移一次
+        if os.path.exists(BANK_FILE):
+            try:
+                with open(BANK_FILE, "r", encoding="utf-8") as f:
+                    raw = json.load(f)
+                for uid, val in raw.items():
+                    money = int(val[0]) if isinstance(val, (list, tuple)) else int(val)
+                    claimed = bool(val[1]) if isinstance(val, (list, tuple)) and len(val) > 1 else False
+                    self.bank[int(uid)] = (money, claimed)
+                return
+            except Exception as e:
+                print(f"bank.json load failed: {e}")
+        # 遷移舊格式 bank.txt
         try:
-            with open("bank.txt", 'r') as file:
-                lines = file.readlines()
-                for line in lines:
-                    id, money, claimed = line.strip().split(" ")
-                    # Convert claimed string to proper boolean
-                    claimed_bool = (claimed.lower() == 'true')
-                    self.bank[int(id)] = (int(money), claimed_bool)
+            with open("bank.txt", "r") as file:
+                for line in file.readlines():
+                    parts = line.strip().split(" ")
+                    if len(parts) < 2:
+                        continue
+                    uid, money = parts[0], parts[1]
+                    claimed = (parts[2].lower() == "true") if len(parts) > 2 else False
+                    self.bank[int(uid)] = (int(money), claimed)
+            self.refresh_bank_file()  # 存成 JSON
+            print("Migrated bank.txt -> bank.json")
         except FileNotFoundError:
             print("bank file not found")
 
     def refresh_bank_file(self):
-        with open("bank.txt", 'w') as file:
-            for id, (money, claimed) in self.bank.items():
-                file.write(f"{id} {money} {claimed}\n")
+        with open(BANK_FILE, "w", encoding="utf-8") as f:
+            json.dump({str(uid): [money, claimed] for uid, (money, claimed) in self.bank.items()},
+                      f, ensure_ascii=False, indent=2)
+
+    def load_daily_claims(self):
+        if os.path.exists(DAILY_FILE):
+            try:
+                with open(DAILY_FILE, "r", encoding="utf-8") as f:
+                    self.daily_claims = {int(k): v for k, v in json.load(f).items()}
+            except Exception as e:
+                print(f"daily.json load failed: {e}")
+
+    def save_daily_claims(self):
+        with open(DAILY_FILE, "w", encoding="utf-8") as f:
+            json.dump({str(k): v for k, v in self.daily_claims.items()}, f, ensure_ascii=False, indent=2)
+
+    def get_money(self, uid: int) -> int:
+        val = self.bank.get(int(uid))
+        return val[0] if val else 0
+
+    def add_money(self, uid: int, amount: int):
+        uid = int(uid)
+        money, claimed = self.bank.get(uid, (0, False))
+        self.bank[uid] = (max(0, money + amount), claimed)
+        self.refresh_bank_file()
+
+    def claim_daily(self, uid: int, reward: int = DAILY_REWARD):
+        """依日期判斷每日簽到。回傳 (是否成功, 領取金額, 目前總額)。今天已領則成功=False。"""
+        uid = int(uid)
+        today = datetime.now().strftime("%Y-%m-%d")
+        if self.daily_claims.get(uid) == today:
+            return False, 0, self.get_money(uid)
+        self.daily_claims[uid] = today
+        self.save_daily_claims()
+        self.add_money(uid, reward)
+        return True, reward, self.get_money(uid)
     
 
 
@@ -79,21 +135,13 @@ async def before_reset_daily():
 @bot.command(name='daily')
 async def daily(ctx):
     try:
-        user_id = ctx.author.id
-        if user_id in baba.bank:
-            money, claimed = baba.bank[user_id]
-            print(money, claimed)
-            if claimed == True:
-                await ctx.send("You claimed your daily already!")
-                return
-            baba.bank[user_id] = (money + 100, True)
+        ok, reward, total = baba.claim_daily(ctx.author.id)
+        if ok:
+            await ctx.send(f"You claimed your daily +{reward}! Total: {total} {baba.money_name}")
         else:
-            baba.bank[user_id] = (100, True)
-        
-        baba.refresh_bank_file()
-        await ctx.send(f"You claimed your daily! Total: {baba.bank[user_id][0]}")
-    except:
-        print("something in daily went wrong")
+            await ctx.send("You already claimed your daily today! Come back tomorrow.")
+    except Exception as e:
+        print(f"something in daily went wrong: {e}")
 
 @bot.command(name='give_money', aliases=['give', 'transfer'])
 async def give_money(ctx, target: discord.Member, amount: int):

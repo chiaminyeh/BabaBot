@@ -2,7 +2,7 @@
 
 import discord
 
-from trpg.i18n import t, tf
+from trpg.i18n import t
 
 
 class StatAllocModal(discord.ui.Modal, title="批量分配屬性點"):

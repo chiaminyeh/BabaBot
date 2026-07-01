@@ -1,0 +1,170 @@
+{
+    "d_rusty_blade": {
+        "name": "地城鏽劍",
+        "name_en": "Dungeon Rusty Blade",
+        "desc": "攻擊+10",
+        "desc_en": "+10 ATK",
+        "type": "weapon",
+        "rarity": "common",
+        "build": "neutral",
+        "atk_bonus": 10
+    },
+    "d_leather_vest": {
+        "name": "地城皮甲",
+        "name_en": "Dungeon Leather Vest",
+        "desc": "防禦+8、HP+40",
+        "desc_en": "+8 DEF, +40 HP",
+        "type": "armor",
+        "rarity": "common",
+        "build": "neutral",
+        "def_bonus": 8,
+        "hp_bonus": 40
+    },
+    "d_plain_ring": {
+        "name": "地城素戒",
+        "name_en": "Dungeon Plain Ring",
+        "desc": "攻擊+6、速度+4",
+        "desc_en": "+6 ATK, +4 SPD",
+        "type": "accessory",
+        "rarity": "common",
+        "build": "neutral",
+        "atk_bonus": 6,
+        "spd_bonus": 4
+    },
+    "d_aegis_blade": {
+        "name": "壁壘之劍",
+        "name_en": "Aegis Blade",
+        "desc": "攻擊+18、防禦+6",
+        "desc_en": "+18 ATK, +6 DEF",
+        "type": "weapon",
+        "rarity": "rare",
+        "build": "stable",
+        "atk_bonus": 18,
+        "def_bonus": 6
+    },
+    "d_bulwark_plate": {
+        "name": "壁壘板甲",
+        "name_en": "Bulwark Plate",
+        "desc": "防禦+22、HP+140",
+        "desc_en": "+22 DEF, +140 HP",
+        "type": "armor",
+        "rarity": "rare",
+        "build": "stable",
+        "def_bonus": 22,
+        "hp_bonus": 140
+    },
+    "d_stone_amulet": {
+        "name": "磐石護符",
+        "name_en": "Stone Amulet",
+        "desc": "HP+160、抗性+6、擊殺回血",
+        "desc_en": "+160 HP, +6 RES, heal on kill",
+        "type": "accessory",
+        "rarity": "epic",
+        "build": "stable",
+        "hp_bonus": 160,
+        "res_bonus": 6,
+        "on_kill_heal_pct": 0.08
+    },
+    "d_assassin_dagger": {
+        "name": "刺客匕首",
+        "name_en": "Assassin Dagger",
+        "desc": "攻擊+24、暴擊+10%",
+        "desc_en": "+24 ATK, +10% crit",
+        "type": "weapon",
+        "rarity": "rare",
+        "build": "burst",
+        "atk_bonus": 24,
+        "crit_bonus": 0.1
+    },
+    "d_berserker_blade": {
+        "name": "狂戰巨刃",
+        "name_en": "Berserker Greatblade",
+        "desc": "攻擊+38、防禦-8",
+        "desc_en": "+38 ATK, -8 DEF",
+        "type": "weapon",
+        "rarity": "epic",
+        "build": "burst",
+        "atk_bonus": 38,
+        "def_bonus": -8
+    },
+    "d_glass_ring": {
+        "name": "玻璃之戒",
+        "name_en": "Glass Ring",
+        "desc": "攻擊+22、暴擊+8%、HP-40",
+        "desc_en": "+22 ATK, +8% crit, -40 HP",
+        "type": "accessory",
+        "rarity": "rare",
+        "build": "burst",
+        "atk_bonus": 22,
+        "crit_bonus": 0.08,
+        "hp_bonus": -40
+    },
+    "d_venom_blade": {
+        "name": "淬毒之刃",
+        "name_en": "Venom-Tipped Blade",
+        "desc": "攻擊+16、普攻附加1層腐蝕",
+        "desc_en": "+16 ATK, basic attacks apply 1 Corrosion stack",
+        "type": "weapon",
+        "rarity": "rare",
+        "build": "corrosion",
+        "atk_bonus": 16,
+        "corrosion_on_hit": 1
+    },
+    "d_plague_robe": {
+        "name": "瘟疫長袍",
+        "name_en": "Plague Robe",
+        "desc": "防禦+12、每層腐蝕傷害+2",
+        "desc_en": "+12 DEF, +2 damage per Corrosion stack",
+        "type": "armor",
+        "rarity": "rare",
+        "build": "corrosion",
+        "def_bonus": 12,
+        "corrosion_dmg_bonus": 2
+    },
+    "d_toxic_charm": {
+        "name": "劇毒護符",
+        "name_en": "Toxic Charm",
+        "desc": "攻擊+8、普攻附加1層腐蝕",
+        "desc_en": "+8 ATK, basic attacks apply 1 Corrosion stack",
+        "type": "accessory",
+        "rarity": "epic",
+        "build": "corrosion",
+        "atk_bonus": 8,
+        "corrosion_on_hit": 1
+    },
+    "d_arcane_staff": {
+        "name": "秘法之杖",
+        "name_en": "Arcane Staff",
+        "desc": "攻擊+8、魔力+24",
+        "desc_en": "+8 ATK, +24 MAG",
+        "type": "weapon",
+        "rarity": "rare",
+        "build": "support",
+        "atk_bonus": 8,
+        "magic_bonus": 24
+    },
+    "d_mage_robe": {
+        "name": "法師長袍",
+        "name_en": "Mage Robe",
+        "desc": "防禦+10、魔力+16、MP+40",
+        "desc_en": "+10 DEF, +16 MAG, +40 MP",
+        "type": "armor",
+        "rarity": "rare",
+        "build": "support",
+        "def_bonus": 10,
+        "magic_bonus": 16,
+        "mp_bonus": 40
+    },
+    "d_focus_orb": {
+        "name": "聚能法球",
+        "name_en": "Focus Orb",
+        "desc": "魔力+20、MP+30、每回合回復5%最大HP",
+        "desc_en": "+20 MAG, +30 MP, regen 5% Max HP/turn",
+        "type": "accessory",
+        "rarity": "epic",
+        "build": "support",
+        "magic_bonus": 20,
+        "mp_bonus": 30,
+        "regen_pct": 0.05
+    }
+}

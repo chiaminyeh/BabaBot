@@ -48,3 +48,43 @@ SET_BONUSES = {
         3: {"magic": 60, "mp": 120, "res": 10},
     },
 }
+
+# --- Dungeon (roguelike mode) ----------------------------------------------
+DUNGEON_MAX_FLOOR = 15
+DUNGEON_AP_PER_FLOOR = 3
+DUNGEON_BOSS_FLOOR = 15
+# Sealed level-1 starting character for a dungeon run.
+DUNGEON_START_STATS = {
+    "max_hp": 60, "base_atk": 12, "base_def": 5,
+    "base_spd": 10, "base_magic": 8, "base_res": 0, "max_mp": 30,
+}
+# Stat points granted per dungeon floor cleared (spent in 整備, free of AP).
+DUNGEON_STAT_POINTS_PER_FLOOR = 3
+
+# Dungeon monster scaling — deliberately gentle on floor 1 so a fresh sealed
+# character (12 atk / 5 def / 60 hp) comfortably beats a floor-1 monster.
+DUNGEON_MON_HP_BASE = 22
+DUNGEON_MON_HP_PER_FLOOR = 13
+DUNGEON_MON_ATK_BASE = 6
+DUNGEON_MON_ATK_PER_FLOOR = 2.0
+DUNGEON_MON_DEF_PER_FLOOR = 0.8
+DUNGEON_MON_SPD_BASE = 8
+DUNGEON_MON_SPD_PER_FLOOR = 0.5
+DUNGEON_MON_EXP_BASE = 18
+DUNGEON_MON_EXP_PER_FLOOR = 10
+DUNGEON_ELITE_HP_MULT = 1.9
+DUNGEON_ELITE_ATK_MULT = 1.4
+DUNGEON_ELITE_DEF_BONUS = 3
+DUNGEON_BOSS_HP_MULT = 4.0
+DUNGEON_BOSS_ATK_MULT = 1.8
+DUNGEON_BOSS_DEF_BONUS = 8
+
+# Room type weights behind the 3 doors. Relics are NOT a room reward anymore —
+# they only drop from elite fights (see on_dungeon_victory), so they stay rare.
+DUNGEON_ROOM_WEIGHTS = {"monster": 46, "elite": 18, "rest": 18, "event": 18}
+
+# Corrosion (dungeon-exclusive stacking DoT): each tick deals
+# stacks * dmg_per_stack flat damage; stacks accumulate, do not use % HP.
+CORROSION_BASE_DMG = 4            # base flat damage per stack (scaled by floor)
+CORROSION_DMG_PER_FLOOR = 1.5
+CORROSION_TURNS = 99             # effectively lasts the whole fight once applied

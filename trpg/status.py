@@ -15,6 +15,20 @@ from datetime import datetime
 
 from trpg.entity import PlayerCombatant, MonsterCombatant
 from trpg.i18n import t, tf
+from trpg.balance import CORROSION_TURNS
+
+
+def apply_corrosion(status_dict: dict, stacks_add: int, dmg_per_stack: int, turns: int = CORROSION_TURNS) -> int:
+    """地下城專屬：對 status_dict（怪物的異常狀態字典）疊加腐蝕層數。
+    每層每回合造成固定傷害（不吃 %HP），會一直累積。回傳目前總層數。"""
+    cur = status_dict.get("corrosion")
+    if cur:
+        cur["stacks"] = cur.get("stacks", 0) + stacks_add
+        cur["dmg_per_stack"] = max(cur.get("dmg_per_stack", 0), dmg_per_stack)
+        cur["turns"] = turns
+    else:
+        status_dict["corrosion"] = {"turns": turns, "stacks": stacks_add, "dmg_per_stack": dmg_per_stack}
+    return status_dict["corrosion"]["stacks"]
 
 
 def format_status_list(status_effects: dict, status_defs: dict, lang: str = "zh") -> str:
@@ -25,23 +39,32 @@ def format_status_list(status_effects: dict, status_defs: dict, lang: str = "zh"
         info = status_defs.get(sid, {})
         name = tf(info, "name", lang) or sid
         emoji = info.get("emoji", "❓")
-        turns = data.get("turns", 0)
-        parts.append(t(lang, "status.list_entry", "{emoji}{name}({turns}回合)", emoji=emoji, name=name, turns=turns))
+        if sid == "corrosion":
+            parts.append(t(lang, "status.list_entry_stacks", "{emoji}{name}x{stacks}", emoji=emoji, name=name, stacks=data.get("stacks", 1)))
+        else:
+            turns = data.get("turns", 0)
+            parts.append(t(lang, "status.list_entry", "{emoji}{name}({turns}回合)", emoji=emoji, name=name, turns=turns))
     sep = ", " if lang == "en" else "、"
     return sep.join(parts)
 
 
 def get_daily_jester_immunity(player, status_defs: dict) -> str:
-    """根據伺服器日期與玩家 ID 生成當日固定的隨機免疫狀態。"""
+    """根據伺服器日期與玩家 ID 生成當日固定的隨機免疫狀態。
+    只從「會施加在玩家身上」的狀態抽選——標記 jester_immune=false 的狀態
+    （例如地下城專屬、只由玩家施加給怪物的腐蝕）不列入，避免抽到沒用的免疫。"""
     if getattr(player, "accessory", None) != "jester_mask":
         return ""
     if not status_defs:
         return ""
 
+    pool = [sid for sid, info in status_defs.items() if info.get("jester_immune", True)]
+    if not pool:
+        return ""
+
     today = datetime.today().strftime("%Y-%m-%d")
     # 利用今天的日期與玩家ID作為種子，確保今天之內每次呼叫都是同一個結果
     rng = random.Random(f"{today}_{player.id}")
-    return rng.choice(list(status_defs.keys()))
+    return rng.choice(pool)
 
 
 # 保留原本的函式防止其他舊代碼報錯 (現在不需要手動紀錄日期了)
@@ -153,15 +176,8 @@ def _tick_status(combatant, status_defs: dict, is_player: bool, lang: str = "zh"
             log_parts.append(t(lang, "status.burn_tick", "🔥 {target}身上的灼燒加劇！(第{tick}層) 損失 {dmg} HP", target=target_label, tick=tick, dmg=dmg))
             status_effects[sid]["tick"] = min(max_stacks, tick + 1)
 
-        elif sid == "freeze":
-            # 冰凍：100% 無法行動，且會流失部分 MP
-            can_act = False
-            mp_drain = max(1, int(combatant.max_mp * info.get("mp_drain_ratio", 0.1))) if combatant.max_mp else 0
-            if mp_drain:
-                combatant.mp -= mp_drain
-                log_parts.append(t(lang, "status.freeze_drain", "🥶 {target}被凍結無法行動，且流失了 {mp} 點 MP！", target=target_label, mp=mp_drain))
-            else:
-                log_parts.append(t(lang, "status.freeze_no_mp", "🥶 {target}被冰塊凍結，無法行動！", target=target_label))
+        # 冰凍已改為「緩速」：不再讓目標無法行動，改為在行動條（AV）計算時降低速度，
+        # 因此這裡不需要每回合的特殊處理（緩速的減速在 combat.advance_time 套用）。
 
         elif sid == "paralysis":
             # 麻痺：機率跳過回合 (看臉)
@@ -174,6 +190,14 @@ def _tick_status(combatant, status_defs: dict, is_player: bool, lang: str = "zh"
             # 睡眠：100% 無法行動，但受到傷害會立刻清醒（在傷害發生處呼叫 break_sleep_on_damage）
             can_act = False
             log_parts.append(t(lang, "status.sleep", "💤 {target}陷入了沉睡，完全無法行動！", target=target_label))
+
+        elif sid == "corrosion":
+            # 地下城專屬腐蝕：層數 × 每層傷害的固定傷害，會一直累積（不吃 %HP）
+            stacks = data.get("stacks", 1)
+            per = data.get("dmg_per_stack", 4)
+            dmg = max(1, stacks * per)
+            combatant.hp -= dmg
+            log_parts.append(t(lang, "status.corrosion_tick", "🧪 {target}被腐蝕侵蝕，{stacks} 層造成 {dmg} 點傷害！", target=target_label, stacks=stacks, dmg=dmg))
 
         turns -= 1
         if turns <= 0:

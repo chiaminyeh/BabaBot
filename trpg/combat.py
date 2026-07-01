@@ -12,13 +12,9 @@ from trpg.status import (
 
     process_turn_start,
 
-    try_apply_status,
-
     cure_by_item,
 
     clear_all_status,
-
-    activate_jester_immunity,
 
     apply_status_to_monster,
 
@@ -29,8 +25,6 @@ from trpg.status import (
 )
 
 from trpg.stats import (
-
-    recalc_player_stats,
 
     get_potion_heal_target,
 
@@ -359,6 +353,16 @@ class TRPGCombat:
 
         buff_log = self._tick_combat_buffs()
 
+        # 地下城：遺物/裝備的每回合自動回血
+        eff = getattr(self.player, "dungeon_relic_effects", None) or {}
+        if eff.get("regen_pct", 0) > 0 and self.player.current_hp > 0:
+            heal = max(1, int(self.player.max_hp * eff["regen_pct"]))
+            before = self.player.current_hp
+            self.player.current_hp = min(self.player.max_hp, self.player.current_hp + heal)
+            if self.player.current_hp - before > 0:
+                regen_line = t(self.player.language, "combat.dungeon_regen", "🌿 遺物回復了 {heal} HP。", heal=self.player.current_hp - before)
+                buff_log = f"{buff_log}\n{regen_line}" if buff_log else regen_line
+
         log, can_act = process_turn_start(self.player, self.cog.status_effects)
         if buff_log:
             log = f"{buff_log}\n{log}" if log else buff_log
@@ -396,10 +400,36 @@ class TRPGCombat:
                 parts.append(t(lang, "combat.buff_expired", "💨 你的強化效果消退了。"))
         return "\n".join(parts)
     
+    def _slow_factor(self, status_dict) -> float:
+        """緩速（原冰凍）狀態會降低該單位在行動條上的速度。"""
+        if status_dict and status_dict.get("freeze"):
+            return self.cog.status_effects.get("freeze", {}).get("spd_mult", 0.5)
+        return 1.0
+
+    def _effective_player_spd(self) -> int:
+        return max(1, int(get_player_spd(self.player) * self._slow_factor(getattr(self.player, "status_effects", {}))))
+
+    def _effective_monster_spd(self, slot: dict) -> int:
+        m_base = 15 if slot["monster"].get("is_boss") else 10
+        m_spd = max(5, slot["monster"].get("spd", int(m_base + self.player.level * 2.2)))
+        return max(1, int(m_spd * self._slow_factor(slot.get("status"))))
+
+    def predict_monster_actions(self, slot: dict) -> int:
+        """預估玩家下一次行動後，這隻怪物會行動幾次（給行動條 ❗ 提示用，緩速已納入計算）。"""
+        import math
+        if slot["hp"] <= 0:
+            return 0
+        p_spd = self._effective_player_spd()
+        m_spd = self._effective_monster_spd(slot)
+        start = self.player_av - 100
+        iters = max(0, math.ceil((100 - start) / p_spd)) if start < 100 else 0
+        total_av = slot.get("av", 0) + m_spd * iters
+        return max(0, int(total_av // 100))
+
     def advance_time(self, log: str) -> str:
         """推進時間條：玩家 AV 滿 100 前，場上每隻活著的怪物各自依自己的速度累積 AV 並行動。"""
         self.player_av -= 100
-        p_spd = get_player_spd(self.player)
+        p_spd = self._effective_player_spd()
 
         while self.player_av < 100:
             self.player_av += p_spd
@@ -409,8 +439,7 @@ class TRPGCombat:
                     from trpg.monster_ai import tick_revive
                     log += tick_revive(slot, self.player.language)
                     continue
-                m_base = 15 if slot["monster"].get("is_boss") else 10
-                m_spd = max(5, slot["monster"].get("spd", int(m_base + self.player.level * 2.2)))
+                m_spd = self._effective_monster_spd(slot)
                 slot["av"] += m_spd
 
                 while slot["av"] >= 100:
@@ -421,8 +450,29 @@ class TRPGCombat:
                         return log
                     if self._all_monsters_dead():
                         return log + self._process_victory()
-        return log
 
+        # 場上沒有活著的怪物、卻還有等待復活的怪物時，立即快轉完成復活，
+        # 避免玩家面對「敵人全倒、戰鬥卻沒結束也沒復活」的空回合（高速度時尤其明顯）
+        return self._resolve_pending_revives(log)
+
+    def _any_monster_alive(self) -> bool:
+        return any(s["hp"] > 0 for s in self.view.monster_slots)
+
+    def _resolve_pending_revives(self, log: str) -> str:
+        from trpg.monster_ai import tick_revive
+        guard = 0
+        while not self._any_monster_alive() and guard < 30:
+            pending = [
+                s for s in self.view.monster_slots
+                if s["hp"] <= 0 and not s.get("fled")
+                and s["monster"].get("revive_once") and not s.get("revived")
+            ]
+            if not pending:
+                break
+            guard += 1
+            for slot in pending:
+                log += tick_revive(slot, self.player.language)
+        return log
 
     def _monster_act_slot(self, slot: dict, log: str) -> str:
         from trpg.status import process_monster_status
@@ -462,6 +512,10 @@ class TRPGCombat:
             self.cog.save_players()
             return self.advance_time(log) # 👈 被麻痺就直接過回合
 
+        # 前排目前沒有活著的目標（例如 BOSS 即將復活的空檔）：推進時間讓復活／小怪行動，避免攻擊到 None
+        if self.monster is None:
+            return self.advance_time(log)
+
         # 取出武器的速度加成
         weapon = self.cog.items.get(self.player.weapon, {})
 
@@ -472,14 +526,35 @@ class TRPGCombat:
         p_spd = get_player_spd(self.player)
         multiplier = 1.0 + p_spd * spd_scale
         
-        # 傳遞屬性與速度倍率給攻擊計算
-        base_dmg, base_msg = self._do_physical_hit(multiplier=multiplier, ele_mult=ele_mult) 
+        lang = self.player.language
+        eff = getattr(self.player, "dungeon_relic_effects", None) or {}
+
+        # 傳遞屬性與速度倍率給攻擊計算（地下城遺物/裝備可加暴擊率）
+        base_dmg, base_msg = self._do_physical_hit(multiplier=multiplier, crit_bonus=eff.get("crit_bonus", 0.0), ele_mult=ele_mult)
         p_dmg, hit_msg = apply_schrodinger(self.player, base_dmg, base_msg)
-        
-        monster_name = tf(self.monster, "name", self.player.language)
-        log += t(self.player.language, "combat.player_attacks", "⚔️ 你攻擊了 {monster}，{hit_msg}", monster=monster_name, hit_msg=hit_msg)
+
+        monster_name = tf(self.monster, "name", lang)
+        log += t(lang, "combat.player_attacks", "⚔️ 你攻擊了 {monster}，{hit_msg}", monster=monster_name, hit_msg=hit_msg)
         self.monster_hp -= p_dmg
-        wake_log = break_sleep_on_damage(self.monster_status, self.player.language)
+
+        # 地下城：吸血
+        if eff.get("lifesteal", 0) > 0 and p_dmg > 0:
+            heal = max(1, int(p_dmg * eff["lifesteal"]))
+            before = self.player.current_hp
+            self.player.current_hp = min(self.player.max_hp, self.player.current_hp + heal)
+            if self.player.current_hp - before > 0:
+                log += "\n" + t(lang, "combat.lifesteal", "🩸 吸血回復了 {heal} HP！", heal=self.player.current_hp - before)
+
+        # 地下城：腐蝕附加
+        if eff.get("corrosion_on_hit", 0) > 0 and self.monster_status is not None:
+            from trpg.dungeon import corrosion_params
+            from trpg.status import apply_corrosion
+            stacks, per = corrosion_params(self.player.dungeon_state, eff)
+            if stacks > 0:
+                total = apply_corrosion(self.monster_status, stacks, per)
+                log += "\n" + t(lang, "combat.corrosion_apply", "🧪 附加了腐蝕，目前共 {stacks} 層！", stacks=total)
+
+        wake_log = break_sleep_on_damage(self.monster_status, lang)
         if wake_log:
             log += f"\n{wake_log}"
         log = self._apply_weapon_on_hit(log)
@@ -499,7 +574,7 @@ class TRPGCombat:
             return self.advance_time(log + "\n" + t(self.player.language, "combat.flee_paralyzed", "💨 你試圖逃跑，但身體不聽使喚！"))
 
         p_spd = get_player_spd(self.player)
-        m_spd = self.monster.get("spd", int(10 + self.player.level * 2.2))
+        m_spd = self.monster.get("spd", int(10 + self.player.level * 2.2)) if self.monster else 10
         flee_chance = min(0.95, max(0.2, 0.4 + (p_spd - m_spd) * 0.015))
 
         if random.random() < flee_chance:
@@ -820,21 +895,30 @@ class TRPGCombat:
                 log += t(lang, "combat.boss_daily_tag", "(⚡ 每日挑戰隨機獲得！)\n")
         return log
 
-    def _update_kill_quest_progress(self, monster_id: str) -> str:
+    def _update_kill_quest_progress(self, monster: dict) -> str:
         lang = self.player.language
         quest_log = ""
+        monster_id = monster.get("id")
+        is_boss = bool(monster.get("is_boss"))
+
+        def _matches(quest_info) -> bool:
+            qtype = quest_info.get("quest_type")
+            if qtype == "kill":
+                return quest_info.get("target_monster") == monster_id
+            if qtype == "boss_kill":
+                return is_boss and quest_info.get("target_monster") == monster_id
+            return False
 
         for quest_id, quest_data in self.player.active_quests.items():
             quest_info = self.cog.quests.get(quest_id)
-            if quest_info and quest_info.get("quest_type") == "kill":
-                if quest_info.get("target_monster") == monster_id:
-                    quest_data["progress"] += 1
-                    quest_title = tf(quest_info, "title", lang)
-                    quest_log += t(lang, "combat.quest_progress_update", "\n📜 任務進度更新：{title} ({progress}/{target})", title=quest_title, progress=quest_data["progress"], target=quest_info["target_count"])
-                    if quest_data["progress"] >= quest_info["target_count"]:
-                        quest_log += t(lang, "combat.quest_completed", "\n✅ 任務達成！稍後會有委託人的訊息通知你領取獎勵。")
+            if quest_info and _matches(quest_info):
+                quest_data["progress"] += 1
+                quest_title = tf(quest_info, "title", lang)
+                quest_log += t(lang, "combat.quest_progress_update", "\n📜 任務進度更新：{title} ({progress}/{target})", title=quest_title, progress=quest_data["progress"], target=quest_info["target_count"])
+                if quest_data["progress"] >= quest_info["target_count"]:
+                    quest_log += t(lang, "combat.quest_completed", "\n✅ 任務達成！稍後會有委託人的訊息通知你領取獎勵。")
 
-        # 👇 隱藏任務進度更新（Kill 類型；隱藏任務不需要「接受」，符合等級的玩家都視為已在追蹤）
+        # 👇 隱藏任務進度更新（kill/boss_kill；隱藏任務不需要「接受」，符合等級的玩家都視為已在追蹤）
         hidden_progress = getattr(self.player, "hidden_quest_progress", None)
         if not isinstance(hidden_progress, dict):
             hidden_progress = {}
@@ -846,11 +930,36 @@ class TRPGCombat:
                 continue
             if self.player.level < quest_info.get("req_level", 1):
                 continue
-            if quest_info.get("quest_type") != "kill" or quest_info.get("target_monster") != monster_id:
+            if not _matches(quest_info):
                 continue
             hidden_progress[quest_id] = hidden_progress.get(quest_id, 0) + 1
 
         return quest_log
+
+    def _process_dungeon_victory(self, killed_monsters: list) -> str:
+        """地下城戰鬥勝利：不結算真實 exp/金幣，改觸發戰利品/通關，並處理擊殺回血。"""
+        lang = self.player.language
+        eff = getattr(self.player, "dungeon_relic_effects", None) or {}
+        clear_all_status(self.player)
+
+        kill_log = ""
+        heal_pct = eff.get("on_kill_heal_pct", 0)
+        if heal_pct > 0:
+            heal = max(1, int(self.player.max_hp * heal_pct))
+            before = self.player.current_hp
+            self.player.current_hp = min(self.player.max_hp, self.player.current_hp + heal)
+            if self.player.current_hp - before > 0:
+                kill_log = "\n" + t(lang, "combat.on_kill_heal", "💚 擊殺回復了 {heal} HP！", heal=self.player.current_hp - before)
+
+        self._clear_battle_state()
+        self.view.in_battle = False
+        self.view.monster_slots = []
+        is_boss = any(m.get("is_boss") for m in killed_monsters)
+        is_elite = any(m.get("is_elite") for m in killed_monsters)
+        base_log = t(lang, "combat.dungeon_victory", "🏆 戰鬥勝利！") + kill_log
+        self.view.on_dungeon_victory(is_elite=is_elite, is_boss=is_boss, base_log=base_log)
+        self.cog.save_players()
+        return self.view.log_message
 
     def _process_victory(self) -> str:
         lang = self.player.language
@@ -860,6 +969,10 @@ class TRPGCombat:
 
         killed_monsters = [slot["monster"] for slot in self.view.monster_slots if not slot.get("fled")]
         fled_monsters = [slot["monster"] for slot in self.view.monster_slots if slot.get("fled")]
+
+        # 地下城走獨立的勝利結算（戰利品/通關），不給真實 exp/金幣
+        if all_monsters[0].get("is_dungeon"):
+            return self._process_dungeon_victory(killed_monsters)
 
         total_gold = 0
         total_exp = 0
@@ -873,7 +986,7 @@ class TRPGCombat:
             total_exp += exp
             drop_log += self._roll_drops_for(monster)
             boss_log += self._handle_boss_kill_rewards(monster)
-            quest_log += self._update_kill_quest_progress(monster.get("id"))
+            quest_log += self._update_kill_quest_progress(monster)
 
         self.cog.adjust_bank(self.view.user_id, total_gold)
         lvl_up = self.player.add_exp(total_exp, self.cog.items)
@@ -930,16 +1043,11 @@ class TRPGCombat:
                         floor=completed_floor, trophy=milestone_data["trophy"], gold_msg=gold_msg, item_msg=item_msg,
                     )
 
-        dungeon_log = ""
-        if primary_monster.get("is_dungeon"):
-            self.view._advance_dungeon_floor()
-            dungeon_log = "\n" + t(lang, "combat.dungeon_floor_open", "🧗 轟隆隆... 通往深淵地下城第 {floor} 層的通道打開了！", floor=self.player.dungeon_state['floor'])
-
         log = t(
             lang, "combat.victory_summary",
             "\n🏆 戰鬥勝利！\n獲得了 {exp} 經驗值與 {gold} {money_name}。\n{drop_log}{boss_log}{quest_log}{flee_log}{tower_log}{dungeon_log}",
             exp=total_exp, gold=total_gold, money_name=self.cog.bot.baba.money_name,
-            drop_log=drop_log, boss_log=boss_log, quest_log=quest_log, flee_log=flee_log, tower_log=tower_log, dungeon_log=dungeon_log,
+            drop_log=drop_log, boss_log=boss_log, quest_log=quest_log, flee_log=flee_log, tower_log=tower_log, dungeon_log="",
         )
 
         if lvl_up:

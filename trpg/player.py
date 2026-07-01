@@ -2,6 +2,7 @@
 
 from trpg.stats import default_stat_alloc, recalc_player_stats
 from trpg.combat import exp_to_next_level
+from trpg.dungeon import SEALED_FIELDS
 
 # Bump this when you change the save schema in a way that needs real migration
 # logic (not just a new defaulted field). Stored on every player save.
@@ -61,7 +62,9 @@ def _fresh_containers() -> dict:
         "mystery_shop_items": [],
         "dungeon_state": {"floor": 1, "choices": [], "in_run": False},
         "hidden_quest_progress": {},
+        "repeatable_cooldowns": {},  # {quest_id: "YYYY-MM-DD"} 可重複/每日任務上次完成日期
         "dungeon_buffs": {},
+        "dungeon_relic_effects": {},  # 地下城遺物/裝備彙整出的戰鬥 hook（僅 run 內生效）
         "combat_debuffs": {},      # 怪物技能造成的戰鬥內減益
         "combat_buffs": {},        # 玩家技能給的戰鬥內增益（攻防速強化 / 持續治癒）
         "cave_state": {"current_node": "entrance", "history": []},
@@ -117,6 +120,9 @@ class TRPGPlayer:
             # the wrong type (older saves occasionally stored null for these).
             if key in container_defaults and not isinstance(val, type(container_defaults[key])):
                 continue
+            # 純量欄位若存檔是 null，但我們有實際預設值時，保留預設值（避免 None 覆蓋掉數值欄位）
+            if val is None and _SCALAR_DEFAULTS.get(key) is not None:
+                continue
             setattr(player, key, val)
         # Special case preserved from the old logic: if a save predates the
         # equipped-skills system, seed it from the first 8 learned skills.
@@ -144,20 +150,26 @@ class RoguePlayerWrapper:
     def __init__(self, real_player):
         self.real_player = real_player
 
+    def _sealed(self) -> bool:
+        return (getattr(self.real_player, 'current_area', '') == 'area_dungeon'
+                and self.real_player.dungeon_state.get('in_run'))
+
     def __getattr__(self, name):
-        if getattr(self.real_player, 'current_area', '') == 'area_dungeon' and self.real_player.dungeon_state.get('in_run'):
-            if name in ['level', 'exp', 'max_hp', 'current_hp', 'base_atk', 'base_def', 'base_spd', 'base_magic', 
-                        'inventory', 'skills', 'equipped_skills', 'stat_alloc', 'weapon', 'armor', 'accessory']:
-                return self.real_player.dungeon_state.get(name)
+        # 地下城進行中時，封印欄位改讀 dungeon_state 裡的臨時角色數值
+        if name in SEALED_FIELDS and self._sealed():
+            ds = self.real_player.dungeon_state
+            if name in ds:
+                return ds[name]
+            # 舊格式的 dungeon_state 可能缺少新欄位（例如 current_mp）：
+            # 退回真實角色的值，避免回傳 None 造成崩潰
+            return getattr(self.real_player, name, None)
         return getattr(self.real_player, name)
-    
+
     def __setattr__(self, name, value):
         if name == 'real_player':
             super().__setattr__(name, value)
             return
-        if getattr(self.real_player, 'current_area', '') == 'area_dungeon' and self.real_player.dungeon_state.get('in_run'):
-            if name in ['level', 'exp', 'max_hp', 'current_hp', 'base_atk', 'base_def', 'base_spd', 'base_magic', 
-                        'inventory', 'skills', 'equipped_skills', 'stat_alloc', 'weapon', 'armor', 'accessory']:
-                self.real_player.dungeon_state[name] = value
-                return
+        if name in SEALED_FIELDS and self._sealed():
+            self.real_player.dungeon_state[name] = value
+            return
         setattr(self.real_player, name, value)

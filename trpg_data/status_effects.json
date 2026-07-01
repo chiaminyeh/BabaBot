@@ -19,13 +19,13 @@
         "desc_en": "Takes scorching damage each turn, increasing the longer it lasts (4%→8%→12%→16%→20% max HP)"
     },
     "freeze": {
-        "name": "冰凍",
-        "emoji": "🧊",
-        "mp_drain_ratio": 0.1,
+        "name": "緩速",
+        "emoji": "🐌",
+        "spd_mult": 0.5,
         "cure_item": "thaw_herb",
-        "desc": "100% 無法行動，且每回合流失 10% 最大 MP",
-        "name_en": "Freeze",
-        "desc_en": "Completely unable to act, and loses 10% of max MP each turn"
+        "desc": "速度大幅下降（行動變慢），持續數回合",
+        "name_en": "Slow",
+        "desc_en": "Greatly reduced speed (acts less often) for several turns"
     },
     "paralysis": {
         "name": "麻痺",
@@ -53,5 +53,13 @@
         "desc": "陷入瘋狂，只能使用普通攻擊，但攻擊力大幅提升",
         "name_en": "Berserk",
         "desc_en": "Driven into a frenzy, can only use basic attacks, but Attack is greatly increased"
+    },
+    "corrosion": {
+        "name": "腐蝕",
+        "desc": "地下城專屬：每層每回合造成固定傷害，會持續累積",
+        "emoji": "🧪",
+        "name_en": "Corrosion",
+        "desc_en": "Dungeon-only: each stack deals flat damage every turn and keeps accumulating",
+        "jester_immune": false
     }
 }

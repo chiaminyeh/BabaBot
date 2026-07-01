@@ -6,7 +6,7 @@ from discord import app_commands
 import json
 import os
 
-from trpg.i18n import t, tf
+from trpg.i18n import t
 from trpg.monster_pool import load_monster_pool
 from trpg.stats import recalc_player_stats, migrate_player_stats
 from trpg.status import activate_jester_immunity
@@ -31,6 +31,8 @@ class TRPGCog(commands.Cog):
         self.achievements = {}
         self.monster_pool = {}
         self.dungeon_events = {}
+        self.dungeon_relics = {}
+        self.dungeon_items = {}
         self.load_all_config()
 
     def get_bank_balance(self, user_id) -> int:
@@ -70,6 +72,8 @@ class TRPGCog(commands.Cog):
             ("events", "events.json"),
             ("achievements", "achievements.json"),
             ("dungeon_events", "dungeon_events.json"),
+            ("dungeon_relics", "dungeon_relics.json"),
+            ("dungeon_items", "dungeon_items.json"),
         ):
             setattr(self, attr, self._load_json(filename, {}))
 
