@@ -24,6 +24,8 @@ _SCALAR_DEFAULTS = {
     "weapon": None,
     "armor": None,
     "accessory": None,
+    # 已淘汰（改用下面 weapon_upgrades/armor_upgrades 依裝備各自紀錄），
+    # 只留著給 stats.migrate_player_stats 做一次性搬遷用。
     "weapon_upgrade": 0,
     "armor_upgrade": 0,
     "current_area": "area_00village",
@@ -49,6 +51,8 @@ def _fresh_containers() -> dict:
     return {
         "inventory": {"health_potion": 2},  # 新玩家初始送兩罐藥水
         "shop_items": [],  # 已淘汰（改用 shop_state 依區域分開存），留著只為了舊存檔相容
+        "weapon_upgrades": {},  # {item_id: level} — 強化跟著「這把武器」走，換武器不會繼承等級
+        "armor_upgrades": {},   # {item_id: level}
         "shop_state": {},  # {area_id: {"items":[...], "last_refresh":"YYYY-MM-DD", "refresh_count":0,
                             #            "mystery_date":"...", "mystery_active":False, "mystery_items":[...]}}
         "stats": {"monsters_killed": 0, "total_deaths": 0, "money_spent": 0},

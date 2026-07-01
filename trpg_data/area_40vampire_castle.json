@@ -85,6 +85,54 @@
             "money_max": 250,
             "ai": "multi_hit_flurry",
             "name_en": "Bloodkin Servant"
+        },
+        "blood_knight": {
+            "id": "blood_knight",
+            "name": "血騎士",
+            "spawn_rate": 0.2,
+            "max_hp": 5500,
+            "atk": 200,
+            "def": 180,
+            "exp": 11000,
+            "spd": 35,
+            "weakness": [
+                "holy"
+            ],
+            "resistance": [
+                "dark",
+                "physical"
+            ],
+            "drops": {
+                "tainted_blood": 0.5
+            },
+            "money_min": 140,
+            "money_max": 230,
+            "ai": "heavy_tank",
+            "name_en": "Blood Knight"
+        },
+        "shadow_assassin": {
+            "id": "shadow_assassin",
+            "name": "暗影刺客",
+            "spawn_rate": 0.2,
+            "max_hp": 3200,
+            "atk": 260,
+            "def": 90,
+            "exp": 10500,
+            "spd": 75,
+            "weakness": [
+                "holy",
+                "fire"
+            ],
+            "resistance": [
+                "dark"
+            ],
+            "drops": {
+                "high_health_potion": 0.3
+            },
+            "money_min": 135,
+            "money_max": 220,
+            "ai": "charge_attack",
+            "name_en": "Shadow Assassin"
         }
     },
     "boss": {
@@ -112,7 +160,8 @@
             "vampire_fang": 1,
             "immortal_totem": 0.05,
             "holy_sword": 0.2,
-            "dragon_plate": 0.15
+            "dragon_plate": 0.15,
+            "pure_blood_essence": 0.12
         },
         "status_on_hit": [
             "burn",
@@ -145,7 +194,7 @@
             "hp_below": 0.5,
             "ai": "berserk_low_hp",
             "name_suffix": "（真祖覺醒・滴血狂怒）",
-            "heal_pct": 0.1,
+            "heal_pct": 0.6,
             "transform_text": "吸血鬼真祖捨棄了人形的偽裝，化作純粹的嗜血怪物！",
             "active_skills": [
                 {
@@ -197,5 +246,6 @@
             "name_en": "Nightstalker"
         }
     },
-    "area_name_en": "Vampire Castle"
+    "area_name_en": "Vampire Castle",
+    "requires_boss": "area_30graveyard"
 }

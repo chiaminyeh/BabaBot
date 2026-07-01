@@ -82,17 +82,31 @@ class ElderChiefModal(discord.ui.Modal, title="請教老村長"):
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
         lang = getattr(self.game_view.player, "language", "zh")
+        # 👇 先從真實遊戲資料撈出跟這個問題有關的事實，餵給老村長，避免他憑空幻想
+        # 出遊戲裡根本不存在的道具/怪物/機制（見 trpg/npc_knowledge.py）。
+        from trpg.npc_knowledge import build_grounding_context
+        context = build_grounding_context(self.game_view.cog, self.game_view.player, self.question.value, lang)
         if lang == "en":
             prompt = (
                 "You are the wise, kindly old village chief of the starting village in a fantasy RPG. "
-                "Answer the adventurer's question briefly and in character, in English. "
+                "Few know this, but in his youth he was actually a renowned hero who traveled the world "
+                "on countless adventures before retiring to settle down here as chief — that's exactly why "
+                "he knows so much about the monsters, items, and dungeons out there. He can let a hint of "
+                "his adventuring past slip out occasionally (e.g. mentioning he's wielded a similar weapon "
+                "or fought something like that before), but doesn't need to bring it up every single time. "
+                "Answer the adventurer's question briefly and in character, in English.\n\n"
+                f"{context}\n\n"
                 f'The adventurer asks: "{self.question.value}" '
                 "Answer in 60 words or fewer, and where relevant give a useful gameplay tip "
                 "(exploration, the shop, skill scrolls, bosses, etc.). Respond in English only."
             )
         else:
             prompt = (
-                "你是新手村的老村長，睿智慈祥，用簡短回答冒險者的問題。"
+                "你是新手村的老村長，睿智慈祥，用簡短回答冒險者的問題。很少人知道，他年輕時其實是一位遊歷四方、"
+                "身經百戰的英雄，退休後才回到這裡定居擔任村長——這正是為什麼他對世界上的怪物、道具、地下城如此"
+                "瞭若指掌。他可以偶爾在回答中不經意流露出當年冒險的痕跡（例如提到自己也用過類似的武器、打過類似"
+                "的怪物），但不用每次都刻意提起。\n\n"
+                f"{context}\n\n"
                 f"冒險者問：「{self.question.value}」"
                 "請在 60 字以內回答，可以給新手有用的遊戲提示（探索、商店、技能卷軸、BOSS 等）。"
             )

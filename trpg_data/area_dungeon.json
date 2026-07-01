@@ -3,5 +3,6 @@
     "req_level": 15,
     "event_chance": 0.0,
     "monsters": {},
-    "area_name_en": "Abyssal Dungeon"
+    "area_name_en": "Abyssal Dungeon",
+    "requires_boss": "area_10deep_forest"
 }

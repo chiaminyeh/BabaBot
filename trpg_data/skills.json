@@ -1,6 +1,6 @@
 {
     "power_slash": {
-        "name": "強力斬擊",
+        "name": "⚔️ 強力斬擊",
         "desc": "造成 1.5 倍物理傷害（CD: 2）",
         "type": "physical",
         "element": "physical",
@@ -8,12 +8,12 @@
         "crit_bonus": 0.08,
         "cd": 2,
         "req_level": 1,
-        "name_en": "Power Slash",
+        "name_en": "⚔️ Power Slash",
         "desc_en": "Deals 1.5x physical damage (CD: 2)",
         "dungeon_pool": true
     },
     "sunder_strike": {
-        "name": "破甲斬",
+        "name": "⚔️🔻 破甲斬",
         "desc": "先劈開敵人的防禦再攻擊：造成 1.1 倍物理傷害，並使敵人防禦力下降 30%（2回合，CD: 3）",
         "type": "physical",
         "element": "physical",
@@ -26,11 +26,11 @@
         "cd": 3,
         "req_level": 3,
         "dungeon_pool": true,
-        "name_en": "Sunder Strike",
+        "name_en": "⚔️🔻 Sunder Strike",
         "desc_en": "Cracks the enemy's defense before striking: deals 1.1x physical damage and lowers their DEF by 30% for 2 turns (CD: 3)"
     },
     "battle_focus": {
-        "name": "戰意昂揚",
+        "name": "💪 戰意昂揚",
         "desc": "凝聚戰意，接下來 3 回合攻擊力 +25%、速度 +15%（CD: 5）",
         "type": "support",
         "mp_cost": 10,
@@ -42,23 +42,23 @@
         "cd": 5,
         "req_level": 3,
         "dungeon_pool": true,
-        "name_en": "Battle Focus",
+        "name_en": "💪 Battle Focus",
         "desc_en": "Rally your fighting spirit: for the next 3 turns, ATK +25% and SPD +15% (CD: 5)"
     },
     "heal_light": {
-        "name": "初級治療",
+        "name": "💚 初級治療",
         "desc": "回復自身 100 點 HP（CD: 4）",
         "type": "support",
         "heal_amount": 100,
         "mp_cost": 25,
         "cd": 4,
         "req_level": 1,
-        "name_en": "Basic Heal",
+        "name_en": "💚 Basic Heal",
         "desc_en": "Restores 100 HP to yourself (CD: 4)",
         "dungeon_pool": true
     },
     "double_strike": {
-        "name": "連環快斬",
+        "name": "⚔️✖️2 連環快斬",
         "desc": "快速連砍兩次，每次 0.75 倍傷害（CD: 2）",
         "type": "physical",
         "element": "physical",
@@ -66,12 +66,12 @@
         "hits": 2,
         "cd": 2,
         "req_level": 1,
-        "name_en": "Rapid Slash Combo",
+        "name_en": "⚔️✖️2 Rapid Slash Combo",
         "desc_en": "Swiftly strikes twice in succession, each hit dealing 0.75x damage (CD: 2)",
         "dungeon_pool": true
     },
     "twin_shot": {
-        "name": "雙矢連射",
+        "name": "⚔️☠️✖️2 雙矢連射",
         "desc": "快速射出兩箭，每箭 0.7 倍傷害，並有機率使敵人中毒（CD: 3）",
         "type": "physical",
         "element": "physical",
@@ -82,32 +82,32 @@
         "apply_status": "poison",
         "status_turns": 2,
         "dungeon_pool": true,
-        "name_en": "Twin Shot",
+        "name_en": "⚔️☠️✖️2 Twin Shot",
         "desc_en": "Fires two rapid arrows, each dealing 0.7x damage, with a chance to Poison the enemy (CD: 3)"
     },
     "combo_attack": {
-        "name": "連續攻擊",
+        "name": "🔄⚔️ 連續攻擊",
         "desc": "被動：普攻額外攻擊一次（0.75 倍傷害，需 Lv.8）",
         "type": "passive",
         "req_level": 8,
         "extra_attack_multiplier": 0.75,
-        "name_en": "Combo Strike",
+        "name_en": "🔄⚔️ Combo Strike",
         "desc_en": "Passive: basic attacks strike one extra time (0.75x damage, requires Lv.8)",
         "dungeon_pool": true
     },
     "shadow_step": {
-        "name": "暗影步",
+        "name": "💨 暗影步",
         "desc": "消耗 15 MP，有 85% 機率強制脫離戰鬥（CD: 4，需 Lv.5）",
         "type": "flee",
         "flee_chance": 0.85,
         "mp_cost": 15,
         "cd": 4,
         "req_level": 5,
-        "name_en": "Shadow Step",
+        "name_en": "💨 Shadow Step",
         "desc_en": "Costs 15 MP, 85% chance to forcibly escape combat (CD: 4, requires Lv.5)"
     },
     "blood_strike": {
-        "name": "血之獻祭",
+        "name": "🩸🌑 血之獻祭",
         "desc": "消耗 20% 最大 HP，並根據獻祭的血量造成 2.5 倍暗屬性真實傷害（CD: 4，需 Lv.10）",
         "type": "physical",
         "element": "dark",
@@ -115,12 +115,12 @@
         "hp_scaling_multiplier": 2.5,
         "cd": 4,
         "req_level": 10,
-        "name_en": "Blood Sacrifice",
+        "name_en": "🩸🌑 Blood Sacrifice",
         "desc_en": "Costs 20% max HP, dealing true dark damage equal to 2.5x the HP sacrificed (CD: 4, requires Lv.10)",
         "dungeon_pool": true
     },
     "fireball": {
-        "name": "火球術",
+        "name": "🔮🔥 火球術",
         "desc": "造成 60 點基礎火屬性傷害，使敵人燃燒 2 回合（CD: 3）",
         "type": "magic",
         "element": "fire",
@@ -132,12 +132,12 @@
         "req_level": 1,
         "base_power": 60,
         "magic_scaling": 0.8,
-        "name_en": "Fireball",
+        "name_en": "🔮🔥 Fireball",
         "desc_en": "Deals 60 base fire damage, inflicting Burn on the enemy for 2 turns (CD: 3)",
         "dungeon_pool": true
     },
     "ice_spear": {
-        "name": "寒冰矛",
+        "name": "🔮❄️ 寒冰矛",
         "desc": "造成 50 點基礎冰屬性傷害，有高機率凍結敵人 1 回合（CD: 4）",
         "type": "magic",
         "element": "ice",
@@ -149,12 +149,12 @@
         "req_level": 1,
         "base_power": 50,
         "magic_scaling": 0.8,
-        "name_en": "Ice Spear",
+        "name_en": "🔮❄️ Ice Spear",
         "desc_en": "Deals 50 base ice damage, with a high chance to Freeze the enemy for 1 turn (CD: 4)",
         "dungeon_pool": true
     },
     "thunder_strike": {
-        "name": "落雷術",
+        "name": "🔮⚡ 落雷術",
         "desc": "造成 80 點基礎雷屬性傷害，附帶麻痺效果 2 回合（CD: 5）",
         "type": "magic",
         "element": "thunder",
@@ -166,12 +166,12 @@
         "req_level": 1,
         "base_power": 80,
         "magic_scaling": 0.8,
-        "name_en": "Lightning Bolt",
+        "name_en": "🔮⚡ Lightning Bolt",
         "desc_en": "Deals 80 base thunder damage, inflicting Paralysis for 2 turns (CD: 5)",
         "dungeon_pool": true
     },
     "water_ball": {
-        "name": "水球術",
+        "name": "🔮💧✖️2 水球術",
         "desc": "造成 40 點基礎水屬性傷害，連擊兩次，可以打到後排敵人（CD: 3）",
         "type": "magic",
         "element": "water",
@@ -183,11 +183,11 @@
         "target_type": "back",
         "base_power": 40,
         "magic_scaling": 0.8,
-        "name_en": "Water Ball",
+        "name_en": "🔮💧✖️2 Water Ball",
         "desc_en": "Deals 40 base water damage, hitting twice and able to reach backline enemies (CD: 3)"
     },
     "stone_spike": {
-        "name": "岩刺術",
+        "name": "🔮🌍 岩刺術",
         "desc": "造成 100 點基礎土屬性傷害，無視 60% 防禦（CD: 4）",
         "type": "magic",
         "element": "earth",
@@ -197,11 +197,11 @@
         "req_level": 8,
         "base_power": 100,
         "magic_scaling": 1.2,
-        "name_en": "Rock Spike",
+        "name_en": "🔮🌍 Rock Spike",
         "desc_en": "Deals 100 base earth damage, ignoring 60% of defense (CD: 4)"
     },
     "holy_smash": {
-        "name": "神聖制裁",
+        "name": "🔮✨ 神聖制裁",
         "desc": "造成 150 點基礎光屬性傷害，專剋不死生物（CD: 5，需 Lv.12）",
         "type": "magic",
         "element": "holy",
@@ -211,11 +211,11 @@
         "req_level": 12,
         "base_power": 150,
         "magic_scaling": 1.8,
-        "name_en": "Holy Judgment",
+        "name_en": "🔮✨ Holy Judgment",
         "desc_en": "Deals 150 base holy damage, especially devastating against undead (CD: 5, requires Lv.12)"
     },
     "dark_orb": {
-        "name": "暗影球",
+        "name": "🔮🌑☠️ 暗影球",
         "desc": "造成 130 點基礎暗屬性傷害，機率造成中毒（CD: 4，需 Lv.10）",
         "type": "magic",
         "element": "dark",
@@ -227,11 +227,11 @@
         "req_level": 10,
         "base_power": 130,
         "magic_scaling": 1.2,
-        "name_en": "Shadow Orb",
+        "name_en": "🔮🌑☠️ Shadow Orb",
         "desc_en": "Deals 130 base dark damage, with a chance to inflict Poison (CD: 4, requires Lv.10)"
     },
     "hypnotic_gaze": {
-        "name": "魅惑安眠",
+        "name": "🔮🌑💤 魅惑安眠",
         "desc": "造成 90 點基礎暗屬性傷害，使敵人陷入睡眠（CD: 5，需 Lv.15）",
         "type": "magic",
         "element": "dark",
@@ -243,11 +243,11 @@
         "req_level": 15,
         "base_power": 90,
         "magic_scaling": 1.0,
-        "name_en": "Charming Slumber",
+        "name_en": "🔮🌑💤 Charming Slumber",
         "desc_en": "Deals 90 base dark damage, lulling the enemy into Sleep (CD: 5, requires Lv.15)"
     },
     "inferno": {
-        "name": "煉獄火",
+        "name": "🔮🔥 煉獄火",
         "desc": "造成 180 點基礎火屬性傷害，強力燃燒 3 回合（CD: 5，需 Lv.15）",
         "type": "magic",
         "element": "fire",
@@ -259,11 +259,11 @@
         "req_level": 15,
         "base_power": 180,
         "magic_scaling": 1.8,
-        "name_en": "Hellfire",
+        "name_en": "🔮🔥 Inferno",
         "desc_en": "Deals 180 base fire damage, inflicting intense Burn for 3 turns (CD: 5, requires Lv.15)"
     },
     "blizzard": {
-        "name": "暴風雪",
+        "name": "🔮❄️ 暴風雪",
         "desc": "造成 140 點基礎冰屬性傷害，凍結敵人 2 回合（CD: 5，需 Lv.12）",
         "type": "magic",
         "element": "ice",
@@ -275,11 +275,11 @@
         "req_level": 12,
         "base_power": 140,
         "magic_scaling": 1.2,
-        "name_en": "Blizzard",
+        "name_en": "🔮❄️ Blizzard",
         "desc_en": "Deals 140 base ice damage, Freezing the enemy for 2 turns (CD: 5, requires Lv.12)"
     },
     "divine_thunder": {
-        "name": "神聖落雷",
+        "name": "🔮⚡ 神聖落雷",
         "desc": "對全體敵人造成 120 點基礎雷屬性傷害並麻痺 3 回合，範圍換取較低的單體傷害（CD: 6，需 Lv.18）",
         "type": "magic",
         "element": "thunder",
@@ -292,11 +292,11 @@
         "target_type": "all",
         "base_power": 120,
         "magic_scaling": 1.2,
-        "name_en": "Holy Thunder",
+        "name_en": "🔮⚡ Divine Thunder",
         "desc_en": "Deals 120 base thunder damage to all enemies and inflicts Paralysis for 3 turns, trading lower single-target damage for area coverage (CD: 6, requires Lv.18)"
     },
     "void_eruption": {
-        "name": "虛空爆發",
+        "name": "🔮🌑 虛空爆發",
         "desc": "造成 500 點基礎暗屬性傷害，且無視 80% 防禦（CD: 6，需 Lv.25）",
         "type": "magic",
         "element": "dark",
@@ -306,11 +306,11 @@
         "req_level": 25,
         "base_power": 500,
         "magic_scaling": 2.5,
-        "name_en": "Void Burst",
+        "name_en": "🔮🌑 Void Eruption",
         "desc_en": "Deals 500 base dark damage, ignoring 80% of defense (CD: 6, requires Lv.25)"
     },
     "venom_cloud": {
-        "name": "劇毒之雲",
+        "name": "🔮🌑☠️ 劇毒之雲",
         "desc": "對全體敵人造成 90 點基礎暗屬性傷害，並使敵人陷入中毒（CD: 4，需 Lv.15）",
         "type": "magic",
         "element": "dark",
@@ -323,11 +323,11 @@
         "target_type": "all",
         "base_power": 90,
         "magic_scaling": 0.8,
-        "name_en": "Toxic Cloud",
+        "name_en": "🔮🌑☠️ Venom Cloud",
         "desc_en": "Deals 90 base dark damage to all enemies, inflicting Poison (CD: 4, requires Lv.15)"
     },
     "frost_nova": {
-        "name": "冰霜新星",
+        "name": "🔮❄️ 冰霜新星",
         "desc": "對全體敵人造成 120 點基礎冰屬性傷害，有高機率凍結敵人 2 回合（CD: 5，需 Lv.18）",
         "type": "magic",
         "element": "ice",
@@ -340,11 +340,11 @@
         "target_type": "all",
         "base_power": 120,
         "magic_scaling": 1.2,
-        "name_en": "Frost Nova",
+        "name_en": "🔮❄️ Frost Nova",
         "desc_en": "Deals 120 base ice damage to all enemies, with a high chance to Freeze them for 2 turns (CD: 5, requires Lv.18)"
     },
     "meteor_swarm": {
-        "name": "隕石風暴",
+        "name": "🔮🔥 隕石風暴",
         "desc": "對全體敵人造成 300 點基礎火屬性巨大傷害，並強力燃燒 3 回合（CD: 6，需 Lv.25）",
         "type": "magic",
         "element": "fire",
@@ -357,11 +357,11 @@
         "target_type": "all",
         "base_power": 300,
         "magic_scaling": 2.5,
-        "name_en": "Meteor Storm",
+        "name_en": "🔮🔥 Meteor Swarm",
         "desc_en": "Deals massive 300 base fire damage to all enemies, inflicting intense Burn for 3 turns (CD: 6, requires Lv.25)"
     },
     "earthquake": {
-        "name": "大地震擊",
+        "name": "🔮🌍💫 大地震擊",
         "desc": "對全體敵人造成 250 點基礎土屬性傷害，且無視 70% 防禦並附加麻痺（CD: 5，需 Lv.20）",
         "type": "magic",
         "element": "earth",
@@ -374,11 +374,11 @@
         "target_type": "all",
         "base_power": 250,
         "magic_scaling": 2.5,
-        "name_en": "Earthquake Strike",
+        "name_en": "🔮🌍💫 Earthquake",
         "desc_en": "Deals 250 base earth damage to all enemies, ignoring 70% of defense and inflicting Paralysis (CD: 5, requires Lv.20)"
     },
     "iron_skin": {
-        "name": "鋼鐵之軀",
+        "name": "💪 鋼鐵之軀",
         "desc": "提升自身防禦力 2 倍，持續 3 回合（CD: 4）",
         "type": "support",
         "buff": {
@@ -388,12 +388,12 @@
         "mp_cost": 20,
         "cd": 4,
         "req_level": 5,
-        "name_en": "Iron Skin",
+        "name_en": "💪 Iron Skin",
         "desc_en": "Doubles your defense for 3 turns — a defensive shield (CD: 4).",
         "dungeon_pool": true
     },
     "battle_cry": {
-        "name": "戰吼",
+        "name": "💪 戰吼",
         "desc": "提升自身攻擊力 40%、速度 20%，持續 3 回合（CD: 5）",
         "type": "support",
         "buff": {
@@ -404,12 +404,12 @@
         "mp_cost": 25,
         "cd": 5,
         "req_level": 8,
-        "name_en": "Battle Cry",
+        "name_en": "💪 Battle Cry",
         "desc_en": "Raises your ATK by 40% and SPD by 20% for 3 turns (CD: 5).",
         "dungeon_pool": true
     },
     "regeneration": {
-        "name": "再生術",
+        "name": "🌿 再生術",
         "desc": "每回合回復 8% 最大 HP，持續 4 回合（CD: 5）",
         "type": "support",
         "regen": {
@@ -419,12 +419,12 @@
         "mp_cost": 22,
         "cd": 5,
         "req_level": 6,
-        "name_en": "Regeneration",
+        "name_en": "🌿 Regeneration",
         "desc_en": "Restores 8% max HP each turn for 4 turns (CD: 5).",
         "dungeon_pool": true
     },
     "purify": {
-        "name": "淨化術",
+        "name": "💚🧼 淨化術",
         "desc": "清除自身所有異常狀態與減益，並回復 10% 最大 HP（CD: 4）",
         "type": "support",
         "cleanse": true,
@@ -432,24 +432,24 @@
         "mp_cost": 18,
         "cd": 4,
         "req_level": 7,
-        "name_en": "Purify",
+        "name_en": "💚🧼 Purify",
         "desc_en": "Removes all your ailments and debuffs, and restores 10% max HP (CD: 4).",
         "dungeon_pool": true
     },
     "mana_surge": {
-        "name": "魔力湧泉",
+        "name": "🔷 魔力湧泉",
         "desc": "立即回復 80 點 MP（CD: 6）",
         "type": "support",
         "mp_restore": 80,
         "mp_cost": 0,
         "cd": 6,
         "req_level": 10,
-        "name_en": "Mana Surge",
+        "name_en": "🔷 Mana Surge",
         "desc_en": "Instantly restores 80 MP (CD: 6).",
         "dungeon_pool": true
     },
     "blade_dance": {
-        "name": "劍舞",
+        "name": "⚔️✖️3 劍舞",
         "desc": "對前排目標進行 3 次連擊，每擊造成 0.6 倍物理傷害，暴擊率提升（CD: 3）",
         "type": "physical",
         "element": "physical",
@@ -460,8 +460,22 @@
         "cd": 3,
         "req_level": 9,
         "target_type": "front",
-        "name_en": "Blade Dance",
+        "name_en": "⚔️✖️3 Blade Dance",
         "desc_en": "Strikes the front target 3 times for 0.6x physical damage each, with bonus crit chance (CD: 3).",
+        "dungeon_pool": true
+    },
+    "shield_bash": {
+        "name": "🛡️ 盾擊",
+        "name_en": "🛡️ Shield Bash",
+        "desc": "用盾牌狠狠撞擊敵人，以防禦力計算傷害；傷害屬性取決於你裝備的盾牌（CD: 2）",
+        "desc_en": "Slam the enemy with your shield; damage scales off your DEF, and its element depends on the shield you have equipped (CD: 2)",
+        "type": "physical",
+        "element": "physical",
+        "element_source": "armor",
+        "power_stat": "def",
+        "power_multiplier": 1.0,
+        "cd": 2,
+        "req_level": 2,
         "dungeon_pool": true
     }
 }

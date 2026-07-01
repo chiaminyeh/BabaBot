@@ -120,7 +120,8 @@
             "drops": {
                 "dragon_plate": 0.4,
                 "void_crystal": 0.6,
-                "demon_core": 0.15
+                "demon_core": 0.15,
+                "dragon_heart": 0.12
             },
             "money_min": 550,
             "money_max": 850,
@@ -141,6 +142,55 @@
                 }
             ],
             "name_en": "Fallen Dragon"
+        },
+        "hellhound": {
+            "id": "hellhound",
+            "name": "地獄獵犬",
+            "spawn_rate": 0.25,
+            "max_hp": 7000,
+            "atk": 350,
+            "def": 150,
+            "exp": 25000,
+            "spd": 65,
+            "weakness": [
+                "water",
+                "holy"
+            ],
+            "resistance": [
+                "fire",
+                "dark"
+            ],
+            "drops": {
+                "demon_core": 0.1
+            },
+            "money_min": 350,
+            "money_max": 500,
+            "ai": "kamikaze",
+            "name_en": "Hellhound"
+        },
+        "fallen_seraph": {
+            "id": "fallen_seraph",
+            "name": "墮落熾天使",
+            "spawn_rate": 0.15,
+            "max_hp": 8000,
+            "atk": 250,
+            "def": 200,
+            "exp": 27000,
+            "spd": 45,
+            "weakness": [
+                "dark"
+            ],
+            "resistance": [
+                "holy",
+                "physical"
+            ],
+            "drops": {
+                "void_crystal": 0.15
+            },
+            "money_min": 380,
+            "money_max": 550,
+            "ai": "support_healer",
+            "name_en": "Fallen Seraph"
         }
     },
     "boss": {
@@ -267,5 +317,6 @@
         "demon_core": 0.1
     },
     "area_name_en": "Demon Lord's Castle",
-    "desc_en": "[Endgame] The hall of the Abyssal Lord, where the air itself is thick with suffocating magic."
+    "desc_en": "[Endgame] The hall of the Abyssal Lord, where the air itself is thick with suffocating magic.",
+    "requires_boss": "area_40vampire_castle"
 }

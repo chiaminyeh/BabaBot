@@ -51,6 +51,56 @@
             },
             "ai": "berserk_low_hp",
             "name_en": "Orc Raider"
+        },
+        "harpy": {
+            "id": "harpy",
+            "name": "鷹身女妖",
+            "spawn_rate": 0.35,
+            "max_hp": 140,
+            "atk": 40,
+            "def": 10,
+            "spd": 35,
+            "exp": 70,
+            "money_min": 15,
+            "money_max": 25,
+            "weakness": [
+                "thunder",
+                "ice"
+            ],
+            "resistance": [
+                "wind"
+            ],
+            "drops": {
+                "medium_health_potion": 0.25,
+                "scroll_shadow_step": 0.1
+            },
+            "ai": "flee_low_hp",
+            "name_en": "Harpy"
+        },
+        "mushroom_sprite": {
+            "id": "mushroom_sprite",
+            "name": "菇靈",
+            "spawn_rate": 0.3,
+            "max_hp": 160,
+            "atk": 32,
+            "def": 18,
+            "spd": 10,
+            "exp": 75,
+            "money_min": 12,
+            "money_max": 22,
+            "weakness": [
+                "fire"
+            ],
+            "resistance": [
+                "poison",
+                "earth"
+            ],
+            "drops": {
+                "burn_salve": 0.3,
+                "antidote_herb": 0.3
+            },
+            "ai": "self_heal",
+            "name_en": "Mushroom Sprite"
         }
     },
     "boss_minions": {
@@ -131,7 +181,7 @@
             "hp_below": 0.5,
             "ai": "berserk_low_hp",
             "name_suffix": "（森林之怒）",
-            "heal_pct": 0.08,
+            "heal_pct": 0.45,
             "transform_text": "迷霧林王身上的藤蔓暴漲，化作猛獸般的姿態！",
             "active_skills": [
                 {
@@ -153,5 +203,6 @@
         },
         "name_en": "Mistwood King"
     },
-    "area_name_en": "Misty Forest"
+    "area_name_en": "Misty Forest",
+    "requires_boss": "area_01grassland"
 }

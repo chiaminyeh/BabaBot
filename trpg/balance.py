@@ -52,6 +52,30 @@ SET_BONUSES = {
         2: {"magic": 25, "mp": 40},
         3: {"magic": 60, "mp": 120, "res": 10},
     },
+    "assassin": {     # 刺客 / Assassin — lvl16 atk+spd burst set
+        2: {"atk": 15, "spd": 20},
+        3: {"atk": 35, "spd": 45, "res": 10},
+    },
+    "necromancer": {  # 死靈法師 / Necromancer — lvl30 dark caster set
+        2: {"magic": 40, "hp": 150},
+        3: {"magic": 90, "hp": 350, "res": 20},
+    },
+    "vampiric": {     # 血族 / Vampiric — lvl40 sustain set
+        2: {"atk": 30, "hp": 250},
+        3: {"atk": 70, "hp": 550, "res": 15},
+    },
+    "phoenix": {      # 鳳凰 / Phoenix — lvl60 hybrid fire set
+        2: {"atk": 50, "magic": 50},
+        3: {"atk": 110, "magic": 110, "hp": 400},
+    },
+    "voidwalker": {   # 虛空行者 / Voidwalker — lvl70 speed/evasion set
+        2: {"spd": 60, "def": 60},
+        3: {"spd": 130, "def": 130, "atk": 40},
+    },
+    "nether": {       # 冥界 / Nether — lvl80 top-tier all-round set
+        2: {"atk": 80, "def": 80},
+        3: {"atk": 180, "def": 180, "hp": 600, "res": 30},
+    },
 }
 
 # --- Per-area shops ----------------------------------------------------------
@@ -69,12 +93,14 @@ AREA_SHOP_TIERS = {
     "area_05forest":       {"gear_range": (5, 9),   "potion_tier": "basic"},
     "area_10deep_forest":  {"gear_range": (10, 15), "potion_tier": "medium"},
     "area_20lab":          {"gear_range": (16, 25), "potion_tier": "medium"},
-    # Late areas' ceiling stretches to 35 so the "mystery_only" ultimate-tier gear
-    # (void blade/chaos staff/demon armor, all lvl 30-35) can only ever surface in
-    # these endgame shops, never in the village/forest tiers.
-    "area_30graveyard":    {"gear_range": (16, 35), "potion_tier": "high"},
-    "area_40vampire_castle": {"gear_range": (16, 35), "potion_tier": "high"},
-    "area_99demon_castle": {"gear_range": (16, 35), "potion_tier": "high"},
+    # Late areas' ceiling stretches all the way to 80 so the "mystery_only"
+    # ultimate-tier gear (void blade/chaos staff/demon armor, lvl 30-35) AND the
+    # new 40-80 gear bands can only ever surface in these endgame shops, never in
+    # the village/forest tiers. The 4 true mythic items stay out of the shop
+    # entirely (shop_weight 0) — those are forge-only, see trpg/recipes.py.
+    "area_30graveyard":    {"gear_range": (16, 80), "potion_tier": "high"},
+    "area_40vampire_castle": {"gear_range": (16, 80), "potion_tier": "high"},
+    "area_99demon_castle": {"gear_range": (16, 80), "potion_tier": "high"},
 }
 # (min_hp_potion, min_mp_potion) shop-slot item ids per potion_tier.
 SHOP_POTION_TIERS = {

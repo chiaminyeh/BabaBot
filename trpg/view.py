@@ -26,6 +26,7 @@ ITEM_TYPE_EMOJI = {
     "accessory": "💍",
     "potion": "🧪",
     "cure": "💊",
+    "buff_item": "⏳",
     "skill_scroll": "📜",
     "etc": "📦",
 }
@@ -647,20 +648,45 @@ class TRPGGameView(discord.ui.View):
         self.add_action_button(label=t(lang, "menu.btn_flee", "逃跑"), style=discord.ButtonStyle.secondary, custom_id="b_fle", row=1, emoji="🏃")
         self.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.success, custom_id="b_sta", row=1, emoji="📜")
 
+    def _area_unlocked(self, area: dict) -> bool:
+        """區域解鎖條件：舊有的 requires_flag（例如傳說洞窟）或新的 requires_boss
+        （必須先在 player.killed_bosses 裡有指定區域的首殺紀錄）。"""
+        requires_flag = area.get("requires_flag")
+        if requires_flag and not getattr(self.player, requires_flag, False):
+            return False
+        requires_boss = area.get("requires_boss")
+        if requires_boss and requires_boss not in getattr(self.player, "killed_bosses", []):
+            return False
+        return True
+
+    def _boss_name_for_area(self, area_id: str, lang: str) -> str:
+        boss_area = self.cog.areas.get(area_id, {})
+        return tf(boss_area.get("boss", {}), "name", lang) or tf(boss_area, "area_name", lang) or area_id
+
     async def handle_move_menu(self):
         self.clear_items()
         lang = self.player.language
         self.log_message = t(lang, "menu.move_prompt", "挑選你打算移動前往的下一個區域：")
+        locked_hints = []
         for area_id, area in self.cog.areas.items():
             if area_id == self.player.current_area:
                 continue
-            requires_flag = area.get("requires_flag")
-            if requires_flag and not getattr(self.player, requires_flag, False):
+            if not self._area_unlocked(area):
+                requires_boss = area.get("requires_boss")
+                if requires_boss:
+                    area_name = tf(area, "area_name", lang) or area_id
+                    boss_name = self._boss_name_for_area(requires_boss, lang)
+                    locked_hints.append(t(
+                        lang, "menu.area_locked_hint", "🔒 {area_name}（需先擊敗【{boss_name}】）",
+                        area_name=area_name, boss_name=boss_name,
+                    ))
                 continue
             req = area.get("req_level", 1)
             area_name = tf(area, "area_name", lang) if area.get("area_name") else t(lang, "menu.unknown_area", "未知區域")
             label = t(lang, "menu.move_to_label", "前往 {area_name} (Lv.{req})", area_name=area_name, req=req)
             self.add_action_button(label=label, style=discord.ButtonStyle.primary, custom_id=f"move_to_{area_id}")
+        if locked_hints:
+            self.log_message += "\n\n" + "\n".join(locked_hints)
         self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
     def _instantiate_boss_minion(self, minion_def: dict, boss_level: int, area_req_level: int) -> dict:
@@ -1183,7 +1209,7 @@ class TRPGGameView(discord.ui.View):
         for item_id, count in self.player.inventory.items():
             if count > 0:
                 item = self.cog.items.get(item_id)
-                if item and item.get("type") in ("potion", "cure"):
+                if item and item.get("type") in ("potion", "cure", "buff_item"):
                     usable.append(item_id)
 
         total_items = len(usable)
@@ -1235,6 +1261,11 @@ class TRPGGameView(discord.ui.View):
                 self.log_message = self.combat.use_cure_item(item_id)
             else:
                 self.log_message = self.use_cure_item_out_of_battle(item_id)
+        elif item.get("type") == "buff_item":
+            if self.in_battle:
+                self.log_message = self.combat.use_buff_item(item_id)
+            else:
+                self.log_message = t(lang, "battle.buff_item_battle_only", "❌ 這個道具只能在戰鬥中使用。")
         else:
             self.log_message = t(lang, "battle.cannot_use_item", "❌ 無法使用此物品。")
 
@@ -1801,6 +1832,15 @@ class TRPGGameView(discord.ui.View):
         #     self.log_message = f"❌ 等級不足！前往【{area_data.get('area_name', target_area)}】需要 Lv.{req_level}。"
         #     self.build_main_menu()
         #     return
+        if not self._area_unlocked(area_data):
+            requires_boss = area_data.get("requires_boss")
+            if requires_boss:
+                boss_name = self._boss_name_for_area(requires_boss, lang)
+                self.log_message = t(lang, "menu.move_blocked_boss", "❌ 這條路還被封鎖著，得先擊敗【{boss_name}】才能通行。", boss_name=boss_name)
+            else:
+                self.log_message = t(lang, "menu.move_blocked_generic", "❌ 目前還無法前往這個區域。")
+            self.build_main_menu()
+            return
         self.player.current_area = target_area
         self.cog.save_players()
         area_name = tf(self.cog.areas[target_area], "area_name", lang)
@@ -2673,8 +2713,8 @@ class TRPGGameView(discord.ui.View):
         w_name = tf(self.cog.items.get(w_id, {}), "name", lang) if w_id else none_label
         a_name = tf(self.cog.items.get(a_id, {}), "name", lang) if a_id else none_label
 
-        w_up = getattr(p, "weapon_upgrade", 0)
-        a_up = getattr(p, "armor_upgrade", 0)
+        w_up = getattr(p, "weapon_upgrades", {}).get(w_id, 0) if w_id else 0
+        a_up = getattr(p, "armor_upgrades", {}).get(a_id, 0) if a_id else 0
 
         self.log_message += "\n" + t(lang, "blacksmith.current_weapon", "⚔️ 目前武器：【{name}】", name=w_name) + (f" (+{w_up})" if w_id and w_up > 0 else "")
         self.log_message += "\n" + t(lang, "blacksmith.current_armor", "🛡️ 目前防具：【{name}】", name=a_name) + (f" (+{a_up})" if a_id and a_up > 0 else "")
@@ -2772,7 +2812,11 @@ class TRPGGameView(discord.ui.View):
             await self.handle_blacksmith_menu(t(lang, "blacksmith.err_no_equipment", "❌ 你沒有裝備任何對應的裝備！"))
             return
 
-        current_up = getattr(p, f"{slot}_upgrade", 0)
+        upgrades_dict = getattr(p, f"{slot}_upgrades", None)
+        if not isinstance(upgrades_dict, dict):
+            upgrades_dict = {}
+            setattr(p, f"{slot}_upgrades", upgrades_dict)
+        current_up = upgrades_dict.get(item_id, 0)
         if current_up >= 5:
             await self.handle_blacksmith_menu(t(lang, "blacksmith.err_max_level", "❌ 該裝備已達到最高強化等級 (+5)！"))
             return
@@ -2806,7 +2850,7 @@ class TRPGGameView(discord.ui.View):
         success = (random.random() < cost["rate"])
 
         if success:
-            setattr(p, f"{slot}_upgrade", next_lvl)
+            upgrades_dict[item_id] = next_lvl
             recalc_player_stats(p, self.cog.items, heal_full=False)
 
             achv_text = self.check_achievements()

@@ -86,21 +86,26 @@ def recalc_player_stats(player, items: dict = None, heal_full: bool = False):
     prestige = getattr(player, "prestige_count", 0)
     prestige_mult = 1.0 + prestige * PRESTIGE_BONUS_PER_LEVEL  # 每級轉生提升的全屬性（見 balance.py）
 
+    # 👇 強化跟著「這把裝備」走，不是跟著玩家：查表用目前裝備的 item_id 當 key，
+    # 換一把新武器/防具，強化等級就會歸零，要重新投資材料才能再強化起來。
+    weapon_upgrades = getattr(player, "weapon_upgrades", None) or {}
+    armor_upgrades = getattr(player, "armor_upgrades", None) or {}
+
     base_atk = 10 + level * 2 + alloc.get("atk", 0) * ALLOC_BONUS["atk"] + eq["atk"]
     if getattr(player, "weapon", None):
-        base_atk += getattr(player, "weapon_upgrade", 0) * 3
+        base_atk += weapon_upgrades.get(player.weapon, 0) * 3
     player.base_atk = int(base_atk * prestige_mult)
-    
+
     # 👇 體力 (vit) 統一管理血量與防禦
     base_def = 4 + level * 1.5 + alloc.get("vit", 0) * 2 + eq["def"]
     if getattr(player, "armor", None):
-        base_def += getattr(player, "armor_upgrade", 0) * 2
+        base_def += armor_upgrades.get(player.armor, 0) * 2
     player.base_def = int(base_def * prestige_mult)
-    
+
     old_max_hp = getattr(player, "max_hp", 60)
     base_max_hp = 50 + level * 10 + alloc.get("vit", 0) * 12 + eq["hp"]
     if getattr(player, "armor", None):
-        base_max_hp += getattr(player, "armor_upgrade", 0) * 15
+        base_max_hp += armor_upgrades.get(player.armor, 0) * 15
     player.max_hp = int(base_max_hp * prestige_mult)
     
     # 👇 智力 (int) 統一管理魔法攻擊與 MP
@@ -168,6 +173,21 @@ def migrate_player_stats(player, items: dict):
     if not hasattr(player, "equipped_skills") or player.equipped_skills is None:
         # 取最多 8 個已學技能作為預設裝備技能
         player.equipped_skills = player.skills[:8] if getattr(player, "skills", None) else []
+
+    # 👇 強化改為跟著裝備走：把舊版「玩家身上一個強化等級」一次性搬進新的
+    # {item_id: level} 表，搬完就把舊欄位歸零，不會重複搬遷或疊加。
+    if not isinstance(getattr(player, "weapon_upgrades", None), dict):
+        player.weapon_upgrades = {}
+    if not isinstance(getattr(player, "armor_upgrades", None), dict):
+        player.armor_upgrades = {}
+    old_weapon_up = getattr(player, "weapon_upgrade", 0)
+    if old_weapon_up and getattr(player, "weapon", None):
+        player.weapon_upgrades[player.weapon] = old_weapon_up
+        player.weapon_upgrade = 0
+    old_armor_up = getattr(player, "armor_upgrade", 0)
+    if old_armor_up and getattr(player, "armor", None):
+        player.armor_upgrades[player.armor] = old_armor_up
+        player.armor_upgrade = 0
 
 
     if not getattr(player, "stat_alloc", None):

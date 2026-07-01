@@ -188,6 +188,17 @@ def calc_monster_damage(monster_atk: int, player_def: int) -> int:
     return int(dmg * random.uniform(0.9, 1.1))
 
 
+# 技能的傷害輸出可以改吃別的數值，不是永遠都吃 atk——這樣 VIT 流（高防高血）
+# 也能有自己的輸出手段：skill.json 設 "power_stat":"def" 就會改用防禦力計算傷害。
+_POWER_STAT_GETTERS = {
+    "atk": lambda c: c.atk,
+    "def": lambda c: c.def_,
+    "mdef": lambda c: c.mdef,
+    "hp": lambda c: c.hp,
+    "spd": lambda c: c.spd,
+}
+
+
 def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost: int = 0) -> tuple[str, int]:
     """對 targets 套用 skill 的傷害／治療與異常狀態，回傳 (戰鬥紀錄文字, 造成的總傷害)。
 
@@ -198,6 +209,14 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
     """
     skill_type = skill.get("type", "physical")
     skill_elem = skill.get("element", "magic")
+    if skill.get("element_source") == "armor":
+        # 像「盾擊」這種招式：屬性不是寫死在技能上，而是看你裝備的盾牌（防具欄）決定，
+        # 換一面盾就能換屬性，不用為每種屬性各出一招技能。
+        player_obj = getattr(caster, "player", None)
+        items_dict = getattr(caster, "items", None)
+        armor_id = getattr(player_obj, "armor", None) if player_obj is not None else None
+        armor_item = (items_dict or {}).get(armor_id, {}) if armor_id else {}
+        skill_elem = armor_item.get("element", "physical")
     hits = skill.get("hits", 1)
     multiplier = skill.get("power_multiplier", 1.0)
     base_power = skill.get("base_power", 0)
@@ -206,7 +225,8 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
     crit_bonus = skill.get("crit_bonus", 0)
     hp_scaling_mult = skill.get("hp_scaling_multiplier")
     debuff_target = skill.get("debuff_target")
-    atk = caster.atk
+    power_stat = skill.get("power_stat", "atk")
+    atk = _POWER_STAT_GETTERS.get(power_stat, _POWER_STAT_GETTERS["atk"])(caster)
     magic = caster.magic
 
     total_dmg = 0
@@ -429,7 +449,7 @@ class TRPGCombat:
         return "\n".join(parts)
     
     def _slow_factor(self, status_dict) -> float:
-        """緩速（原冰凍）狀態會降低該單位在行動條上的速度。"""
+        """冰凍狀態會降低該單位在行動條上的速度。"""
         if status_dict and status_dict.get("freeze"):
             return self.cog.status_effects.get("freeze", {}).get("spd_mult", 0.5)
         return 1.0
@@ -443,7 +463,7 @@ class TRPGCombat:
         return max(1, int(m_spd * self._slow_factor(slot.get("status"))))
 
     def predict_monster_actions(self, slot: dict) -> int:
-        """預估玩家下一次行動後，這隻怪物會行動幾次（給行動條 ❗ 提示用，緩速已納入計算）。"""
+        """預估玩家下一次行動後，這隻怪物會行動幾次（給行動條 ❗ 提示用，冰凍已納入計算）。"""
         import math
         if slot["hp"] <= 0:
             return 0
@@ -858,8 +878,38 @@ class TRPGCombat:
         if not can_act: log += "\n" + t(lang, "combat.cure_item_still_affected", "（本回合仍受異常影響，但已解除狀態。）")
         return self.advance_time(log) # 👈 修正
 
+    def use_buff_item(self, item_id: str) -> str:
+        """給時光沙漏這類「用掉就給自己一段時間強化」的道具用，效果格式跟技能的
+        support "buff" 欄位共用（atk_mult/def_mult/spd_mult + turns）。"""
+        lang = self.player.language
+        if self.player.inventory.get(item_id, 0) <= 0:
+            return t(lang, "combat.buff_item_not_owned", "❌ 你包包裡沒有這個道具了！")
 
+        item_data = self.cog.items.get(item_id, {})
+        buff = item_data.get("buff")
+        if not buff:
+            return t(lang, "combat.buff_item_no_effect", "❌ 這個道具沒有可用的強化效果。")
 
+        dot_log, can_act = self._player_turn_start()
+        if self.player.current_hp <= 0: return dot_log
+        log = f"{dot_log}\n" if dot_log else ""
+
+        self.player.inventory[item_id] -= 1
+        if self.player.inventory[item_id] <= 0: del self.player.inventory[item_id]
+
+        if not isinstance(getattr(self.player, "combat_buffs", None), dict):
+            self.player.combat_buffs = {}
+        for k in ("atk_mult", "def_mult", "spd_mult"):
+            if buff.get(k):
+                self.player.combat_buffs[k] = buff[k]
+        turns = buff.get("turns", 3)
+        self.player.combat_buffs["turns"] = max(self.player.combat_buffs.get("turns", 0), turns)
+
+        item_name = tf(item_data, "name", lang) or item_id
+        log += t(lang, "combat.buff_item_used", "⏳ 你使用了【{item_name}】，感覺自己的動作變得飛快！（{turns}回合）", item_name=item_name, turns=turns)
+
+        if not can_act: log += "\n" + t(lang, "combat.potion_still_paralyzed", "（麻痺/冰凍中，無法閃避反擊！）")
+        return self.advance_time(log)
 
     def _gold_and_exp_for(self, monster: dict) -> tuple[int, int]:
         min_gold = monster.get("money_min", 0)

@@ -54,6 +54,58 @@
             },
             "ai": "none",
             "name_en": "Wild Boar"
+        },
+        "rabid_rat": {
+            "id": "rabid_rat",
+            "name": "狂犬鼠",
+            "spawn_rate": 0.25,
+            "max_hp": 26,
+            "atk": 11,
+            "def": 1,
+            "spd": 22,
+            "exp": 8,
+            "money_min": 3,
+            "money_max": 8,
+            "drops": {
+                "raw_meat": 0.4
+            },
+            "ai": "kamikaze",
+            "name_en": "Rabid Rat"
+        },
+        "bandit": {
+            "id": "bandit",
+            "name": "路邊小混混",
+            "spawn_rate": 0.2,
+            "max_hp": 42,
+            "atk": 15,
+            "def": 2,
+            "spd": 14,
+            "exp": 14,
+            "money_min": 18,
+            "money_max": 32,
+            "drops": {
+                "stolen_gem": 0.2,
+                "health_potion": 0.2
+            },
+            "ai": "debuffer",
+            "name_en": "Roadside Thug"
+        },
+        "ironshell_tortoise": {
+            "id": "ironshell_tortoise",
+            "name": "鐵殼龜",
+            "spawn_rate": 0.2,
+            "max_hp": 14,
+            "atk": 5,
+            "def": 30,
+            "spd": 5,
+            "exp": 10,
+            "money_min": 4,
+            "money_max": 10,
+            "drops": {
+                "health_potion": 0.15
+            },
+            "ai": "none",
+            "name_en": "Ironshell Tortoise"
         }
     },
     "boss_minions": {
@@ -125,7 +177,7 @@
             "hp_below": 0.5,
             "ai": "buffer",
             "name_suffix": "（嗜血頭目）",
-            "heal_pct": 0.06,
+            "heal_pct": 0.35,
             "transform_text": "哥布林首領嗜血的雙眼發紅，舉起武器怒吼！",
             "active_skills": [
                 {
@@ -147,5 +199,6 @@
         },
         "name_en": "Goblin Chief"
     },
-    "area_name_en": "Village Outskirts"
+    "area_name_en": "Village Outskirts",
+    "requires_boss": "area_00village"
 }

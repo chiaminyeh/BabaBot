@@ -62,6 +62,59 @@
             "money_max": 100,
             "ai": "self_heal",
             "name_en": "Mutant Slime"
+        },
+        "clone_soldier": {
+            "id": "clone_soldier",
+            "name": "複製士兵",
+            "spawn_rate": 0.35,
+            "max_hp": 1300,
+            "atk": 125,
+            "def": 60,
+            "exp": 3800,
+            "spd": 22,
+            "weakness": [
+                "thunder"
+            ],
+            "resistance": [
+                "poison"
+            ],
+            "drops": {
+                "medium_mana_potion": 0.3
+            },
+            "money_min": 55,
+            "money_max": 90,
+            "ai": "buffer",
+            "name_en": "Clone Soldier"
+        },
+        "toxic_ooze": {
+            "id": "toxic_ooze",
+            "name": "劇毒黏液怪",
+            "spawn_rate": 0.3,
+            "max_hp": 1500,
+            "atk": 100,
+            "def": 65,
+            "exp": 4200,
+            "spd": 15,
+            "weakness": [
+                "fire",
+                "holy"
+            ],
+            "resistance": [
+                "poison",
+                "dark"
+            ],
+            "drops": {
+                "burn_salve": 0.3,
+                "medium_health_potion": 0.3
+            },
+            "status_on_hit": [
+                "poison"
+            ],
+            "status_chance": 0.4,
+            "money_min": 58,
+            "money_max": 95,
+            "ai": "shield_ally",
+            "name_en": "Toxic Ooze"
         }
     },
     "boss": {
@@ -123,7 +176,7 @@
             "hp_below": 0.5,
             "ai": "berserk_low_hp",
             "name_suffix": "（藥劇失控）",
-            "heal_pct": 0.08,
+            "heal_pct": 0.5,
             "transform_text": "瘋狂博士打下最後一管藥劇，全身肌肉瞬間暴漲！",
             "active_skills": [
                 {
@@ -175,5 +228,6 @@
             "name_en": "Venom Replicant"
         }
     },
-    "area_name_en": "Mad Doctor's Laboratory"
+    "area_name_en": "Mad Doctor's Laboratory",
+    "requires_boss": "area_10deep_forest"
 }

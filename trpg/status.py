@@ -176,8 +176,8 @@ def _tick_status(combatant, status_defs: dict, is_player: bool, lang: str = "zh"
             log_parts.append(t(lang, "status.burn_tick", "🔥 {target}身上的灼燒加劇！(第{tick}層) 損失 {dmg} HP", target=target_label, tick=tick, dmg=dmg))
             status_effects[sid]["tick"] = min(max_stacks, tick + 1)
 
-        # 冰凍已改為「緩速」：不再讓目標無法行動，改為在行動條（AV）計算時降低速度，
-        # 因此這裡不需要每回合的特殊處理（緩速的減速在 combat.advance_time 套用）。
+        # 冰凍：不會讓目標無法行動，而是在行動條（AV）計算時降低速度，
+        # 因此這裡不需要每回合的特殊處理（冰凍的減速在 combat.advance_time 套用）。
 
         elif sid == "paralysis":
             # 麻痺：機率跳過回合 (看臉)

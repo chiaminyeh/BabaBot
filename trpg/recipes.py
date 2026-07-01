@@ -42,6 +42,32 @@ CRAFTING_RECIPES = {
         "name_en": "Sage's Staff",
         "materials": {"ancient_wood": 5, "ectoplasm": 3},
         "gold": 800
+    },
+    # 神話裝備鍛造：不再開放一般裝備隨意鍛造，只有這四件終局裝備能鍛造，
+    # 且各自需要對應的稀有王級材料，不是靠一般素材就能湊出來的。
+    "demon_king_horn": {
+        "name": "魔王之角",
+        "name_en": "Demon Lord's Horn",
+        "materials": {"sargeras_crown": 1},
+        "gold": 20000
+    },
+    "abyssal_cloak": {
+        "name": "深淵潛航者披風",
+        "name_en": "Abyssal Strider's Cloak",
+        "materials": {"void_crystal": 3},
+        "gold": 8000
+    },
+    "dragonbone_greatsword": {
+        "name": "龍骨毀滅劍",
+        "name_en": "Dragonbone Ruin Blade",
+        "materials": {"dragon_heart": 1},
+        "gold": 12000
+    },
+    "forbidden_blood_chalice": {
+        "name": "禁忌血之聖杯",
+        "name_en": "Forbidden Chalice of Blood",
+        "materials": {"pure_blood_essence": 1},
+        "gold": 12000
     }
 }
 

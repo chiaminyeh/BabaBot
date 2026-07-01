@@ -9,6 +9,7 @@
             "max_hp": 350,
             "atk": 75,
             "def": 25,
+            "spd": 35,
             "exp": 500,
             "money_min": 25,
             "money_max": 45,
@@ -30,6 +31,7 @@
             "max_hp": 500,
             "atk": 65,
             "def": 35,
+            "spd": 15,
             "exp": 600,
             "money_min": 30,
             "money_max": 55,
@@ -46,6 +48,61 @@
             },
             "ai": "shield_ally",
             "name_en": "Withered Treant"
+        },
+        "giant_spider": {
+            "id": "giant_spider",
+            "name": "巨蛛",
+            "spawn_rate": 0.4,
+            "max_hp": 380,
+            "atk": 80,
+            "def": 28,
+            "spd": 38,
+            "exp": 550,
+            "money_min": 28,
+            "money_max": 48,
+            "weakness": [
+                "fire"
+            ],
+            "resistance": [
+                "poison",
+                "earth"
+            ],
+            "drops": {
+                "poison_stinger": 0.6,
+                "medium_mana_potion": 0.2
+            },
+            "status_on_hit": [
+                "poison"
+            ],
+            "status_chance": 0.35,
+            "ai": "debuffer",
+            "name_en": "Giant Spider"
+        },
+        "will_o_wisp": {
+            "id": "will_o_wisp",
+            "name": "鬼火",
+            "spawn_rate": 0.35,
+            "max_hp": 320,
+            "atk": 90,
+            "def": 20,
+            "spd": 42,
+            "exp": 580,
+            "money_min": 30,
+            "money_max": 50,
+            "weakness": [
+                "water",
+                "dark"
+            ],
+            "resistance": [
+                "fire",
+                "thunder"
+            ],
+            "drops": {
+                "ectoplasm": 0.5,
+                "scroll_iron_skin": 0.1
+            },
+            "ai": "magic_absorb",
+            "name_en": "Will-o'-the-Wisp"
         }
     },
     "boss": {
@@ -55,6 +112,7 @@
         "max_hp": 2500,
         "atk": 95,
         "def": 45,
+        "spd": 40,
         "exp": 10000,
         "money_min": 150,
         "money_max": 250,
@@ -101,7 +159,7 @@
             "hp_below": 0.5,
             "ai": "berserk_low_hp",
             "name_suffix": "（蜂群暴走）",
-            "heal_pct": 0.08,
+            "heal_pct": 0.45,
             "transform_text": "劇毒蜂后散發出濃烈的毒霾，瘋狂地振翅衝來！",
             "active_skills": [
                 {
@@ -153,5 +211,6 @@
             "name_en": "Soldier Bee"
         }
     },
-    "area_name_en": "Deep Forest"
+    "area_name_en": "Deep Forest",
+    "requires_boss": "area_05forest"
 }

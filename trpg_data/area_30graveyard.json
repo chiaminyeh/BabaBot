@@ -71,8 +71,56 @@
             "status_chance": 0.25,
             "money_min": 90,
             "money_max": 150,
-            "ai": "lifesteal",
+            "ai": "magic_absorb",
             "name_en": "Wandering Wraith"
+        },
+        "banshee": {
+            "id": "banshee",
+            "name": "尖嚎女妖",
+            "spawn_rate": 0.25,
+            "max_hp": 2000,
+            "atk": 160,
+            "def": 75,
+            "exp": 6200,
+            "spd": 50,
+            "weakness": [
+                "holy"
+            ],
+            "resistance": [
+                "dark",
+                "physical"
+            ],
+            "drops": {
+                "high_mana_potion": 0.25
+            },
+            "money_min": 95,
+            "money_max": 160,
+            "ai": "debuffer",
+            "name_en": "Wailing Banshee"
+        },
+        "grave_hound": {
+            "id": "grave_hound",
+            "name": "墓地獵犬",
+            "spawn_rate": 0.25,
+            "max_hp": 2200,
+            "atk": 150,
+            "def": 85,
+            "exp": 5800,
+            "spd": 48,
+            "weakness": [
+                "holy",
+                "fire"
+            ],
+            "resistance": [
+                "dark"
+            ],
+            "drops": {
+                "bone_shard": 0.6
+            },
+            "money_min": 85,
+            "money_max": 140,
+            "ai": "multi_hit_flurry",
+            "name_en": "Grave Hound"
         }
     },
     "boss": {
@@ -109,7 +157,7 @@
             "poison"
         ],
         "status_chance": 0.5,
-        "ai": "lifesteal",
+        "ai": "debuffer",
         "revive_once": {
             "turns": 3,
             "hp_pct": 0.3
@@ -137,7 +185,7 @@
             "hp_below": 0.5,
             "ai": "self_heal",
             "name_suffix": "（亡靈甦醒）",
-            "heal_pct": 0.1,
+            "heal_pct": 0.55,
             "transform_text": "亡靈巫妖的法袍化作骷髏之風，墓地裡的亡靈紛紛甦醒共鳴！",
             "active_skills": [
                 {
@@ -189,5 +237,6 @@
             "name_en": "Crypt Wraith"
         }
     },
-    "area_name_en": "The Forgotten Graveyard"
+    "area_name_en": "The Forgotten Graveyard",
+    "requires_boss": "area_20lab"
 }

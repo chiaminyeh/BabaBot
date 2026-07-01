@@ -19,13 +19,13 @@
         "desc_en": "Takes scorching damage each turn, increasing the longer it lasts (4%→8%→12%→16%→20% max HP)"
     },
     "freeze": {
-        "name": "緩速",
-        "emoji": "🐌",
+        "name": "冰凍",
+        "emoji": "🧊",
         "spd_mult": 0.5,
         "cure_item": "thaw_herb",
-        "desc": "速度大幅下降（行動變慢），持續數回合",
-        "name_en": "Slow",
-        "desc_en": "Greatly reduced speed (acts less often) for several turns"
+        "desc": "身體被寒氣凍結，速度大幅下降（行動變慢），持續數回合",
+        "name_en": "Freeze",
+        "desc_en": "Your body is frozen by intense cold, greatly reducing speed (acting less often) for several turns"
     },
     "paralysis": {
         "name": "麻痺",
