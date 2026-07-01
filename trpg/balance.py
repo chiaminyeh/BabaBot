@@ -54,6 +54,35 @@ SET_BONUSES = {
     },
 }
 
+# --- Per-area shops ----------------------------------------------------------
+# Each overworld area gets its OWN daily shop stock instead of one global shop,
+# so a high-level character standing in the starting village doesn't get offered
+# end-game gear just because their own level qualifies for it. "gear_range" caps
+# which weapon/armor/accessory exclusive_level values that area's shop can roll
+# (materials/scrolls/cures are unaffected — those stay available everywhere).
+# "potion_tier" swaps the always-in-stock health/mana potion for a stronger
+# version in higher areas (no new weapon tiers exist above 25, so later areas
+# differentiate mainly through better potions, per design).
+AREA_SHOP_TIERS = {
+    "area_00village":      {"gear_range": (0, 4),   "potion_tier": "basic"},
+    "area_01grassland":    {"gear_range": (0, 4),   "potion_tier": "basic"},
+    "area_05forest":       {"gear_range": (5, 9),   "potion_tier": "basic"},
+    "area_10deep_forest":  {"gear_range": (10, 15), "potion_tier": "medium"},
+    "area_20lab":          {"gear_range": (16, 25), "potion_tier": "medium"},
+    # Late areas' ceiling stretches to 35 so the "mystery_only" ultimate-tier gear
+    # (void blade/chaos staff/demon armor, all lvl 30-35) can only ever surface in
+    # these endgame shops, never in the village/forest tiers.
+    "area_30graveyard":    {"gear_range": (16, 35), "potion_tier": "high"},
+    "area_40vampire_castle": {"gear_range": (16, 35), "potion_tier": "high"},
+    "area_99demon_castle": {"gear_range": (16, 35), "potion_tier": "high"},
+}
+# (min_hp_potion, min_mp_potion) shop-slot item ids per potion_tier.
+SHOP_POTION_TIERS = {
+    "basic": ("health_potion", "mana_potion"),
+    "medium": ("medium_health_potion", "medium_mana_potion"),
+    "high": ("high_health_potion", "high_mana_potion"),
+}
+
 # --- Dungeon (roguelike mode) ----------------------------------------------
 DUNGEON_MAX_FLOOR = 15
 DUNGEON_BOSS_FLOOR = 15

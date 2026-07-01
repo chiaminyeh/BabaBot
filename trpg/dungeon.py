@@ -109,6 +109,9 @@ def start_run(d_state: dict):
         "pending_loot": [],
         "pending_relics": [],
         "pending_skills": [],
+        # 隨機事件給的小幅永久加成（磨刀石/秘力泉水之類），跟遺物一樣彙整進數值，
+        # 但不算遺物、不佔遺物欄，純粹是「這次探索走運多得到的一點點力量」。
+        "event_bonuses": {},
     })
 
 
@@ -145,6 +148,9 @@ def _aggregate(d_state: dict, cog) -> tuple:
         rdef = cog.dungeon_relics.get(rid)
         if rdef:
             absorb(rdef.get("effects", {}))
+
+    # 隨機事件累積的小幅永久加成
+    absorb(d_state.get("event_bonuses", {}))
 
     # 已裝備的地下城裝備（數值欄位 + hook 欄位）
     for slot in ("weapon", "armor", "accessory"):

@@ -12,7 +12,10 @@ from trpg.quest_popup import process_quest_popups
 from trpg.stats import default_stat_alloc, recalc_player_stats, get_unspent_points, format_stat_alloc_summary, get_potion_heal_target, prestige_required_level
 from trpg.player import RoguePlayerWrapper, _item_shop_level_ok
 from trpg import dungeon as dg
-from trpg.balance import DUNGEON_MAX_FLOOR, DUNGEON_BOSS_FLOOR, DUNGEON_MINIBOSS_FLOORS, PRESTIGE_LEVEL_STEP
+from trpg.balance import (
+    DUNGEON_MAX_FLOOR, DUNGEON_BOSS_FLOOR, DUNGEON_MINIBOSS_FLOORS, PRESTIGE_LEVEL_STEP,
+    AREA_SHOP_TIERS, SHOP_POTION_TIERS,
+)
 from trpg.modals import StatAllocModal, ElderChiefModal, BuyItemModal, SellItemModal
 from trpg.recipes import CRAFTING_RECIPES, UPGRADE_COSTS
 
@@ -346,6 +349,9 @@ class TRPGGameView(discord.ui.View):
             self.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.secondary, custom_id="btn_equip_menu", row=0, emoji="🛡️")
             self.add_action_button(label=t(lang, "menu.btn_potions", "藥水"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=1, emoji="🎒")
             self.add_action_button(label=t(lang, "menu.btn_log", "記錄"), style=discord.ButtonStyle.secondary, custom_id="btn_combat_history", row=1, emoji="📝")
+            # 👇 魔塔已經有自己的休息室商人，不重複給一般商店按鈕
+            if self.player.current_area != "area_tower":
+                self.add_action_button(label=t(lang, "shop.btn_shop", "商店"), style=discord.ButtonStyle.primary, custom_id="btn_shop_menu", row=1, emoji="🛒")
             today_str = datetime.today().strftime("%Y-%m-%d")
             boss_done_today = self.player.daily_boss_kills.get(self.player.current_area) == today_str
             if boss_done_today:
@@ -905,37 +911,58 @@ class TRPGGameView(discord.ui.View):
                 line += f"\n  ↳ {skill_desc}"
         return line
 
-    def _roll_shop_stock(self):
-        today_str = datetime.today().strftime("%Y-%m-%d")
-        if self.player.last_shop_refresh != today_str:
-            self.player.last_shop_refresh = today_str
-            self.player.shop_refresh_count = 0
-            self.player.shop_items = []
+    def _shop_area_config(self, area_id: str) -> dict:
+        return AREA_SHOP_TIERS.get(area_id, {"gear_range": (0, 4), "potion_tier": "basic"})
 
-        if self.player.mystery_merchant_date != today_str:
-            self.player.mystery_merchant_date = today_str
+    def _shop_state(self) -> dict:
+        """目前所在區域的商店狀態（每個區域各自獨立進貨/刷新，不再共用一份全域貨架）。"""
+        if not isinstance(getattr(self.player, "shop_state", None), dict):
+            self.player.shop_state = {}
+        return self.player.shop_state.setdefault(self.player.current_area, {})
+
+    def _roll_shop_stock(self):
+        area_id = self.player.current_area
+        cfg = self._shop_area_config(area_id)
+        gear_min, gear_max = cfg.get("gear_range", (0, 4))
+        hp_potion, mp_potion = SHOP_POTION_TIERS.get(cfg.get("potion_tier", "basic"), SHOP_POTION_TIERS["basic"])
+        state = self._shop_state()
+        today_str = datetime.today().strftime("%Y-%m-%d")
+
+        if state.get("last_refresh") != today_str:
+            state["last_refresh"] = today_str
+            state["refresh_count"] = 0
+            state["items"] = []
+
+        if state.get("mystery_date") != today_str:
+            state["mystery_date"] = today_str
             if random.random() < 0.20:
-                self.player.mystery_shop_active = True
+                state["mystery_active"] = True
                 mystery_pool = [
                     k for k, v in self.cog.items.items()
                     if v.get("mystery_only") and v.get("price", 0) > 0
+                    and (v.get("type") not in ("weapon", "armor", "accessory") or gear_min <= v.get("exclusive_level", 0) <= gear_max)
                 ]
-                self.player.mystery_shop_items = random.sample(
+                state["mystery_items"] = random.sample(
                     mystery_pool, min(3, len(mystery_pool))
                 ) if mystery_pool else []
             else:
-                self.player.mystery_shop_active = False
-                self.player.mystery_shop_items = []
+                state["mystery_active"] = False
+                state["mystery_items"] = []
 
-        if not self.player.shop_items:
+        if not state.get("items"):
             general_pool = []
             general_weights = []
             for k, v in self.cog.items.items():
                 w = v.get("shop_weight", 0)
-                if w > 0 and k not in ("health_potion", "mana_potion"):
-                    if _item_shop_level_ok(self.player, k, v, self.cog.skills):
-                        general_pool.append(k)
-                        general_weights.append(w)
+                if w <= 0 or k in (hp_potion, mp_potion):
+                    continue
+                # 裝備才受區域等級帶限制；材料/卷軸/藥劑等維持原本只看玩家等級門檻
+                if v.get("type") in ("weapon", "armor", "accessory"):
+                    if not (gear_min <= v.get("exclusive_level", 0) <= gear_max):
+                        continue
+                if _item_shop_level_ok(self.player, k, v, self.cog.skills):
+                    general_pool.append(k)
+                    general_weights.append(w)
 
             picks = []
             if general_pool:
@@ -948,20 +975,26 @@ class TRPGGameView(discord.ui.View):
                     general_pool.pop(idx)
                     general_weights.pop(idx)
 
-            self.player.shop_items = ["health_potion", "mana_potion"] + picks
+            state["items"] = [hp_potion, mp_potion] + picks
             self.cog.save_players()
 
     async def handle_shop_menu(self, notice=""):
         self._roll_shop_stock()
         self.current_menu_state = "shop"
         lang = self.player.language
+        area_id = self.player.current_area
+        state = self._shop_state()
+        is_village = "village" in area_id
+        area_name = tf(self.cog.areas.get(area_id, {}), "area_name", lang) or area_id
 
         self.clear_items()
         lines = []
         prefix = (notice + "\n\n" if notice else "")
-        self.log_message = prefix + t(lang, "shop.village_store_title", "🛒 【村莊雜貨鋪】今日限定貨架：") + "\n"
+        title_key = "shop.village_store_title" if is_village else "shop.area_store_title"
+        title_fallback = "🛒 【村莊雜貨鋪】今日限定貨架：" if is_village else "🛒 【{area}商店】今日限定貨架："
+        self.log_message = prefix + t(lang, title_key, title_fallback, area=area_name) + "\n"
 
-        for item_id in self.player.shop_items:
+        for item_id in state.get("items", []):
             item = self.cog.items.get(item_id)
             if item:
                 lines.append(self._format_shop_item_line(item_id))
@@ -981,9 +1014,9 @@ class TRPGGameView(discord.ui.View):
                     custom_id=f"buy_{item_id}",
                 )
 
-        if getattr(self.player, "mystery_shop_active", False) and self.player.mystery_shop_items:
+        if state.get("mystery_active") and state.get("mystery_items"):
             self.log_message += "\n\n" + t(lang, "shop.mystery_merchant_title", "🎭 【神秘商人 · 今日限定】") + "\n"
-            for item_id in self.player.mystery_shop_items:
+            for item_id in state["mystery_items"]:
                 item = self.cog.items.get(item_id)
                 if not item:
                     continue
@@ -1004,17 +1037,19 @@ class TRPGGameView(discord.ui.View):
 
         self.log_message += "\n".join(lines)
 
-        refresh_cost = 100 * (2 ** getattr(self.player, "shop_refresh_count", 0))
+        refresh_cost = 100 * (2 ** state.get("refresh_count", 0))
 
         self.add_action_button(label=t(lang, "shop.btn_refresh_shop", "刷新商店 ({cost}$)", cost=refresh_cost), style=discord.ButtonStyle.danger, custom_id="btn_shop_refresh", emoji="🔄")
         self.add_action_button(label=t(lang, "shop.btn_sell_items", "出售物品"), style=discord.ButtonStyle.success, custom_id="btn_shop_sell", emoji="💰")
-        self.add_action_button(label=t(lang, "menu.btn_back_village", "返回村莊"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
+        back_label = t(lang, "menu.btn_back_village", "返回村莊") if is_village else t(lang, "char.btn_back", "返回")
+        self.add_action_button(label=back_label, style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
     async def handle_shop_refresh(self):
-        count = getattr(self.player, "shop_refresh_count", 0)
+        state = self._shop_state()
+        count = state.get("refresh_count", 0)
         cost = 100 * (2 ** count)
         user_bal = self.cog.get_bank_balance(self.user_id)
-        
+
         if user_bal < cost:
             await self.handle_shop_menu(t(self.player.language, "shop.refresh_insufficient_gold", "❌ 金幣不足！手動進貨需要支付 {cost}$ 給老闆。", cost=cost))
             return
@@ -1024,14 +1059,14 @@ class TRPGGameView(discord.ui.View):
             self.player.stats = {}
         self.player.stats["money_spent"] = self.player.stats.get("money_spent", 0) + cost
 
-        self.player.shop_refresh_count = count + 1
-        self.player.shop_items = []
+        state["refresh_count"] = count + 1
+        state["items"] = []
 
         achv_text = self.check_achievements()
         notice_text = t(self.player.language, "shop.refresh_success", "🔄 支付了 {cost}$ 刷新商店！老闆為你進了一批新貨。", cost=cost)
         if achv_text:
             notice_text += achv_text
-            
+
         self.cog.save_players()
         await self.handle_shop_menu(notice_text)
 
@@ -2135,9 +2170,10 @@ class TRPGGameView(discord.ui.View):
             self.build_dungeon_menu()
             return
 
-        # event：治療、陷阱，或直接遭遇一般怪物的伏擊（隨機事件不再只有安全的兩種結果）
+        # event：治療、陷阱、伏擊，或找到一點永久小加成（磨刀石／秘力泉水）——
+        # 隨機事件不再只有安全的兩種結果，也不會每次都跟戰鬥有關。
         roll = random.random()
-        if roll < 0.4:
+        if roll < 0.25:
             heal = int(d_state["max_hp"] * 0.3)
             d_state["current_hp"] = min(d_state["max_hp"], d_state.get("current_hp", 0) + heal)
             self.log_message = t(lang, "dungeon.event_heal", "✨ 你發現一池散發柔光的泉水，回復了 {heal} 點 HP！", heal=heal)
@@ -2145,7 +2181,7 @@ class TRPGGameView(discord.ui.View):
             self.cog.save_players()
             self.build_dungeon_menu()
             return
-        if roll < 0.7:
+        if roll < 0.45:
             dmg = int(d_state["max_hp"] * 0.15)
             d_state["current_hp"] -= dmg
             self.log_message = t(lang, "dungeon.event_trap", "💥 不小心踩到陷阱！受到了 {dmg} 點傷害！", dmg=dmg)
@@ -2156,11 +2192,34 @@ class TRPGGameView(discord.ui.View):
             self.cog.save_players()
             self.build_dungeon_menu()
             return
-        # 30%：隨機事件其實是普通怪物的伏擊
-        mon = dg.build_monster(self.cog, floor, "monster")
-        self.start_combat([mon])
-        self.log_message = t(lang, "dungeon.event_ambush", "😱 這根本是陷阱！一隻怪物從暗處撲了出來！\n你遇到了 {monster_name}！", monster_name=tf(mon, "name", lang))
-        self.build_battle_menu()
+        if roll < 0.65:
+            # 30%：隨機事件其實是普通怪物的伏擊
+            mon = dg.build_monster(self.cog, floor, "monster")
+            self.start_combat([mon])
+            self.log_message = t(lang, "dungeon.event_ambush", "😱 這根本是陷阱！一隻怪物從暗處撲了出來！\n你遇到了 {monster_name}！", monster_name=tf(mon, "name", lang))
+            self.build_battle_menu()
+            return
+        if roll < 0.825:
+            # 17.5%：磨刀石，永久（本次探索）小幅提升攻擊力
+            bonus = d_state.setdefault("event_bonuses", {})
+            gain = 3 + floor // 3
+            bonus["atk"] = bonus.get("atk", 0) + gain
+            dg.recompute_loadout(self.player, d_state, self.cog)
+            self.log_message = t(lang, "dungeon.event_whetstone", "🗡️ 你找到一塊磨刀石，仔細打磨了武器！攻擊力永久提升 {gain} 點（本次探索有效）！", gain=gain)
+            d_state["floor_state"] = "resolved"
+            self.cog.save_players()
+            self.build_dungeon_menu()
+            return
+        # 17.5%：秘力泉水，永久（本次探索）小幅提升最大HP，並當場回滿新增的血量
+        bonus = d_state.setdefault("event_bonuses", {})
+        gain = 12 + floor
+        bonus["hp"] = bonus.get("hp", 0) + gain
+        dg.recompute_loadout(self.player, d_state, self.cog)
+        d_state["current_hp"] = min(d_state["max_hp"], d_state.get("current_hp", 0) + gain)
+        self.log_message = t(lang, "dungeon.event_vitality_spring", "💧 你喝下了散發神秘力量的泉水，最大HP永久提升 {gain} 點（本次探索有效）！", gain=gain)
+        d_state["floor_state"] = "resolved"
+        self.cog.save_players()
+        self.build_dungeon_menu()
 
     async def handle_dung_next(self):
         d_state = self._dstate()

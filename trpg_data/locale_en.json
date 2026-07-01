@@ -505,5 +505,8 @@
     "achievements.unlocked_header": "\n── Unlocked ──",
     "achievements.locked_header": "\n── Locked ──",
     "achievements.all_unlocked": "🎉 All achievements unlocked!",
-    "combat.debuff_target_applied": "🔻 {target}'s {stat} was lowered! ({turns} turns)\n"
+    "combat.debuff_target_applied": "🔻 {target}'s {stat} was lowered! ({turns} turns)\n",
+    "dungeon.event_whetstone": "🗡️ You found a whetstone and carefully sharpened your weapon! ATK permanently +{gain} (for this run)!",
+    "dungeon.event_vitality_spring": "💧 You drank from a spring radiating mysterious power! Max HP permanently +{gain} (for this run)!",
+    "shop.area_store_title": "🛒 【{area} Shop】Today's stock:"
 }

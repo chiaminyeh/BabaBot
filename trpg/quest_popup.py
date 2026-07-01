@@ -198,7 +198,7 @@ async def _try_pop_completed_active_quest(view, interaction) -> bool:
             view, interaction,
             title=tf(quest_info, "title", lang), quest_line=quest_info.get("quest_line", "side"),
             npc_name=tf(quest_info, "npc_name", lang) or "???",
-            raw_prompt=quest_info.get("turn_in_prompt", t(lang, "quest.default_turn_in_prompt", "請用一句話稱讚玩家完成了委託。")),
+            raw_prompt=tf(quest_info, "turn_in_prompt", lang) or t(lang, "quest.default_turn_in_prompt", "請用一句話稱讚玩家完成了委託。"),
             target_name=target_name, target_count=quest_info.get("target_count", 1),
             reward_exp=quest_info.get("reward_exp", 0), reward_money=quest_info.get("reward_money", 0),
             reward_items_text=reward_items_text,
@@ -230,7 +230,7 @@ async def _try_pop_completed_hidden_quest(view, interaction) -> bool:
             view, interaction,
             title=tf(quest_info, "title", lang), quest_line=quest_info.get("quest_line", "side"),
             npc_name=tf(quest_info, "npc_name", lang) or "???",
-            raw_prompt=quest_info.get("turn_in_prompt", t(lang, "quest.default_turn_in_prompt_hidden", "請用一句話神祕地給予玩家獎勵。")),
+            raw_prompt=tf(quest_info, "turn_in_prompt", lang) or t(lang, "quest.default_turn_in_prompt_hidden", "請用一句話神祕地給予玩家獎勵。"),
             target_name=target_name, target_count=quest_info.get("target_count", 1),
             reward_exp=quest_info.get("reward_exp", 0), reward_money=quest_info.get("reward_money", 0),
             reward_items_text=reward_items_text,
@@ -261,7 +261,7 @@ async def _maybe_send_offer_popup(view, interaction):
 
     lang = getattr(player, "language", "zh")
     target_name = quest_info.get("target_monster") or quest_info.get("target_item") or t(lang, "quest.default_target", "目標")
-    raw_prompt = quest_info.get("accept_prompt", t(lang, "quest.default_accept_prompt", "請用一句話邀請玩家接取委託。"))
+    raw_prompt = tf(quest_info, "accept_prompt", lang) or t(lang, "quest.default_accept_prompt", "請用一句話邀請玩家接取委託。")
     prompt = (raw_prompt.replace("{count}", str(quest_info.get("target_count", 1)))
                          .replace("{monster}", target_name)
                          .replace("{item}", target_name))

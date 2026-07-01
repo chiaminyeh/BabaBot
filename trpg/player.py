@@ -48,7 +48,9 @@ def _fresh_containers() -> dict:
     """Per-player mutable defaults — a NEW copy each call so saves never alias."""
     return {
         "inventory": {"health_potion": 2},  # 新玩家初始送兩罐藥水
-        "shop_items": [],
+        "shop_items": [],  # 已淘汰（改用 shop_state 依區域分開存），留著只為了舊存檔相容
+        "shop_state": {},  # {area_id: {"items":[...], "last_refresh":"YYYY-MM-DD", "refresh_count":0,
+                            #            "mystery_date":"...", "mystery_active":False, "mystery_items":[...]}}
         "stats": {"monsters_killed": 0, "total_deaths": 0, "money_spent": 0},
         "achievements": [],          # 已解鎖成就 ID
         "active_quests": {},         # {"quest_001": {"progress": 2}}
