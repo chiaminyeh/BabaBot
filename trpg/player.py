@@ -43,6 +43,10 @@ _SCALAR_DEFAULTS = {
     # 進行中戰鬥的快照（monster_slots/combat 狀態），讓 /trpg 重開或面板逾時都能接回原本的戰鬥，
     # 不再是白吃的免費逃跑。戰鬥結束（勝利/死亡/逃跑成功）時清回 None。
     "active_battle": None,
+    # 新手引導（語言選擇 + 教學戰）是否已經跑完。這裡預設 False 是給「真正的新玩家」
+    # （走 TRPGPlayer(uid) 這條全新建立路徑）用的；from_dict 對舊存檔會另外把這個欄位
+    # 補回 True（見下方 from_dict），不然既有玩家下次登入會被誤判成新手，重新看一次教學。
+    "onboarding_done": False,
 }
 
 
@@ -78,6 +82,12 @@ def _fresh_containers() -> dict:
         "combat_debuffs": {},      # 怪物技能造成的戰鬥內減益
         "combat_buffs": {},        # 玩家技能給的戰鬥內增益（攻防速強化 / 持續治癒）
         "cave_state": {"current_node": "entrance", "history": []},
+        # 魔塔目前樓層的休息室狀態——之前這幾個欄位活在 View（不落存檔），關掉/重開
+        # 面板或面板逾時都會被重置，玩家能靠反覆重開 /trpg 在同一層免費刷回滿血、
+        # 反覆重骰神秘商人。移進玩家存檔後，同一層只會有一次休息室與一次商人機率。
+        "tower_state": {"safe_room_visited": False, "merchant_spawned": False, "merchant_items": []},
+        # 修羅鬥技場的連戰進度：round 0/1 是小怪輪，2 是冠軍戰；死亡會重置回第一輪。
+        "colosseum_state": {"round": 0},
     }
 
 
@@ -138,6 +148,12 @@ class TRPGPlayer:
         # equipped-skills system, seed it from the first 8 learned skills.
         if "equipped_skills" not in data and player.skills:
             player.equipped_skills = player.skills[:8]
+        # 這份存檔本來就存在（不是這次全新建立的），代表玩家早就玩過了——不管
+        # 是不是在教學系統上線前建的檔，都不該讓老玩家下次登入被當新手重跑一次
+        # 語言選擇＋教學戰。只有 TRPGPlayer(uid) 那條「真的第一次建檔」的路徑
+        # 才會讓 onboarding_done 維持預設的 False。
+        if "onboarding_done" not in data:
+            player.onboarding_done = True
         player.schema_version = SCHEMA_VERSION
         return player
 

@@ -291,7 +291,7 @@
         "atk_bonus": 90,
         "price": 0,
         "sell_price": 0,
-        "exclusive_level": 1,
+        "exclusive_level": 80,
         "shop_weight": 0,
         "element": "holy",
         "anti_boss_id": "sargeras",
@@ -643,6 +643,17 @@
         "name_en": "Earthquake Strike Scroll",
         "desc_en": "[Requires Lv.20] An earth-shaking roar that shatters enemy defenses."
     },
+    "scroll_void_eruption": {
+        "name": "虛空爆發卷軸",
+        "type": "skill_scroll",
+        "teaches": "void_eruption",
+        "price": 4500,
+        "sell_price": 1200,
+        "shop_weight": 0,
+        "desc": "【學習條件：Lv.25】撕裂空間釋放虛空之力，無視大量防禦",
+        "name_en": "Void Eruption Scroll",
+        "desc_en": "[Requires Lv.25] Tears open space to unleash the power of the void, ignoring most defense."
+    },
     "antidote_herb": {
         "name": "解毒草",
         "type": "cure",
@@ -793,7 +804,8 @@
         "mystery_only": true,
         "desc": "神秘商人專賣，據說蘊含著重生的力量",
         "name_en": "Mysterious Phoenix Feather",
-        "desc_en": "Sold only by the Mysterious Merchant. Said to contain the power of rebirth."
+        "desc_en": "Sold only by the Mysterious Merchant. Said to contain the power of rebirth.",
+        "exclusive_level": 40
     },
     "mystery_void_blade": {
         "name": "虛空短刃",
@@ -836,7 +848,8 @@
         "mystery_only": true,
         "desc": "神秘商人專賣，完全回復 HP",
         "name_en": "Sage's Panacea",
-        "desc_en": "Sold only by the Mysterious Merchant. Fully restores HP."
+        "desc_en": "Sold only by the Mysterious Merchant. Fully restores HP.",
+        "exclusive_level": 10
     },
     "mystery_mana_elixir": {
         "name": "賢者魔力藥",
@@ -849,7 +862,8 @@
         "mystery_only": true,
         "desc": "神秘商人專賣，完全回復 MP",
         "name_en": "Sage's Mana Elixir",
-        "desc_en": "Sold only by the Mysterious Merchant. Fully restores MP."
+        "desc_en": "Sold only by the Mysterious Merchant. Fully restores MP.",
+        "exclusive_level": 10
     },
     "mystery_chaos_staff": {
         "name": "混沌法杖",
@@ -906,7 +920,8 @@
         "mystery_only": true,
         "desc": "神秘商人專賣，打碎後時間為你加速，3 回合內速度提升為 2 倍",
         "name_en": "Hourglass of Time",
-        "desc_en": "Sold only by the Mysterious Merchant. Shatter it to bend time in your favor: doubles your Speed for 3 turns."
+        "desc_en": "Sold only by the Mysterious Merchant. Shatter it to bend time in your favor: doubles your Speed for 3 turns.",
+        "exclusive_level": 20
     },
     "mystery_lucky_coin": {
         "name": "幸運金幣",
@@ -917,7 +932,8 @@
         "mystery_only": true,
         "desc": "神秘商人專賣，純粹用來證明你錢多到沒處花的無用硬幣",
         "name_en": "Lucky Coin",
-        "desc_en": "Sold only by the Mysterious Merchant. A useless coin that exists purely to prove you have more money than you know what to do with."
+        "desc_en": "Sold only by the Mysterious Merchant. A useless coin that exists purely to prove you have more money than you know what to do with.",
+        "exclusive_level": 30
     },
     "sargeras_crown": {
         "name": "薩格拉斯的魔冠",
@@ -1981,5 +1997,76 @@
         "element": "dark",
         "desc": "鑲嵌著深淵之力的盾牌，裝備後【盾擊】會附帶對應屬性",
         "desc_en": "A shield imbued with abyssal power; equipping it makes [Shield Bash] deal that element."
+    },
+    "dragon_scale_shard": {
+        "name": "龍鱗碎片",
+        "type": "etc",
+        "price": 520,
+        "sell_price": 260,
+        "shop_weight": 0,
+        "desc": "從龍族身上剝落的赤紅鱗片，堅硬且蘊含熱量，是頂級鍛造材料",
+        "name_en": "Dragon Scale Shard",
+        "desc_en": "A crimson scale shed by a dragon — hard, warm to the touch, and prized by master smiths."
+    },
+    "drake_fang": {
+        "name": "幼龍利牙",
+        "type": "etc",
+        "price": 440,
+        "sell_price": 220,
+        "shop_weight": 0,
+        "desc": "熔喉幼龍的尖牙，牙尖仍殘留著灼熱",
+        "name_en": "Drake Fang",
+        "desc_en": "A moltenmaw drake's fang, its tip still searing hot."
+    },
+    "void_shard": {
+        "name": "虛空殘片",
+        "type": "etc",
+        "price": 760,
+        "sell_price": 380,
+        "shop_weight": 0,
+        "desc": "裂隙生物體內凝結的空間碎片，凝視太久會頭暈",
+        "name_en": "Void Shard",
+        "desc_en": "A splinter of condensed space from a rift creature. Staring at it too long makes you dizzy."
+    },
+    "echo_herb": {
+        "name": "回聲草",
+        "type": "cure",
+        "cures": [
+            "silence"
+        ],
+        "price": 260,
+        "sell_price": 90,
+        "shop_weight": 20,
+        "desc": "解除沉默狀態，讓你重新開口唸出咒語",
+        "name_en": "Echo Herb",
+        "desc_en": "Cures the Silence status, letting you speak incantations again."
+    },
+    "wyrmscale_barrier": {
+        "name": "龍鱗壁壘",
+        "type": "armor",
+        "price": 0,
+        "sell_price": 1200,
+        "shop_weight": 0,
+        "exclusive_level": 55,
+        "def_bonus": 80,
+        "hp_bonus": 340,
+        "res_bonus": 12,
+        "desc": "以遠古炎龍的鱗片鍛成的重甲，僅能由工坊鍛造",
+        "name_en": "Wyrmscale Barrier",
+        "desc_en": "Heavy armor forged from an ancient dragon's scales. Craftable only at the workshop."
+    },
+    "voidforged_edge": {
+        "name": "虛空鍛刃",
+        "type": "weapon",
+        "price": 0,
+        "sell_price": 1500,
+        "shop_weight": 0,
+        "exclusive_level": 70,
+        "atk_bonus": 138,
+        "spd_bonus": 12,
+        "element": "dark",
+        "desc": "以虛空殘片鍛成的黑刃，揮動時空間會隨之扭曲，僅能由工坊鍛造",
+        "name_en": "Voidforged Edge",
+        "desc_en": "A black blade forged from void shards — space itself warps in its wake. Craftable only at the workshop."
     }
 }

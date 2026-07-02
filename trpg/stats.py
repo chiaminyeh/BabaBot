@@ -5,7 +5,7 @@ from trpg.balance import (
     PRESTIGE_BASE_LEVEL, PRESTIGE_LEVEL_STEP,
 )
 
-STAT_KEYS = ("atk", "vit", "int", "spd", "res")
+STAT_KEYS = ("atk", "vit", "int", "spd", "res", "luck")
 POINTS_PER_LEVEL = STAT_POINTS_PER_LEVEL  # 相容別名，調整請改 trpg/balance.py
 
 
@@ -33,7 +33,7 @@ def get_unspent_points(player) -> int:
 
 def get_equipment_bonuses(player, items: dict) -> dict:
     # 直接手動展開需要的裝備加成欄位，避免跟新的配點 STAT_KEYS 衝突
-    bonuses = {"atk": 0, "def": 0, "mdef": 0, "hp": 0, "magic": 0, "res": 0, "spd": 0, "mp": 0}
+    bonuses = {"atk": 0, "def": 0, "mdef": 0, "hp": 0, "magic": 0, "res": 0, "spd": 0, "mp": 0, "luck": 0}
     set_counts = {}
     for slot in (
         getattr(player, "weapon", None),
@@ -50,6 +50,7 @@ def get_equipment_bonuses(player, items: dict) -> dict:
             bonuses["res"] += eq.get("res_bonus", 0)
             bonuses["spd"] += eq.get("spd_bonus", 0)
             bonuses["mp"] += eq.get("mp_bonus", 0)
+            bonuses["luck"] += eq.get("luck_bonus", 0)   # 抓取裝備的運氣（目前還沒有裝備實際帶這個欄位，先接好管線）
             set_name = eq.get("set")
             if set_name:
                 set_counts[set_name] = set_counts.get(set_name, 0) + 1
@@ -128,6 +129,12 @@ def recalc_player_stats(player, items: dict = None, heal_full: bool = False):
     base_res = level // 5 + alloc.get("res", 0) * ALLOC_BONUS["res"] + eq["res"]
     player.base_res = int(base_res * prestige_mult)
 
+    # 👇 運氣 (luck)：純配點/裝備堆出來的數值，不跟著等級自動成長（跟 atk/vit/int
+    # 不同，這樣「不點運氣」不會讓暴擊率/掉寶率隨等級被動下降，只有玩家主動投資
+    # 才會變化）。實際效果（暴擊率加成、掉寶率加成）在 trpg/combat.py 讀取。
+    base_luck = alloc.get("luck", 0) * ALLOC_BONUS["luck"] + eq["luck"]
+    player.base_luck = int(base_luck * prestige_mult)
+
     if heal_full:
         player.current_hp = player.max_hp
         player.current_mp = player.max_mp
@@ -164,8 +171,12 @@ def migrate_player_stats(player, items: dict):
             if key not in player.stat_alloc:
                 player.stat_alloc[key] = 0
 
-    if not hasattr(player, "base_int"): player.base_int = getattr(player, "base_magic", 0)
-    if hasattr(player, "base_magic"): del player.base_magic
+    # base_magic is a retired field kept only so old saves have somewhere to migrate
+    # their value FROM; once base_int exists we never touch base_magic again (previously
+    # this deleted-then-recreated base_magic=0 on every single call — pure churn, and it
+    # discarded the old value before the one-time transfer could ever be re-read).
+    if not hasattr(player, "base_int"):
+        player.base_int = getattr(player, "base_magic", 0)
     if not hasattr(player, "base_res"): player.base_res = 0
     if not hasattr(player, "base_spd"): player.base_spd = 5 + player.level
     if not hasattr(player, "base_mdef"): player.base_mdef = 0
@@ -189,13 +200,6 @@ def migrate_player_stats(player, items: dict):
         player.armor_upgrades[player.armor] = old_armor_up
         player.armor_upgrade = 0
 
-
-    if not getattr(player, "stat_alloc", None):
-        player.stat_alloc = default_stat_alloc()
-    if not hasattr(player, "base_magic"):
-        player.base_magic = 0
-    if not hasattr(player, "base_res"):
-        player.base_res = 0
     if not hasattr(player, "mystery_merchant_date"):
         player.mystery_merchant_date = ""
     if not hasattr(player, "mystery_shop_items"):
@@ -213,8 +217,9 @@ def format_stat_alloc_summary(player) -> str:
         # 👇 全部改用安全的 .get() 抓法
         t(lang, "stats.alloc_line1", "⚔️攻擊 {atk} | 🛡️體力 {vit} | ✨智力 {int}",
           atk=alloc.get('atk', 0), vit=alloc.get('vit', 0), int=alloc.get('int', 0)),
-        t(lang, "stats.alloc_line2", "💨速度 {spd} | 🔰抗性 {res} | 剩餘點數 {unspent}",
-          spd=alloc.get('spd', 0), res=alloc.get('res', 0), unspent=unspent),
+        t(lang, "stats.alloc_line2", "💨速度 {spd} | 🔰抗性 {res} | 🍀運氣 {luck}",
+          spd=alloc.get('spd', 0), res=alloc.get('res', 0), luck=alloc.get('luck', 0)),
+        t(lang, "stats.alloc_line3", "剩餘點數 {unspent}", unspent=unspent),
     ]
     return "\n".join(lines)
 

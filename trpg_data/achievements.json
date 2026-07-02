@@ -62,5 +62,77 @@
         "threshold": 10000,
         "name_en": "Distinguished VIP",
         "desc_en": "Spend a total of 10,000 gold at shops and inns"
+    },
+    "achv_apprentice": {
+        "name": "初出江湖",
+        "desc": "等級達到 10 級",
+        "type": "level",
+        "threshold": 10,
+        "name_en": "Apprentice Adventurer",
+        "desc_en": "Reach character level 10"
+    },
+    "achv_veteran": {
+        "name": "身經百戰",
+        "desc": "等級達到 50 級",
+        "type": "level",
+        "threshold": 50,
+        "name_en": "Battle-Hardened Veteran",
+        "desc_en": "Reach character level 50"
+    },
+    "achv_legend": {
+        "name": "傳說冒險者",
+        "desc": "等級達到 100 級",
+        "type": "level",
+        "threshold": 100,
+        "name_en": "Legendary Adventurer",
+        "desc_en": "Reach character level 100"
+    },
+    "achv_reborn": {
+        "name": "浴火重生",
+        "desc": "完成第一次轉生",
+        "type": "prestige_count",
+        "threshold": 1,
+        "name_en": "Reborn from the Ashes",
+        "desc_en": "Complete your first prestige"
+    },
+    "achv_tower_climber": {
+        "name": "登塔者",
+        "desc": "魔塔攀登至第 15 層",
+        "type": "tower_floor",
+        "threshold": 15,
+        "name_en": "Tower Climber",
+        "desc_en": "Climb to floor 15 of the Magic Tower"
+    },
+    "achv_tower_master": {
+        "name": "塔頂之影",
+        "desc": "魔塔攀登至第 40 層",
+        "type": "tower_floor",
+        "threshold": 40,
+        "name_en": "Shadow of the Summit",
+        "desc_en": "Climb to floor 40 of the Magic Tower"
+    },
+    "achv_boss_hunter": {
+        "name": "獵首者",
+        "desc": "累計首殺 3 個不同的區域BOSS",
+        "type": "killed_bosses",
+        "threshold": 3,
+        "name_en": "Boss Hunter",
+        "desc_en": "Score the first kill on 3 different area bosses"
+    },
+    "achv_boss_dominator": {
+        "name": "區域制霸",
+        "desc": "累計首殺 6 個不同的區域BOSS",
+        "type": "killed_bosses",
+        "threshold": 6,
+        "name_en": "Regional Dominator",
+        "desc_en": "Score the first kill on 6 different area bosses"
+    },
+    "achv_trophy_collector": {
+        "name": "勳章收藏家",
+        "desc": "累計獲得 3 枚魔塔里程碑勳章",
+        "type": "trophies",
+        "threshold": 3,
+        "name_en": "Trophy Collector",
+        "desc_en": "Earn 3 Magic Tower milestone trophies"
     }
 }

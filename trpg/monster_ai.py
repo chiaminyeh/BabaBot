@@ -14,6 +14,7 @@ monster dict 可選欄位：
 import random
 
 from trpg.i18n import t, tf
+from trpg.balance import DODGE_BASE_CHANCE, DODGE_MIN_CHANCE, DODGE_MAX_CHANCE, DODGE_SPD_FACTOR
 
 
 def _plain_attack(combat, slot: dict, log: str, atk_mult: float = 1.0) -> str:
@@ -31,7 +32,7 @@ def _plain_attack(combat, slot: dict, log: str, atk_mult: float = 1.0) -> str:
     if combat.is_dodging:
         p_spd = get_player_spd(combat.player)
         m_spd = monster.get("spd", int(10 + combat.player.level * 2.2))
-        dodge_chance = min(0.85, max(0.1, 0.3 + (p_spd - m_spd) * 0.015))
+        dodge_chance = min(DODGE_MAX_CHANCE, max(DODGE_MIN_CHANCE, DODGE_BASE_CHANCE + (p_spd - m_spd) * DODGE_SPD_FACTOR))
         if random.random() < dodge_chance:
             return log + t(lang, "monster_ai.dodge_attack", "\n💨 {name} 發動攻擊，被你靈巧地閃避了！", name=tf(monster, "name", lang))
         else:
@@ -56,7 +57,6 @@ def _plain_attack(combat, slot: dict, log: str, atk_mult: float = 1.0) -> str:
 
     if combat.player.current_hp <= 0:
         return combat.view.process_death(log, t(lang, "monster_ai.death_attack", "💀 承受不住 {name} 的攻擊，你倒下了...", name=tf(monster, "name", lang)))
-    combat.cog.save_players()
     return log
 
 
@@ -266,6 +266,41 @@ def ai_magic_absorb(combat, slot, log):
             log += t(lang, "monster_ai.magic_absorb_off", "\n🌀 {name} 的【魔法吸收護盾】消失了。", name=tf(slot["monster"], "name", lang))
     return _plain_attack(combat, slot, log)
 
+def ai_poison_spitter(combat, slot, log):
+    """攻擊之餘有機率朝玩家吐出毒液（劇毒蛛后等）——這個 ai 名字在怪物資料裡
+    用了很久，但註冊表裡一直沒有實作，之前默默退化成普通攻擊。"""
+    from trpg.status import try_apply_status
+    log = _plain_attack(combat, slot, log)
+    if combat.player.current_hp > 0 and slot["hp"] > 0 and random.random() < 0.35:
+        s_log = try_apply_status(combat.player, "poison", 3, combat.cog.status_effects,
+                                 tf(slot["monster"], "name", combat.player.language) or "")
+        if s_log:
+            log += f"\n{s_log}"
+    return log
+
+
+def ai_evasive(combat, slot, log):
+    """行動時有機率殘影閃避（音速蝙蝠等）：短暫進入無實體狀態，下一次受到的傷害
+    最多 1 點。同樣是資料裡引用已久、卻從未被實作的 ai。"""
+    lang = combat.player.language
+    if not slot.get("status", {}).get("intangible") and random.random() < 0.3:
+        slot.setdefault("status", {})["intangible"] = {"turns": 1, "tick": 1}
+        log += t(lang, "monster_ai.evasive", "\n💨 {name} 的身影變得模糊不清，攻擊彷彿會直接穿過牠！", name=tf(slot["monster"], "name", lang))
+        return _plain_attack(combat, slot, log, atk_mult=0.8)
+    return _plain_attack(combat, slot, log)
+
+
+def ai_void_mage(combat, slot, log):
+    """虛空法師：有機率以虛空低語沉默玩家（技能全鎖），否則普通攻擊。"""
+    from trpg.status import try_apply_status
+    if random.random() < 0.3:
+        s_log = try_apply_status(combat.player, "silence", 2, combat.cog.status_effects,
+                                 tf(slot["monster"], "name", combat.player.language) or "")
+        if s_log:
+            return log + f"\n{s_log}"
+    return _plain_attack(combat, slot, log)
+
+
 def ai_sargeras(combat, slot, log):
     """魔王本體：召喚交給 active_skills 的 summon_imp（每2回合）負責，
     這裡只負責「身為前排時，趁機縮到最後排躲在小鬼身後」的怯戰行為。"""
@@ -294,6 +329,10 @@ AI_REGISTRY = {
     "kamikaze": ai_kamikaze,
     "charge_attack": ai_charge_attack,
     "magic_absorb": ai_magic_absorb,
+    "poison_spitter": ai_poison_spitter,
+    "evasive": ai_evasive,
+    "void_mage": ai_void_mage,
+    "assassin": ai_charge_attack,  # 資料裡沿用已久的別名：刺客 = 蓄力重擊型
     "sargeras_ai": ai_sargeras,
 }
 
@@ -435,7 +474,7 @@ def _execute_summon_minion(combat, slot: dict, skill: dict, log: str) -> str:
         minion["max_hp"] = max(1, int(minion.get("base_hp", minion.get("max_hp", 10)) * scale))
         minion["hp"] = minion["max_hp"]
         minion["atk"] = max(1, int(minion.get("base_atk", minion.get("atk", 5)) * scale))
-        minion["def"] = max(1, int(minion.get("base_def", minion.get("def", 2)) * scale))
+        minion["def"] = max(0, int(minion.get("base_def", minion.get("def", 0)) * scale))
         minion["spd"] = max(1, int(minion.get("base_spd", minion.get("spd", 5)) * scale))
 
     dead_slot = next((s for s in slots if s["hp"] <= 0 and not s.get("fled") and not s["monster"].get("revive_once")), None)
@@ -470,7 +509,6 @@ def _execute_cast_skill(combat, slot: dict, effect: dict, log: str) -> str:
 
     if combat.player.current_hp <= 0:
         return combat.view.process_death(log, t(lang, "monster_ai.death_cast_skill", "💀 你被 {name} 的【{skill}】擊倒了...", name=tf(monster, "name", lang), skill=tf(spell, "name", lang)))
-    combat.cog.save_players()
     return log
 
 
@@ -509,6 +547,38 @@ def _execute_active_skill(combat, slot: dict, skill: dict, log: str) -> str:
     if etype == "cast_skill":
         return _execute_cast_skill(combat, slot, effect, log)
 
+    if etype == "inflict_status":
+        # 對玩家施加任意異常狀態（例如沉默）——走 try_apply_status，所以抗性減免
+        # 與小丑面具免疫照常生效。
+        from trpg.status import try_apply_status
+        s_log = try_apply_status(
+            combat.player, effect.get("status_id", ""), effect.get("turns", 2),
+            combat.cog.status_effects, f"【{tf(skill, 'name', lang)}】",
+        )
+        if s_log:
+            return log + f"\n{s_log}"
+        return _plain_attack(combat, slot, log)
+
+    if etype == "self_status":
+        # 對自己掛狀態（例如無實體）——直接寫進 slot["status"]，回合數照一般狀態倒數。
+        sid = effect.get("status_id", "")
+        if sid:
+            slot.setdefault("status", {})[sid] = {"turns": effect.get("turns", 2), "tick": 1}
+            sdef = combat.cog.status_effects.get(sid, {})
+            s_name = tf(sdef, "name", lang) or sid
+            return log + t(lang, "monster_ai.self_status", "\n{emoji} {name} 發動【{skill}】，進入了【{status}】狀態！（{turns}回合）",
+                           emoji=sdef.get("emoji", "✨"), name=tf(monster, "name", lang), skill=tf(skill, "name", lang),
+                           status=s_name, turns=effect.get("turns", 2))
+        return _plain_attack(combat, slot, log)
+
+    if etype == "divine_shield":
+        # 聖盾（靈感來自爐石）：完全抵銷下一次受到的傷害。已有聖盾時改為普攻。
+        if not slot.get("divine_shield"):
+            slot["divine_shield"] = True
+            return log + t(lang, "monster_ai.divine_shield_up", "\n🛡️ {name} 發動【{skill}】，一層神聖的護盾包覆了牠！（完全抵銷下一次傷害）",
+                           name=tf(monster, "name", lang), skill=tf(skill, "name", lang))
+        return _plain_attack(combat, slot, log)
+
     return _plain_attack(combat, slot, log)
 
 
@@ -536,6 +606,8 @@ def tick_revive(slot: dict, lang: str = "zh") -> str:
 def run_monster_ai(combat, slot: dict, log: str) -> str:
     lang = combat.player.language
     slot["turns_acted"] = slot.get("turns_acted", 0) + 1
+    # 傷害上限（damage_cap）機制：額度是「兩次行動之間」的總承傷，牠一行動就重置
+    slot["dmg_taken_since_act"] = 0
     _tick_stat_mods(slot)
     log = _maybe_transform_phase2(combat, slot, log)
 
@@ -543,6 +615,13 @@ def run_monster_ai(combat, slot: dict, log: str) -> str:
         slot["telegraph"] = None
         mult = combat.cog.status_effects.get("berserk", {}).get("atk_mult", 1.6)
         return _plain_attack(combat, slot, log, atk_mult=mult)
+
+    # 沉默對怪物同樣有效：封鎖主動技能（含正在蓄力中的），只能普通攻擊
+    if slot.get("status", {}).get("silence"):
+        if slot.get("telegraph"):
+            slot["telegraph"] = None
+            log += t(lang, "monster_ai.silence_interrupt", "\n🤐 {name} 被沉默了，蓄力中的技能被打斷！", name=tf(slot["monster"], "name", lang))
+        return _plain_attack(combat, slot, log)
 
     pending = slot.get("telegraph")
     if pending:

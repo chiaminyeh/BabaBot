@@ -6,42 +6,32 @@ from datetime import datetime
 
 from trpg.i18n import t, tf
 
-from trpg.balance import XP_CURVE_BASE, XP_CURVE_EXP, PHYSICAL_CRIT_CHANCE, SKILL_CRIT_CHANCE
+from trpg.balance import (
+    XP_CURVE_BASE, XP_CURVE_EXP, PHYSICAL_CRIT_CHANCE, SKILL_CRIT_CHANCE,
+    FLEE_BASE_CHANCE, FLEE_MIN_CHANCE, FLEE_MAX_CHANCE, FLEE_SPD_FACTOR,
+    SCHRODINGER_DOUBLE_CHANCE, SCHRODINGER_DOUBLE_MULT, SCHRODINGER_HALVE_MULT,
+    BOSS_DAILY_SCROLL_CHANCE, FALLBACK_BOSS_SCROLLS, TOWER_MILESTONES,
+    LUCK_CRIT_BONUS_PER_POINT, LUCK_DROP_RATE_BONUS_PER_POINT,
+)
 
 from trpg.status import (
-
     process_turn_start,
-
     cure_by_item,
-
     clear_all_status,
-
     apply_status_to_monster,
-
     apply_status,
-
     break_sleep_on_damage,
-
 )
 
 from trpg.stats import (
-
     get_potion_heal_target,
-
 )
 
 from trpg.entity import PlayerCombatant, MonsterCombatant
 
 
-
-
-
 def exp_to_next_level(level: int) -> int:
-
     return int(XP_CURVE_BASE * (level ** XP_CURVE_EXP))
-
-
-
 
 
 def get_player_atk(player, items: dict, status_defs: dict = None) -> int:
@@ -62,9 +52,6 @@ def get_player_atk(player, items: dict, status_defs: dict = None) -> int:
     if combat_buffs and combat_buffs.get("turns", 0) > 0 and combat_buffs.get("atk_mult"):
         atk = int(atk * combat_buffs["atk_mult"])
     return atk
-
-
-
 
 
 def get_player_def(player, items: dict) -> int:
@@ -106,35 +93,19 @@ def get_player_spd(player) -> int:
     return spd
 
 
-
-
-
-
-
-
-
-
-
 def get_sell_price(item_id: str, items: dict) -> int:
-
     item = items.get(item_id, {})
-
     if "sell_price" in item:
-
         return item["sell_price"]
-
     return max(1, item.get("price", 0) // 2)
-
-
-
 
 
 def calc_physical_damage(atk: int, defense: int, multiplier: float = 1.0) -> int:
     # 👇 倍率要先套用在攻擊力上，再扣防禦：(atk - def) * mult 會讓高倍率技能對付高防禦
     # 目標時完全打不動（甚至可能倍率越高、扣掉防禦後反而更接近下限傷害）。
     dmg = max(1, int(atk * multiplier - defense))
-
     return int(dmg * random.uniform(0.85, 1.15))
+
 
 def get_player_magic(player, items: dict, status_defs: dict = None) -> int:
     mag = getattr(player, "base_int", 0)
@@ -143,24 +114,36 @@ def get_player_magic(player, items: dict, status_defs: dict = None) -> int:
         mag = int(mag * status_defs.get("paralysis", {}).get("atk_mult", 0.7))
     return mag
 
-def apply_schrodinger(player, dmg: int, base_msg: str) -> tuple[int, str]:
+
+def _format_physical_hit_msg(lang: str, dmg: int, is_crit: bool) -> str:
+    if is_crit:
+        return t(lang, "combat.player_crit_hit", "💥 暴擊！造成 {dmg} 點傷害！", dmg=dmg)
+    return t(lang, "combat.player_normal_hit", "⚔️ 造成 {dmg} 點傷害。", dmg=dmg)
+
+
+def apply_schrodinger(player, dmg: int, is_crit: bool = False) -> tuple[int, str]:
+    """薛丁格的懷錶：命中時賭一把翻倍或減半。訊息一律根據賭盤結果後的最終傷害重新組字，
+    不能沿用賭盤前算好的舊訊息——沿用會讓玩家看到跟實際扣血量對不上的數字。"""
     lang = getattr(player, "language", "zh")
     if getattr(player, "accessory", "") == "schrodinger_watch":
-        if random.random() < 0.6:
-            return dmg * 2, t(lang, "combat.schrodinger_double", "⏱️ 【薛丁格的懷錶】發動！傷害翻倍！\n{base_msg}", base_msg=base_msg)
+        if random.random() < SCHRODINGER_DOUBLE_CHANCE:
+            final_dmg = dmg * SCHRODINGER_DOUBLE_MULT
+            base_msg = _format_physical_hit_msg(lang, final_dmg, is_crit)
+            return final_dmg, t(lang, "combat.schrodinger_double", "⏱️ 【薛丁格的懷錶】發動！傷害翻倍！\n{base_msg}", base_msg=base_msg)
         else:
-            return max(1, dmg // 2), t(lang, "combat.schrodinger_half", "⏱️ 【薛丁格的懷錶】反噬！傷害減半！\n{base_msg}", base_msg=base_msg)
-    return dmg, base_msg
+            final_dmg = max(1, int(dmg * SCHRODINGER_HALVE_MULT))
+            base_msg = _format_physical_hit_msg(lang, final_dmg, is_crit)
+            return final_dmg, t(lang, "combat.schrodinger_half", "⏱️ 【薛丁格的懷錶】反噬！傷害減半！\n{base_msg}", base_msg=base_msg)
+    return dmg, _format_physical_hit_msg(lang, dmg, is_crit)
+
 
 def get_elemental_multiplier(attack_element: str, monster: dict, lang: str = "zh") -> tuple[float, str]:
     """判定屬性相剋，回傳 (傷害倍率, 提示訊息)"""
     if not attack_element or attack_element in ["physical", "none"]:
         return 1.0, ""
-
     weaknesses = monster.get("weakness", [])
     resistances = monster.get("resistance", [])
     immunities = monster.get("immunity", [])
-
     if attack_element in weaknesses:
         return 1.5, t(lang, "combat.elemental_weak", "🌟 【屬性克制】效果拔群！")
     elif attack_element in resistances:
@@ -169,22 +152,45 @@ def get_elemental_multiplier(attack_element: str, monster: dict, lang: str = "zh
         return 0.0, t(lang, "combat.elemental_immune", "👻 【屬性免疫】完全無效！")
     return 1.0, ""
 
+
+def apply_elemental(dmg: int, ele_mult: float) -> int:
+    """套用屬性倍率：完全免疫（倍率0）要真的打出 0 傷害，不能被下面慣用的
+    max(1, ...) 下限蓋掉變成「免疫但還是打1點」的矛盾結果。"""
+    if ele_mult <= 0:
+        return 0
+    return max(1, int(dmg * ele_mult))
+
+
+def luck_crit_bonus(luck: int) -> float:
+    """運氣換算成的額外暴擊率加成，疊加在 PHYSICAL_CRIT_CHANCE/SKILL_CRIT_CHANCE 上。"""
+    return max(0, luck) * LUCK_CRIT_BONUS_PER_POINT
+
+
+def luck_drop_rate_mult(luck: int) -> float:
+    """運氣換算成的掉寶率相對加成倍率（乘在每一項 drop 機率上，非疊加到 100% 之外的絕對值）。"""
+    return 1.0 + max(0, luck) * LUCK_DROP_RATE_BONUS_PER_POINT
+
+
+def absorb_note_text(reason: str, lang: str) -> str:
+    """把 absorb_monster_damage 記下的吸收原因翻成給玩家看的說明——沒有這行說明，
+    玩家只會看到戰報寫「造成 500 點傷害」但血條紋風不動，以為遊戲壞掉了。"""
+    if reason == "shield":
+        return t(lang, "combat.absorb_shield", "🛡️ 對方的【聖盾】完全擋下了這次傷害，聖盾破裂了！")
+    if reason == "intangible":
+        return t(lang, "combat.absorb_intangible", "👻 對方處於【無實體】狀態，這次攻擊只造成了 1 點傷害！")
+    if reason == "cap":
+        return t(lang, "combat.absorb_cap", "🧱 對方的【傷害屏障】啟動，超出上限的傷害被無效化了！")
+    return ""
+
+
 def calc_magic_damage(magic: int, defense: int, base_power: int, def_pierce: float = 0.5, magic_scaling: float = 1.0) -> int:
-
     effective_def = int(defense * (1 - def_pierce))
-
     dmg = max(1, int(base_power + (magic * magic_scaling) - effective_def))
-
     return int(dmg * random.uniform(0.90, 1.20))
 
 
-
-
-
 def calc_monster_damage(monster_atk: int, player_def: int) -> int:
-
     dmg = max(1, monster_atk - player_def)
-
     return int(dmg * random.uniform(0.9, 1.1))
 
 
@@ -258,16 +264,16 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
 
         for i in range(hits):
             if hp_scaling_mult:
-                dmg = max(1, int(hp_cost * hp_scaling_mult * ele_mult))
+                dmg = apply_elemental(int(hp_cost * hp_scaling_mult), ele_mult)
             elif skill_type == "magic":
                 dmg = calc_magic_damage(magic, target.mdef, base_power, def_pierce, magic_scaling)
-                dmg = max(1, int(dmg * ele_mult))
+                dmg = apply_elemental(dmg, ele_mult)
             else:
                 dmg = calc_physical_damage(atk, target.def_, multiplier)
-                dmg = max(1, int(dmg * ele_mult))
+                dmg = apply_elemental(dmg, ele_mult)
 
             # 物理跟 HP 獻祭流都可以暴擊，魔法傷害不會
-            if skill_type != "magic" and random.random() < (SKILL_CRIT_CHANCE + crit_bonus):
+            if skill_type != "magic" and random.random() < (SKILL_CRIT_CHANCE + crit_bonus + luck_crit_bonus(caster.luck)):
                 dmg = int(dmg * 1.5)
                 hit_logs.append(t(target.lang, "combat.skill_hit_crit", "  第{n}擊暴擊 {dmg} 點！", n=i + 1, dmg=dmg))
             else:
@@ -279,6 +285,9 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
 
         block = debuff_msg + t(target.lang, "combat.deal_damage", "對 {target} 造成 {dmg} 點傷害！", target=target.name, dmg=t_dmg)
         if ele_msg: block += f"\n   ↳ {ele_msg}"
+        # 聖盾/無實體/傷害上限吸收提示（只有 MonsterCombatant 會有值，玩家目標回傳空字串）
+        absorb = absorb_note_text(target.pop_absorb_note(), target.lang)
+        if absorb: block += f"\n   ↳ {absorb}"
         if hits > 1: block += "\n" + "\n".join(hit_logs)
 
         wake_log = break_sleep_on_damage(target.status_effects, target.lang)
@@ -410,6 +419,17 @@ class TRPGCombat:
             if self.player.current_hp - before > 0:
                 regen_line = t(self.player.language, "combat.dungeon_regen", "🌿 遺物回復了 {heal} HP。", heal=self.player.current_hp - before)
                 buff_log = f"{buff_log}\n{regen_line}" if buff_log else regen_line
+
+        # 每回合開始自動回復魔力（智力的 10%），一般戰鬥與地下城都適用——地下城裡讀的
+        # 是封印角色當下的 base_int，不會漏算流派/裝備帶來的智力加成。
+        mp_regen = int(getattr(self.player, "base_int", 0) * 0.1)
+        if mp_regen > 0 and self.player.current_hp > 0 and self.player.current_mp < self.player.max_mp:
+            before_mp = self.player.current_mp
+            self.player.current_mp = min(self.player.max_mp, self.player.current_mp + mp_regen)
+            gained_mp = self.player.current_mp - before_mp
+            if gained_mp > 0:
+                mp_regen_line = t(self.player.language, "combat.mp_regen_tick", "🔷 冥想般地回復了 {mp} 點 MP。", mp=gained_mp)
+                buff_log = f"{buff_log}\n{mp_regen_line}" if buff_log else mp_regen_line
 
         log, can_act = process_turn_start(self.player, self.cog.status_effects)
         if buff_log:
@@ -557,7 +577,6 @@ class TRPGCombat:
         log = f"{dot_log}\n" if dot_log else ""
 
         if not can_act:
-            self.cog.save_players()
             return self.advance_time(log) # 👈 被麻痺就直接過回合
 
         # 前排目前沒有活著的目標（例如 BOSS 即將復活的空檔）：推進時間讓復活／小怪行動，避免攻擊到 None
@@ -569,21 +588,32 @@ class TRPGCombat:
 
         attack_elem = weapon.get("element", "physical")
         ele_mult, ele_msg = get_elemental_multiplier(attack_elem, self.monster, self.player.language)
-        
+
         spd_scale = weapon.get("spd_scaling", 0.0)
         p_spd = get_player_spd(self.player)
         multiplier = 1.0 + p_spd * spd_scale
-        
+
         lang = self.player.language
         eff = getattr(self.player, "dungeon_relic_effects", None) or {}
 
+        # 👇 在造成傷害前先鎖定「這一擊實際打中的目標」的 status dict：self.monster_status
+        # 永遠讀「目前前排」，如果這一擊剛好把前排打死，扣血後前排會立刻換成下一隻怪，
+        # 之後的吸血/腐蝕/喚醒/武器附加狀態就會全部誤套用到「被打死那隻的下一隻」身上。
+        target_slot = self.view._front_slot()
+        target_status = target_slot["status"] if target_slot else {}
+
         # 傳遞屬性與速度倍率給攻擊計算（地下城遺物/裝備可加暴擊率）
-        base_dmg, base_msg = self._do_physical_hit(multiplier=multiplier, crit_bonus=eff.get("crit_bonus", 0.0), ele_mult=ele_mult)
-        p_dmg, hit_msg = apply_schrodinger(self.player, base_dmg, base_msg)
+        base_dmg, is_crit = self._do_physical_hit(multiplier=multiplier, crit_bonus=eff.get("crit_bonus", 0.0), ele_mult=ele_mult)
+        p_dmg, hit_msg = apply_schrodinger(self.player, base_dmg, is_crit)
 
         monster_name = tf(self.monster, "name", lang)
         log += t(lang, "combat.player_attacks", "⚔️ 你攻擊了 {monster}，{hit_msg}", monster=monster_name, hit_msg=hit_msg)
+        if ele_msg:
+            log += f"\n   ↳ {ele_msg}"
         self.monster_hp -= p_dmg
+        absorb_note = absorb_note_text(target_slot.pop("last_absorb", "") if target_slot else "", lang)
+        if absorb_note:
+            log += f"\n   ↳ {absorb_note}"
 
         # 地下城：吸血
         if eff.get("lifesteal", 0) > 0 and p_dmg > 0:
@@ -594,18 +624,30 @@ class TRPGCombat:
                 log += "\n" + t(lang, "combat.lifesteal", "🩸 吸血回復了 {heal} HP！", heal=self.player.current_hp - before)
 
         # 地下城：腐蝕附加
-        if eff.get("corrosion_on_hit", 0) > 0 and self.monster_status is not None:
+        if eff.get("corrosion_on_hit", 0) > 0:
             from trpg.dungeon import corrosion_params
             from trpg.status import apply_corrosion
             stacks, per = corrosion_params(self.player.dungeon_state, eff)
             if stacks > 0:
-                total = apply_corrosion(self.monster_status, stacks, per)
+                total = apply_corrosion(target_status, stacks, per)
                 log += "\n" + t(lang, "combat.corrosion_apply", "🧪 附加了腐蝕，目前共 {stacks} 層！", stacks=total)
 
-        wake_log = break_sleep_on_damage(self.monster_status, lang)
+        wake_log = break_sleep_on_damage(target_status, lang)
         if wake_log:
             log += f"\n{wake_log}"
-        log = self._apply_weapon_on_hit(log)
+        log = self._apply_weapon_on_hit(log, target_status)
+
+        # 被動技能：連續攻擊（extra_attack_multiplier）—— 裝備了這個被動的話，
+        # 普攻後會用同一套屬性/暴擊條件再補一下（之前這個欄位根本沒人讀，形同虛設）。
+        combo_mult = self._equipped_passive_value("extra_attack_multiplier")
+        if combo_mult and self.monster_hp > 0:
+            combo_dmg, combo_is_crit = self._do_physical_hit(multiplier=combo_mult, crit_bonus=eff.get("crit_bonus", 0.0), ele_mult=ele_mult)
+            combo_msg = _format_physical_hit_msg(lang, combo_dmg, combo_is_crit)
+            self.monster_hp -= combo_dmg
+            log += "\n" + t(lang, "combat.combo_attack_extra_hit", "🔄 藉著氣勢再補了一擊，{combo_msg}", combo_msg=combo_msg)
+            combo_note = absorb_note_text(target_slot.pop("last_absorb", "") if target_slot else "", lang)
+            if combo_note:
+                log += f"\n   ↳ {combo_note}"
 
         if self._all_monsters_dead():
             return log + self._process_victory()
@@ -618,33 +660,52 @@ class TRPGCombat:
         log = f"{dot_log}\n" if dot_log else ""
 
         if not can_act:
-            self.cog.save_players()
             return self.advance_time(log + "\n" + t(self.player.language, "combat.flee_paralyzed", "💨 你試圖逃跑，但身體不聽使喚！"))
 
+        # 前排目前沒有活著的目標（例如 BOSS 即將復活的空檔）：跟 player_attack 一樣先讓時間流逝，
+        # 不能直接讀 self.monster.get(...)——那時 self.monster 是 None，會直接炸掉整個互動。
+        if self.monster is None:
+            return self.advance_time(log)
+
         p_spd = get_player_spd(self.player)
-        m_spd = self.monster.get("spd", int(10 + self.player.level * 2.2)) if self.monster else 10
-        flee_chance = min(0.95, max(0.2, 0.4 + (p_spd - m_spd) * 0.015))
+        m_spd = self.monster.get("spd", int(10 + self.player.level * 2.2))
+        flee_chance = min(FLEE_MAX_CHANCE, max(FLEE_MIN_CHANCE, FLEE_BASE_CHANCE + (p_spd - m_spd) * FLEE_SPD_FACTOR))
 
         if random.random() < flee_chance:
-            from trpg.status import clear_all_status
-            clear_all_status(self.player)
-            self._clear_battle_state()
-            if self.monster.get("is_dungeon", False):
-                self.player.dungeon_state["in_run"] = False
-                self.player.dungeon_state["choices"] = []
-                self.player.dungeon_state["floor"] = 1
-                self.player.current_area = "area_00village"
-                self.cog.save_players()
-                self.view.build_main_menu()
+            if self._end_combat_via_flee():
                 return log + "\n" + t(self.player.language, "combat.flee_success_dungeon", "🏃 你成功逃跑了！但地下城危機四伏，你只能一路逃回村莊。")
-
-            self.view.build_main_menu()
             return log + "\n" + t(self.player.language, "combat.flee_success", "🏃 你化作一陣風，成功甩開了怪物逃回村里。")
 
         return self.advance_time(log + "\n" + t(self.player.language, "combat.flee_fail", "💨 逃跑失敗！你的速度不夠快，被攔截了！"))
-    
 
-    def _apply_weapon_on_hit(self, log: str) -> str:
+    def _end_combat_via_flee(self) -> bool:
+        """成功逃跑後共用的收尾：清狀態、清戰鬥快照，並在地下城裡把逃跑視同放棄本次
+        探索（跟 handle_dungeon_flee 走一樣的收尾），不能讓地下城逃跑只是普通逃回原地
+        ——這裡統一給 attempt_flee 與 flee 型技能共用，避免各自兜一份收尾邏輯又漏東西。
+        回傳 True 代表這次逃跑發生在地下城探索中（給呼叫端決定要顯示哪一種訊息）。"""
+        from trpg.status import clear_all_status
+        clear_all_status(self.player)
+        self._clear_battle_state()
+        is_dungeon_run = bool(self.monster and self.monster.get("is_dungeon", False))
+        if is_dungeon_run:
+            self.player.dungeon_state["in_run"] = False
+            self.player.dungeon_state["choices"] = []
+            self.player.dungeon_state["floor"] = 1
+            self.player.current_area = "area_00village"
+            self.cog.save_players()
+        self.view.build_main_menu()
+        return is_dungeon_run
+
+    def _equipped_passive_value(self, field: str):
+        """查詢玩家目前裝備的被動技能裡有沒有帶著這個欄位（例如連續攻擊的
+        extra_attack_multiplier），有的話回傳數值；沒有裝備任何相關被動就回傳 None。"""
+        for skill_id in getattr(self.player, "equipped_skills", None) or []:
+            skill = self.cog.skills.get(skill_id, {})
+            if skill.get("type") == "passive" and skill.get(field):
+                return skill[field]
+        return None
+
+    def _apply_weapon_on_hit(self, log: str, target_status: dict) -> str:
         weapon_id = self.player.weapon
         if not weapon_id:
             return log
@@ -653,7 +714,7 @@ class TRPGCombat:
             turns = weapon.get("on_hit_status_turns", 2)
             weapon_name = tf(weapon, "name", self.player.language) or t(self.player.language, "combat.generic_weapon", "武器")
             s_log = apply_status_to_monster(
-                self.monster_status,
+                target_status,
                 weapon["on_hit_status"],
                 turns,
                 self.cog.status_effects,
@@ -672,18 +733,18 @@ class TRPGCombat:
                 log += "\n" + t(self.player.language, "combat.weapon_lifesteal", "✨ 聖光回湧，回復 {heal} HP！", heal=actual)
         return log
 
-    def _do_physical_hit(self, multiplier: float = 1.0, crit_bonus: float = 0.0, ele_mult: float = 1.0) -> tuple[int, str]:
+    def _do_physical_hit(self, multiplier: float = 1.0, crit_bonus: float = 0.0, ele_mult: float = 1.0) -> tuple[int, bool]:
+        """回傳 (最終傷害, 是否暴擊)。組訊息交給呼叫端——薛丁格的懷錶要先賭盤決定最終
+        傷害，訊息才能跟著最終數字組字，不能在這裡就把賭盤前的數字焗進字串裡。"""
         p_atk = get_player_atk(self.player, self.cog.items, self.cog.status_effects)
         p_dmg = calc_physical_damage(p_atk, self.monster["def"], multiplier)
+        p_dmg = apply_elemental(p_dmg, ele_mult)
 
-        # 👇 套用屬性倍率
-        p_dmg = max(1, int(p_dmg * ele_mult))
-
-        crit_rate = PHYSICAL_CRIT_CHANCE + crit_bonus
-        if random.random() < crit_rate:
+        crit_rate = PHYSICAL_CRIT_CHANCE + crit_bonus + luck_crit_bonus(getattr(self.player, "base_luck", 0))
+        is_crit = random.random() < crit_rate
+        if is_crit:
             p_dmg = int(p_dmg * 1.6)
-            return p_dmg, t(self.player.language, "combat.player_crit_hit", "💥 暴擊！造成 {dmg} 點傷害！", dmg=p_dmg)
-        return p_dmg, t(self.player.language, "combat.player_normal_hit", "⚔️ 造成 {dmg} 點傷害。", dmg=p_dmg)
+        return p_dmg, is_crit
 
     def _resolve_skill_targets(self, target_type: str) -> list:
         """依技能的 target_type 從活著的怪物欄位中選出目標：front=最前排、back=非前排的那一個、all=全部。"""
@@ -709,6 +770,11 @@ class TRPGCombat:
         if self.player.level < req_lv:
             return t(lang, "combat.skill_level_too_low", "❌ 需要 Lv.{lv} 才能使用【{skill}】。", lv=req_lv, skill=skill_name)
 
+        # 沉默狀態：完全封鎖技能（普攻/防禦/道具不受影響）。跟資源檢查一樣放在
+        # _player_turn_start() 之前——施放失敗不該吃掉玩家的回合。
+        if "silence" in (getattr(self.player, "status_effects", None) or {}):
+            return t(lang, "combat.skill_silenced", "🤐 你被【沉默】了，無法唸出咒語或施展技能！（普通攻擊與道具不受影響）")
+
         if self.skill_cds.get(skill_id, 0) > 0:
             return t(lang, "combat.skill_on_cooldown", "⏳ 【{skill}】冷卻中！（剩餘 {turns} 回合）", skill=skill_name, turns=self.skill_cds[skill_id])
 
@@ -729,7 +795,6 @@ class TRPGCombat:
         log = f"{dot_log}\n" if dot_log else ""
 
         if not can_act:
-            self.cog.save_players()
             return self.advance_time(log) # 👈 修正：拔掉 _monster_counter
 
         if skill.get("cd", 0) > 0: self.skill_cds[skill_id] = skill["cd"]
@@ -746,10 +811,8 @@ class TRPGCombat:
         elif skill_type == "flee":
             flee_chance = skill.get("flee_chance", 0.85)
             if random.random() < flee_chance:
-                from trpg.status import clear_all_status
-                clear_all_status(self.player)
-                self._clear_battle_state()
-                self.view.build_main_menu()
+                if self._end_combat_via_flee():
+                    return log + t(lang, "combat.skill_flee_success_dungeon", "💨 使用了【{skill}】，化作一團黑影成功脫離戰鬥！但地下城危機四伏，你只能一路逃回村莊。", skill=skill_name)
                 return log + t(lang, "combat.skill_flee_success", "💨 使用了【{skill}】，化作一團黑影成功脫離戰鬥！", skill=skill_name)
             else:
                 monster_name = tf(self.monster, "name", lang)
@@ -921,8 +984,10 @@ class TRPGCombat:
     def _roll_drops_for(self, monster: dict) -> str:
         lang = self.player.language
         drop_log = ""
+        luck_mult = luck_drop_rate_mult(getattr(self.player, "base_luck", 0))
         for item_id, rate in monster.get("drops", {}).items():
-            if random.random() < rate:
+            effective_rate = min(1.0, rate * luck_mult)
+            if random.random() < effective_rate:
                 self.player.inventory[item_id] = self.player.inventory.get(item_id, 0) + 1
                 item_name = tf(self.cog.items.get(item_id, {}), "name", lang) or item_id
                 drop_log += t(lang, "combat.drop_obtained", "🎁 幸運獲得掉落物：{item}\n", item=item_name)
@@ -941,30 +1006,17 @@ class TRPGCombat:
         self.player.daily_boss_kills[self.player.current_area] = today_str
         log = t(lang, "combat.boss_defeated", "👑 區域 BOSS 討伐成功！今日已無法再次挑戰。\n")
 
-        # Guaranteed scroll drop logic (100% first kill, 30% daily)
+        # Guaranteed scroll drop logic (100% first kill, BOSS_DAILY_SCROLL_CHANCE daily)
         boss_id = monster.get("id")
         scroll_pool = [item_id for item_id in monster.get("drops", {}).keys() if "scroll" in item_id]
         if not scroll_pool:
-            FALLBACK_BOSS_SCROLLS = {
-                "goblin_chief": ["scroll_heal_light", "scroll_power_slash", "scroll_fireball"],
-                "forest_guardian": ["scroll_shadow_step", "scroll_combo_attack"],
-                "bee_queen": ["scroll_blood_strike", "scroll_double_strike", "ice_spear_scroll"],
-                "mad_doctor": ["scroll_inferno", "scroll_divine_thunder", "scroll_blizzard"],
-                "lich": ["scroll_divine_thunder", "scroll_blizzard"],
-                "vampire_lord": ["scroll_divine_thunder", "scroll_inferno"],
-                "rat_king": ["scroll_venom_cloud"],
-                "bone_knight": ["scroll_frost_nova"],
-                "orc_warlord": ["scroll_earthquake"],
-                "abyss_overlord": ["scroll_meteor_swarm", "scroll_void_eruption"],
-                "sargeras": ["scroll_meteor_swarm", "scroll_holy_smash", "scroll_divine_thunder"]
-            }
             scroll_pool = FALLBACK_BOSS_SCROLLS.get(boss_id, ["scroll_heal_light"])
 
         area_id = self.player.current_area
         killed_bosses = getattr(self.player, "killed_bosses", [])
         is_first_kill = area_id not in killed_bosses
 
-        if is_first_kill or random.random() < 0.30:
+        if is_first_kill or random.random() < BOSS_DAILY_SCROLL_CHANCE:
             dropped_scroll = random.choice(scroll_pool)
             self.player.inventory[dropped_scroll] = self.player.inventory.get(dropped_scroll, 0) + 1
             scroll_name = tf(self.cog.items.get(dropped_scroll, {}), "name", lang) or dropped_scroll
@@ -1086,29 +1138,23 @@ class TRPGCombat:
         tower_log = ""
         if primary_monster.get("is_tower"):
             self.player.tower_floor += 1
-            self.view.tower_safe_room_visited = False  # 👈 這行是關鍵，重置狀態讓下一層有休息室
+            self.player.tower_state["safe_room_visited"] = False  # 👈 這行是關鍵，重置狀態讓下一層有休息室
             tower_log = "\n" + t(lang, "combat.tower_floor_open", "🧗 轟隆隆... 通往第 {floor} 層的階梯緩緩降下了！", floor=self.player.tower_floor)
 
-            # Milestone rewards logic
+            # Milestone rewards logic (table lives in balance.TOWER_MILESTONES)
             completed_floor = self.player.tower_floor - 1
-            milestones = {
-                10: {"trophy": t(lang, "combat.trophy_bronze", "🥉 銅魔箱勳章"), "gold": 5000, "item": None},
-                25: {"trophy": t(lang, "combat.trophy_silver", "🥈 銀魔箱勳章"), "gold": 0, "item": "mystery_power_ring"},
-                50: {"trophy": t(lang, "combat.trophy_gold", "🥇 金魔箱勳章"), "gold": 0, "item": "mystery_void_blade"},
-                75: {"trophy": t(lang, "combat.trophy_diamond", "💎 鑽石魔箱勳章"), "gold": 0, "item": "immortal_totem"},
-                99: {"trophy": t(lang, "combat.trophy_champion", "👑 冠軍魔箱勳章"), "gold": 0, "item": "scroll_divine_thunder"}
-            }
-            if completed_floor in milestones:
-                milestone_data = milestones[completed_floor]
+            if completed_floor in TOWER_MILESTONES:
+                cfg = TOWER_MILESTONES[completed_floor]
+                trophy_text = t(lang, cfg["trophy_key"], cfg["trophy_fallback"])
                 if not hasattr(self.player, "tower_milestones"):
                     self.player.tower_milestones = []
                 if completed_floor not in self.player.tower_milestones:
                     self.player.tower_milestones.append(completed_floor)
-                    if milestone_data.get("gold", 0) > 0:
-                        self.cog.adjust_bank(self.view.user_id, milestone_data["gold"])
+                    if cfg.get("gold", 0) > 0:
+                        self.cog.adjust_bank(self.view.user_id, cfg["gold"])
 
                     item_msg = ""
-                    gift_item = milestone_data["item"]
+                    gift_item = cfg["item"]
                     if gift_item:
                         self.player.inventory[gift_item] = self.player.inventory.get(gift_item, 0) + 1
                         gift_name = tf(self.cog.items.get(gift_item, {}), "name", lang) or gift_item
@@ -1116,14 +1162,18 @@ class TRPGCombat:
 
                     if not hasattr(self.player, "trophies"):
                         self.player.trophies = []
-                    self.player.trophies.append(milestone_data["trophy"])
+                    self.player.trophies.append(trophy_text)
 
-                    gold_msg = t(lang, "combat.milestone_gold_suffix", "、💰 {gold}金幣", gold=milestone_data["gold"]) if milestone_data.get("gold", 0) > 0 else ""
+                    gold_msg = t(lang, "combat.milestone_gold_suffix", "、💰 {gold}金幣", gold=cfg["gold"]) if cfg.get("gold", 0) > 0 else ""
                     tower_log += t(
                         lang, "combat.tower_milestone_reached",
                         "\n🏆 **【魔塔里程碑達成！】**\n你征服了魔塔第 {floor} 層！獲得了【{trophy}】{gold_msg}{item_msg}！",
-                        floor=completed_floor, trophy=milestone_data["trophy"], gold_msg=gold_msg, item_msg=item_msg,
+                        floor=completed_floor, trophy=trophy_text, gold_msg=gold_msg, item_msg=item_msg,
                     )
+
+        # 修羅鬥技場：推進連戰輪次／發放通關獎勵（輪次狀態由 view 管理）
+        if primary_monster.get("is_colosseum"):
+            tower_log += self.view.on_colosseum_victory(primary_monster)
 
         log = t(
             lang, "combat.victory_summary",

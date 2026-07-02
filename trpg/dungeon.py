@@ -9,7 +9,7 @@
   3. 倍率（atk_mult/def_mult/magic_mult）放到 real_player.dungeon_buffs，
      combat 既有的 get_player_* 會自動套用。
 
-對外主要函式：start_run / recompute_loadout / build_monster / roll_room /
+對外主要函式：start_run / recompute_loadout / build_monster / roll_doors /
 roll_loot / roll_relic / grant_relic / equip_item / end_run。
 """
 
@@ -226,10 +226,11 @@ def _flavor_monster(cog, floor: int, want_boss: bool):
     return tier.get("boss") or {"id": "unknown", "name": "迷霧怪影", "name_en": "Mist Phantom"}
 
 
-# 菁英怪物的「流派」：不是單純放大數值的同一隻怪，而是各自有鮮明的招牌機制
-# （全部重用 monster_ai.AI_REGISTRY 現成的行為，不需要新的 AI 引擎）。
+# 菁英怪物的「流派」：不是單純放大數值的同一隻怪，而是各自有鮮明的招牌機制。
+# def_flat：防禦改走「身份」制之後，守護者是地下城裡唯一帶防禦的一般敵人，
+# 用固定值（隨樓層成長）而不是倍率——基礎防禦現在是 0，乘上倍率永遠是 0。
 ELITE_ARCHETYPES = [
-    {"ai": "heavy_tank", "suffix": "・守護者", "suffix_en": " the Guardian", "hp_mult": 1.1, "def_mult": 1.5, "spd_mult": 0.9},
+    {"ai": "heavy_tank", "suffix": "・守護者", "suffix_en": " the Guardian", "hp_mult": 1.1, "def_flat_per_floor": 1.5, "def_flat": 4, "spd_mult": 0.9},
     {"ai": "berserk_low_hp", "suffix": "・狂戰士", "suffix_en": " the Berserker", "atk_mult": 1.1, "spd_mult": 1.2},
     {"ai": "lifesteal", "suffix": "・嗜血者", "suffix_en": " the Bloodletter", "hp_mult": 1.15},
     {"ai": "multi_hit_flurry", "suffix": "・刺客", "suffix_en": " the Assassin", "spd_mult": 1.35, "atk_mult": 0.85},
@@ -237,8 +238,57 @@ ELITE_ARCHETYPES = [
 ]
 
 
+# 守衛頭目（4/8/12 層）：每一隻都有獨一無二的招牌機制，不再是數值放大版的普通怪。
+# 機制全部走既有引擎欄位（damage_cap / active_skills 的 divine_shield、self_status、
+# inflict_status），玩家在戰鬥面板上會看到對應的警示徽章與蓄力提示。
+DUNGEON_MINIBOSSES = {
+    4: {
+        "id": "aegis_warden",
+        "name": "聖盾守衛・埃癸斯", "name_en": "Aegis, the Shieldwarden",
+        # 開場自帶聖盾，之後每 3 回合重新充能——用小招戳破聖盾再上大招才是正解
+        "start_divine_shield": True,
+        "hp_mult": 0.85,
+        "active_skills": [
+            {"id": "reforge_shield", "name": "聖盾重鑄", "name_en": "Reforge Shield",
+             "trigger": {"type": "interval", "value": 3},
+             "effect": {"type": "divine_shield"}},
+            {"id": "shield_bash", "name": "盾牌猛擊", "name_en": "Shield Bash",
+             "trigger": {"type": "chance", "value": 0.25},
+             "effect": {"type": "heavy_attack", "mult": 1.8}},
+        ],
+    },
+    8: {
+        "id": "hollow_shade",
+        "name": "無實體之影・虛靈", "name_en": "The Hollow Shade",
+        # 週期性化為虛影（無實體：任何傷害至多 1 點），實體期才是輸出窗口
+        "ai": "lifesteal",
+        "hp_mult": 0.8,
+        "active_skills": [
+            {"id": "phase_out", "name": "虛化", "name_en": "Phase Out",
+             "trigger": {"type": "interval", "value": 4},
+             "effect": {"type": "self_status", "status_id": "intangible", "turns": 2}},
+        ],
+    },
+    12: {
+        "id": "silent_inquisitor",
+        "name": "沉默審判官", "name_en": "The Silent Inquisitor",
+        # 沉默玩家（技能全鎖）+ 承傷上限：斷你的爆發、再逼你打持久戰
+        "damage_cap_mult": 2.6,   # damage_cap = atk * 這個倍率（隨樓層自然成長）
+        "active_skills": [
+            {"id": "decree_of_silence", "name": "沉默律令", "name_en": "Decree of Silence",
+             "trigger": {"type": "interval", "value": 3},
+             "effect": {"type": "inflict_status", "status_id": "silence", "turns": 2}},
+            {"id": "verdict", "name": "審判之錘", "name_en": "The Verdict",
+             "trigger": {"type": "hp_below", "value": 0.35},
+             "effect": {"type": "heavy_attack", "mult": 2.2}},
+        ],
+    },
+}
+
+
 def build_monster(cog, floor: int, kind: str = "monster") -> dict:
-    """產生一隻平衡過的地下城怪物。floor 1 必須能被封印起始角色打贏。"""
+    """產生一隻平衡過的地下城怪物。floor 1 必須能被封印起始角色打贏。
+    kind="boss" 且該樓層在 DUNGEON_MINIBOSSES 時，套用該守衛頭目的專屬名字與機制。"""
     flavor = _flavor_monster(cog, floor, want_boss=(kind == "boss"))
     hp = int(DUNGEON_MON_HP_BASE + floor * DUNGEON_MON_HP_PER_FLOOR)
     atk = int(DUNGEON_MON_ATK_BASE + floor * DUNGEON_MON_ATK_PER_FLOOR)
@@ -257,7 +307,7 @@ def build_monster(cog, floor: int, kind: str = "monster") -> dict:
         suffix_zh, suffix_en = archetype["suffix"], archetype["suffix_en"]
         hp = int(hp * archetype.get("hp_mult", 1.0))
         atk = int(atk * archetype.get("atk_mult", 1.0))
-        df = int(df * archetype.get("def_mult", 1.0))
+        df += int(archetype.get("def_flat", 0) + archetype.get("def_flat_per_floor", 0) * floor)
         spd = int(spd * archetype.get("spd_mult", 1.0))
     elif kind == "boss":
         hp = int(hp * DUNGEON_BOSS_HP_MULT); atk = int(atk * DUNGEON_BOSS_ATK_MULT); df += DUNGEON_BOSS_DEF_BONUS
@@ -265,7 +315,7 @@ def build_monster(cog, floor: int, kind: str = "monster") -> dict:
 
     zh = f"{prefix}{flavor.get('name', flavor.get('id', '怪物'))}{suffix_zh}"
     en = f"{prefix}{flavor.get('name_en') or flavor.get('name', flavor.get('id', 'Monster'))}{suffix_en}"
-    return {
+    mon = {
         "id": flavor.get("id", "unknown"),
         "name": zh, "name_en": en,
         "is_dungeon": True,
@@ -276,6 +326,24 @@ def build_monster(cog, floor: int, kind: str = "monster") -> dict:
         "ai": ai,
         "weakness": flavor.get("weakness", []), "resistance": flavor.get("resistance", []),
     }
+
+    # 守衛頭目專屬機制覆蓋
+    if kind == "boss" and floor in DUNGEON_MINIBOSSES:
+        mb = DUNGEON_MINIBOSSES[floor]
+        mon["id"] = mb["id"]
+        mon["name"] = f"💀 {mb['name']}"
+        mon["name_en"] = f"💀 {mb['name_en']}"
+        if mb.get("ai"):
+            mon["ai"] = mb["ai"]
+        if mb.get("hp_mult"):
+            mon["max_hp"] = max(1, int(mon["max_hp"] * mb["hp_mult"]))
+        if mb.get("active_skills"):
+            mon["active_skills"] = mb["active_skills"]
+        if mb.get("damage_cap_mult"):
+            mon["damage_cap"] = max(1, int(mon["atk"] * mb["damage_cap_mult"]))
+        if mb.get("start_divine_shield"):
+            mon["start_divine_shield"] = True
+    return mon
 
 
 # --- 房間 / 戰利品 / 遺物 ----------------------------------------------------
@@ -289,10 +357,17 @@ def forced_boss_kind(floor: int) -> str:
     return ""
 
 
-def roll_room(floor: int) -> str:
+def roll_doors(floor: int) -> list:
+    """每層擲出三扇門（殺戮尖塔式的路線選擇）：其中一扇永遠是「未知事件」，
+    另外兩扇依 DUNGEON_ROOM_WEIGHTS 從 戰鬥/菁英/營火 中抽。門的類型會誠實
+    顯示在按鈕上（❓ 除外，賭的就是它），選路本身就是策略的一部分——殘血繞
+    營火、想拿技能就挑菁英。回傳例如 ["monster", "event", "rest"]（已洗牌）。"""
     weights = DUNGEON_ROOM_WEIGHTS
     types = list(weights.keys())
-    return random.choices(types, weights=[weights[t] for t in types], k=1)[0]
+    doors = [random.choices(types, weights=[weights[t] for t in types], k=1)[0] for _ in range(2)]
+    doors.append("event")
+    random.shuffle(doors)
+    return doors
 
 
 def _rarity_weight(rarity: str, floor: int) -> float:

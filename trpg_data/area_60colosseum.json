@@ -1,0 +1,60 @@
+{
+    "area_name": "修羅鬥技場",
+    "area_name_en": "Asura Colosseum",
+    "req_level": 60,
+    "requires_boss_count": 6,
+    "is_colosseum": true,
+    "rounds": [
+        {"count": 2, "floor": 45},
+        {"count": 3, "floor": 52}
+    ],
+    "champion": {
+        "id": "colosseum_champion",
+        "name": "不敗冠軍・剎羅",
+        "name_en": "Shura, the Undefeated Champion",
+        "is_boss": true,
+        "max_hp": 16000,
+        "atk": 520,
+        "def": 0,
+        "exp": 250000,
+        "spd": 88,
+        "damage_cap": 2200,
+        "start_divine_shield": true,
+        "weakness": [],
+        "resistance": ["physical"],
+        "money_min": 5000,
+        "money_max": 8000,
+        "drops": {
+            "mystery_elixir": 0.3,
+            "mystery_time_hourglass": 0.15
+        },
+        "status_on_hit": ["paralysis"],
+        "status_chance": 0.3,
+        "ai": "multi_hit_flurry",
+        "active_skills": [
+            {
+                "id": "champions_bulwark",
+                "name": "冠軍壁壘",
+                "name_en": "Champion's Bulwark",
+                "trigger": {"type": "interval", "value": 3},
+                "effect": {"type": "divine_shield"}
+            },
+            {
+                "id": "arena_roar",
+                "name": "震場怒吼",
+                "name_en": "Arena Roar",
+                "trigger": {"type": "interval", "value": 4},
+                "effect": {"type": "inflict_status", "status_id": "silence", "turns": 1}
+            },
+            {
+                "id": "executioners_strike",
+                "name": "處刑一擊",
+                "name_en": "Executioner's Strike",
+                "trigger": {"type": "hp_below", "value": 0.3},
+                "effect": {"type": "heavy_attack", "mult": 2.5}
+            }
+        ]
+    },
+    "first_clear_reward_item": "champions_belt",
+    "clear_reward_gold": 20000
+}

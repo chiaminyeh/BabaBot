@@ -5,49 +5,37 @@ import random
 from datetime import datetime
 
 from trpg.i18n import t, tf
-from trpg.combat import TRPGCombat, exp_to_next_level, get_sell_price, get_player_atk, get_player_def, get_player_magic
-from trpg.status import format_status_list, activate_jester_immunity, clear_all_status, get_daily_jester_immunity
+from trpg.combat import TRPGCombat, exp_to_next_level, get_player_atk, get_player_def, get_player_magic
+from trpg.status import format_status_list, clear_all_status, get_daily_jester_immunity
 from trpg.monster_pool import pick_random_monster
 from trpg.quest_popup import process_quest_popups
 from trpg.stats import default_stat_alloc, recalc_player_stats, get_unspent_points, format_stat_alloc_summary, get_potion_heal_target, prestige_required_level
-from trpg.player import RoguePlayerWrapper, _item_shop_level_ok
+from trpg.player import RoguePlayerWrapper
+from trpg.entity import absorb_monster_damage
 from trpg import dungeon as dg
-from trpg.balance import (
-    DUNGEON_MAX_FLOOR, DUNGEON_BOSS_FLOOR, DUNGEON_MINIBOSS_FLOORS, PRESTIGE_LEVEL_STEP,
-    AREA_SHOP_TIERS, SHOP_POTION_TIERS,
-)
-from trpg.modals import StatAllocModal, ElderChiefModal, BuyItemModal, SellItemModal
-from trpg.recipes import CRAFTING_RECIPES, UPGRADE_COSTS
-
-# 物品分類 -> 開頭 emoji，讓玩家一眼看出是武器/防具/消耗品/飾品/雜物
-ITEM_TYPE_EMOJI = {
-    "weapon": "⚔️",
-    "armor": "🛡️",
-    "accessory": "💍",
-    "potion": "🧪",
-    "cure": "💊",
-    "buff_item": "⏳",
-    "skill_scroll": "📜",
-    "etc": "📦",
-}
+from trpg.balance import PRESTIGE_LEVEL_STEP
+from trpg.modals import ElderChiefModal, BuyItemModal, SellItemModal, StatPointModal
+from trpg.view_shared import ITEM_TYPE_EMOJI, item_emoji, EQUIP_STAT_DISPLAY, ELEMENT_DISPLAY
+from trpg.view_shop import ShopMixin
+from trpg.view_dungeon import DungeonMixin
+from trpg.view_tutorial import TutorialMixin
 
 
-def item_emoji(item: dict) -> str:
-    return ITEM_TYPE_EMOJI.get((item or {}).get("type"), "📦")
-
-
-class TRPGGameView(discord.ui.View):
+class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
     def __init__(self, cog, user_id):
         super().__init__(timeout=600)  # 10分鐘不操作才超時
         self.cog = cog
         self.user_id = str(user_id)
         self.player = RoguePlayerWrapper(cog.get_player(user_id))
         self.message = None
-        
+
         # 戰鬥暫存狀態：最多 3 格怪物欄位（前排為第一個還活著的格子）
         self.in_battle = False
         self.monster_slots = []  # [{"monster": {...}, "hp": int, "av": int, "status": {}}, ...]
         self.combat = TRPGCombat(self)
+        # 教學戰狀態（只在記憶體中，不落存檔）：是否正在教學戰、目前示範到第幾個提示。
+        self.in_tutorial_battle = False
+        self.tutorial_step = 0
 
         self.log_message = t(self.player.language, "menu.welcome", "歡迎來到冒險世界！請使用下方按鈕進行探索。")
         self.inventory_page = 0
@@ -65,6 +53,9 @@ class TRPGGameView(discord.ui.View):
             self.combat.is_dodging = pending_battle.get("is_dodging", False)
             self.log_message = t(self.player.language, "menu.battle_restored", "⚔️ 你回到了先前未完成的戰鬥，敵人依然虎視眈眈！")
             self.build_battle_menu()
+        elif not getattr(real_player, "onboarding_done", False):
+            # 真正的第一次登入：先選語言，再問要不要教學戰，而不是直接丟進主選單。
+            self.build_language_select_menu()
         else:
             self.build_main_menu()
 
@@ -92,12 +83,15 @@ class TRPGGameView(discord.ui.View):
     def monster_hp(self, value):
         front = self._front_slot()
         if front:
-            front["hp"] = value
+            # 聖盾/無實體/傷害上限這些頭目防禦機制在 absorb_monster_damage 統一結算
+            front["hp"] = max(0, absorb_monster_damage(front, value))
 
     def start_combat(self, monster_defs: list):
-        """所有戰鬥的單一入口：最多吃 3 隻怪物，組成 monster_slots。絕大多數戰鬥仍只傳 1 隻怪物。"""
+        """所有戰鬥的單一入口：最多吃 3 隻怪物，組成 monster_slots。絕大多數戰鬥仍只傳 1 隻怪物。
+        monster 定義帶 start_divine_shield 的話，開場就自帶一層聖盾（完全抵銷下一次傷害）。"""
         self.monster_slots = [
-            {"monster": dict(m), "hp": m["max_hp"], "av": 0, "status": {}}
+            {"monster": dict(m), "hp": m["max_hp"], "av": 0, "status": {},
+             "divine_shield": bool(m.get("start_divine_shield"))}
             for m in monster_defs[:3]
         ]
         self.in_battle = True
@@ -178,6 +172,7 @@ class TRPGGameView(discord.ui.View):
         "btn_tower_safe_room": {"m": "handle_tower_safe_room", "k": {"revisit": True}},
         "btn_tower_merchant": {"m": "handle_tower_merchant"},
         "btn_tower_next": {"m": "handle_tower_explore"},
+        "btn_colo_fight": {"m": "handle_colosseum_fight"},
         "btn_dung_flee": {"m": "handle_dungeon_flee"},
         "cave_dir_forward": {"m": "handle_cave_move", "args": ["forward"]},
         "cave_dir_left": {"m": "handle_cave_move", "args": ["left"]},
@@ -194,14 +189,18 @@ class TRPGGameView(discord.ui.View):
         "b_itm": {"m": "handle_item_menu"},
         "b_fle": {"m": "handle_battle_flee", "guard": True},
         "btn_back_battle": {"m": "build_battle_menu", "await": False},
+        "btn_tutorial_yes": {"m": "handle_tutorial_choice", "i": True, "k": {"want_tutorial": True}},
+        "btn_tutorial_no": {"m": "handle_tutorial_choice", "i": True, "k": {"want_tutorial": False}},
     }
 
     # Prefix routes — checked in order, MOST SPECIFIC FIRST. `arg` controls what
     # gets passed: "suffix" = custom_id after the prefix, "full" = whole
     # custom_id, "int_tail" = int of the last underscore segment.
     _PREFIX_ROUTES = [
+        ("btn_lang_", {"m": "handle_lang_select", "arg": "suffix"}),
         ("move_to_", {"m": "handle_move_execute", "arg": "full"}),
         ("darch_", {"m": "handle_dung_archetype", "arg": "suffix"}),
+        ("ddoor_", {"m": "handle_dung_door", "arg": "suffix"}),
         ("dpick_", {"m": "handle_dung_loot_pick", "arg": "suffix"}),
         ("drelic_", {"m": "handle_dung_relic_pick", "arg": "suffix"}),
         ("dskill_", {"m": "handle_dung_skill_pick", "arg": "suffix"}),
@@ -213,12 +212,24 @@ class TRPGGameView(discord.ui.View):
         ("unacc_", {"m": "handle_accessory_action", "arg": "suffix", "k": {"equip": False}}),
         ("learn_", {"m": "handle_learn_skill", "arg": "suffix"}),
         ("qaccept_", {"m": "handle_quest_accept", "arg": "suffix"}),
-        ("stat_add_all_", {"m": "handle_stat_add", "arg": "suffix", "k": {"all_in": True}}),
         ("stat_add_", {"m": "handle_stat_add", "arg": "suffix"}),
         ("craft_", {"m": "handle_craft_execute", "arg": "suffix"}),
         ("skill_", {"m": "handle_use_skill", "arg": "suffix"}),
         ("use_item_", {"m": "handle_use_item", "arg": "full"}),
     ]
+
+    # custom_ids that represent an actual adventuring moment (explore/travel/fight/rest),
+    # as opposed to browsing a menu (shop, equip screen, achievements, stat allocation...).
+    # NPC quest-offer popups only get a chance to fire on these — otherwise every single
+    # click anywhere in the UI had a 15% shot at interrupting the player with an offer,
+    # which felt like menu-browsing was randomly ambushed by unrelated popups.
+    _WORLD_ACTION_IDS = {
+        "btn_explore", "btn_boss_explore", "btn_rest",
+        "btn_tower_next", "btn_dung_next", "btn_dung_flee", "btn_colo_fight",
+        "cave_dir_forward", "cave_dir_left", "cave_dir_right", "cave_dir_back",
+        "b_atk", "b_def", "b_dod", "b_fle",
+    }
+    _WORLD_ACTION_PREFIXES = ("move_to_", "skill_", "use_item_")
 
     async def _run_route(self, spec, interaction, custom_id, prefix=None) -> bool:
         """Execute a matched route spec. Returns False if a battle guard blocked it."""
@@ -250,8 +261,9 @@ class TRPGGameView(discord.ui.View):
             return await interaction.response.send_modal(BuyItemModal(self, custom_id[len("buy_"):]))
         if custom_id.startswith("sell_"):
             return await interaction.response.send_modal(SellItemModal(self, custom_id[len("sell_"):]))
-        if custom_id == "btn_stat_bulk":
-            return await interaction.response.send_modal(StatAllocModal(self))
+        if custom_id.startswith("stat_manual_"):
+            stat_key = custom_id[len("stat_manual_"):]
+            return await interaction.response.send_modal(StatPointModal(self, stat_key, stat_key.upper()))
 
         await interaction.response.defer()
 
@@ -269,7 +281,11 @@ class TRPGGameView(discord.ui.View):
             if not getattr(self, "in_battle", False):
                 return
             self.log_message = self.combat.defend() if custom_id == "b_def" else self.combat.dodge()
-            self.build_battle_menu()
+            # 👇 修正：防禦/閃避這一回合裡，怪物可能因為腐蝕/中毒等 DOT 在牠自己的
+            # 行動點死掉，戰鬥當場結束並且已經切到戰利品/遺物選單——這時絕對不能
+            # 再無條件蓋回戰鬥選單，要跟攻擊/技能一樣先看 in_battle 是否還為真。
+            if self.in_battle:
+                self.build_battle_menu()
         else:
             spec = self._EXACT_ROUTES.get(custom_id)
             prefix = None
@@ -306,9 +322,24 @@ class TRPGGameView(discord.ui.View):
         except Exception as e:
             print(f"UI更新失敗: {e}")
 
-        # 任務彈出視窗（達成獎勵 / 突發委託邀請）— 放在面板更新之後，AI 對話的延遲不再卡住主畫面
+        # 教學戰進行中：提示彈窗取代任務彈窗（新玩家還沒有任何任務可觸發，也不該被
+        # 突發委託打斷第一場戰鬥）。教學戰以外的一切互動仍走原本的任務彈窗流程。
+        if getattr(self, "in_tutorial_battle", False):
+            try:
+                await self._maybe_send_tutorial_tip(interaction)
+            except Exception as e:
+                print(f"教學提示處理失敗: {e}")
+            return
+
+        # 任務彈出視窗（達成獎勵 / 突發委託邀請）— 放在面板更新之後，AI 對話的延遲不再卡住主畫面。
+        # 達成獎勵永遠檢查（不管這次點的是什麼），但「突發委託邀請」只在真的做了冒險相關的
+        # 動作時才有機會彈出，避免玩家單純逛商店/看成就都會被隨機委託打斷。
+        is_world_action = (
+            custom_id in self._WORLD_ACTION_IDS
+            or custom_id.startswith(self._WORLD_ACTION_PREFIXES)
+        )
         try:
-            await process_quest_popups(self, interaction)
+            await process_quest_popups(self, interaction, allow_offer=is_world_action)
             # 任務獎勵可能改變了等級／金幣，完成後再刷新一次讓數值同步
             await interaction.message.edit(embed=self.generate_embed(), view=self)
         except Exception as e:
@@ -331,8 +362,12 @@ class TRPGGameView(discord.ui.View):
             self.build_legend_cave_menu()
             return
 
+        if self.cog.areas.get(self.player.current_area, {}).get("is_colosseum"):
+            self.build_colosseum_menu()
+            return
+
         lang = self.player.language
-        if "village" in self.player.current_area:
+        if self.cog.areas.get(self.player.current_area, {}).get("is_village"):
             self.add_action_button(label=t(lang, "menu.btn_move", "移動"), style=discord.ButtonStyle.secondary, custom_id="btn_move_menu", row=0, emoji="🗺️")
             self.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.success, custom_id="btn_status", row=0, emoji="📜")
             self.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.secondary, custom_id="btn_equip_menu", row=0, emoji="🛡️")
@@ -426,7 +461,7 @@ class TRPGGameView(discord.ui.View):
             any_locked = True
             achv_type = info.get("type")
             threshold = info.get("threshold", 0)
-            current_val = p.stats.get(achv_type, 0)
+            current_val = self._achievement_progress_value(achv_type)
             lines.append(f"🔒 {tf(info, 'name', lang)} — {tf(info, 'desc', lang)} ({min(current_val, threshold)}/{threshold})")
         if not any_locked:
             lines.append(t(lang, "achievements.all_unlocked", "🎉 已解鎖所有成就！"))
@@ -542,6 +577,10 @@ class TRPGGameView(discord.ui.View):
             self.player.current_area = "area_00village"
             self.player.cave_state = {"current_node": "entrance", "history": []}
 
+        # 鬥技場死亡：連戰進度歸零，下次要從第一輪重新打
+        if self.cog.areas.get(self.player.current_area, {}).get("is_colosseum"):
+            self._colosseum_state()["round"] = 0
+
         # 強制導回主選單
         self.build_main_menu()
 
@@ -568,6 +607,31 @@ class TRPGGameView(discord.ui.View):
             )
         return ""
 
+    def _achievement_progress_value(self, achv_type: str):
+        """成就進度依 type 查詢：優先看 player.stats（累計型數值，例如 monsters_killed／
+        total_deaths／money_spent），找不到就退回玩家屬性本身——這讓 achievements.json
+        不必再侷限於那 3 個 stats 計數器，可以直接拿 level／prestige_count／tower_floor
+        這種玩家物件上已經有現成數值的欄位，或是 killed_bosses／trophies 這種list（取
+        長度，例如「累計擊敗過幾隻不同的區域BOSS」）。
+
+        屬性查詢一律解包成 real_player 再讀：level 是地下城探索用的封印欄位（見
+        trpg/dungeon.py SEALED_FIELDS），探索中直接讀 self.player 會拿到固定的封印
+        等級 10，跟任務系統一樣的陷阱——沒解包的話玩家一進地下城就會被誤判「已達到
+        Lv.10」而提早解鎖等級類成就。"""
+        p = self.player
+        stats = getattr(p, "stats", None) or {}
+        if achv_type in stats:
+            return stats.get(achv_type, 0)
+        real = getattr(p, "real_player", p)
+        val = getattr(real, achv_type, None)
+        if isinstance(val, (list, dict)):
+            return len(val)
+        if isinstance(val, bool):
+            return int(val)
+        if isinstance(val, (int, float)):
+            return val
+        return 0
+
     def check_achievements(self) -> str:
         """檢查玩家成就，若有新解鎖的成就，回傳解鎖的公告文字，並將其加到 player.achievements"""
         lang = self.player.language
@@ -582,9 +646,7 @@ class TRPGGameView(discord.ui.View):
 
             achv_type = info.get("type")
             threshold = info.get("threshold", 0)
-
-            # 從 stats 中獲取對應的數值
-            current_val = self.player.stats.get(achv_type, 0)
+            current_val = self._achievement_progress_value(achv_type)
             if current_val >= threshold:
                 self.player.achievements.append(achv_id)
                 unlocked_msgs.append(t(lang, "menu.achievement_unlocked", "🎉 【解鎖成就】{name} - {desc}", name=tf(info, "name", lang), desc=tf(info, "desc", lang)))
@@ -594,40 +656,140 @@ class TRPGGameView(discord.ui.View):
             return "\n" + "\n".join(unlocked_msgs)
         return ""
 
-    def _get_equipment_comparison_string(self, item_data: dict) -> str:
-        item_type = item_data.get("type")
-        if item_type == "weapon":
-            eq_id = self.player.weapon
-        elif item_type == "armor":
-            eq_id = self.player.armor
-        elif item_type == "accessory":
-            eq_id = self.player.accessory
-        else:
-            return ""
-
-        eq_item = self.cog.items.get(eq_id, {}) if eq_id else {}
-        
+    @staticmethod
+    def _diff_stats_string(item_data: dict, eq_item: dict) -> str:
+        """共用的裝備數值差異字串產生器——玩家一般裝備跟地下城封印裝備的比較函式
+        只差在「怎麼找出目前裝備的那一件」，數值差異的算法跟顯示格式完全一樣，
+        不需要各自維護一份幾乎一模一樣的迴圈。"""
         diffs = []
-        for key, (label, emoji) in {
-            "atk_bonus": ("ATK", "⚔️"),
-            "def_bonus": ("DEF", "🛡️"),
-            "hp_bonus": ("HP", "❤️"),
-            "magic_bonus": ("MAG", "✨"),
-            "res_bonus": ("RES", "🔰"),
-            "spd_bonus": ("SPD", "🚀"),
-        }.items():
-            new_val = item_data.get(key, 0)
-            old_val = eq_item.get(key, 0)
-            diff = new_val - old_val
+        for key, (label, emoji) in EQUIP_STAT_DISPLAY.items():
+            diff = item_data.get(key, 0) - eq_item.get(key, 0)
             if diff > 0:
                 diffs.append(f"{emoji}{label}+{diff}▲")
             elif diff < 0:
                 diffs.append(f"{emoji}{label}{diff}▼")
-                
-        if diffs:
-            return "[" + " ".join(diffs) + "]"
-        return ""
-    
+        return "[" + " ".join(diffs) + "]" if diffs else ""
+
+    def _get_equipment_comparison_string(self, item_data: dict) -> str:
+        item_type = item_data.get("type")
+        slot_attr = {"weapon": "weapon", "armor": "armor", "accessory": "accessory"}.get(item_type)
+        if not slot_attr:
+            return ""
+        eq_id = getattr(self.player, slot_attr, None)
+        eq_item = self.cog.items.get(eq_id, {}) if eq_id else {}
+        return self._diff_stats_string(item_data, eq_item)
+
+    def _dungeon_equipment_comparison_string(self, item_data: dict) -> str:
+        """跟 _get_equipment_comparison_string 一樣，但比較對象是地下城封印裝備
+        （d_state 的 weapon/armor/accessory 欄位 + cog.dungeon_items），而不是
+        玩家的常規裝備。"""
+        item_type = item_data.get("type")
+        if item_type not in ("weapon", "armor", "accessory"):
+            return ""
+
+        d_state = self._dstate()
+        eq_id = d_state.get(item_type)
+        eq_item = self.cog.dungeon_items.get(eq_id, {}) if eq_id else {}
+        return self._diff_stats_string(item_data, eq_item)
+
+    _DUNGEON_HOOK_DISPLAY = {
+        "crit_bonus": ("🎯", "暴擊率", "Crit"),
+        "lifesteal": ("🩸", "吸血", "Lifesteal"),
+        "on_kill_heal_pct": ("💚", "擊殺回血", "Heal on kill"),
+        "regen_pct": ("💧", "每回合回魔", "MP regen"),
+        "corrosion_on_hit": ("☣️", "腐蝕層數", "Corrosion stacks"),
+        "corrosion_dmg_bonus": ("☣️", "腐蝕傷害加成", "Corrosion dmg bonus"),
+    }
+
+    def _format_dungeon_item_effect_tags(self, item_data: dict) -> str:
+        """地下城裝備版的 _format_item_effect_tags——列出 crit/吸血/擊殺回血/腐蝕
+        這些 hook 效果欄位（見 trpg/dungeon.py _HOOK_KEYS），戰利品選單之前只顯示
+        數值加成的比較，這些效果完全看不到。"""
+        lang = self.player.language
+        tags = []
+        for key, (emoji, label_zh, label_en) in self._DUNGEON_HOOK_DISPLAY.items():
+            val = item_data.get(key)
+            if not val:
+                continue
+            if key in ("crit_bonus", "lifesteal", "on_kill_heal_pct", "regen_pct"):
+                val_str = f"{val * 100:.0f}%"
+            else:
+                val_str = f"{val}"
+            tags.append(f"{emoji}{label_en}+{val_str}" if lang == "en" else f"{emoji}{label_zh}+{val_str}")
+        if not tags:
+            return ""
+        return "{" + " ".join(tags) + "}"
+
+    def _format_equip_item_line(self, item_id: str) -> str:
+        """裝備選單用：印出這件裝備的絕對數值加成，再加上跟目前裝備的比較。"""
+        lang = self.player.language
+        item = self.cog.items.get(item_id, {})
+        item_name = f"{item_emoji(item)} {tf(item, 'name', lang)}"
+
+        stat_parts = [
+            f"{emoji}{label}{item[key]:+d}"
+            for key, (label, emoji) in EQUIP_STAT_DISPLAY.items()
+            if item.get(key)
+        ]
+        stat_str = " ".join(stat_parts) if stat_parts else t(lang, "equip.no_stat_bonus", "（無數值加成）")
+
+        line = f"▫️ {item_name}：{stat_str}"
+        if item.get("type") in ("weapon", "armor", "accessory"):
+            comp_str = self._get_equipment_comparison_string(item)
+            if comp_str:
+                line += f" {comp_str}"
+        effect_str = self._format_item_effect_tags(item)
+        if effect_str:
+            line += f" {effect_str}"
+        return line
+
+    def _resolve_boss_name(self, boss_id: str) -> str:
+        lang = self.player.language
+        for area in self.cog.areas.values():
+            boss = area.get("boss", {})
+            if boss.get("id") == boss_id:
+                return tf(boss, "name", lang) or boss_id
+        return boss_id
+
+    def _format_item_effect_tags(self, item_data: dict) -> str:
+        """列出裝備上「數值加成」以外的特殊效果（元素屬性、觸發異常狀態機率、
+        攻擊吸血、抗boss、速度加成攻擊）。這些欄位一直都有在戰鬥裡實際生效
+        （見 combat.py _apply_weapon_on_hit / player_attack），只是商店、裝備選單
+        從來沒把它們印出來，玩家只能靠 desc 文字（通常還沒寫、也沒寫機率數字）
+        才知道自己這把武器到底有沒有中毒/燃燒之類的附加效果。"""
+        lang = self.player.language
+        tags = []
+
+        element = item_data.get("element")
+        if element and element in ELEMENT_DISPLAY:
+            emoji, name_zh, name_en = ELEMENT_DISPLAY[element]
+            tags.append(f"{emoji}{name_en} Element" if lang == "en" else f"{emoji}{name_zh}屬性")
+
+        status_id = item_data.get("on_hit_status")
+        if status_id:
+            sdef = self.cog.status_effects.get(status_id, {})
+            s_emoji = sdef.get("emoji", "❓")
+            s_name = tf(sdef, "name", lang) or status_id
+            chance_pct = int(item_data.get("on_hit_chance", 0.25) * 100)
+            tags.append(f"{s_emoji}{chance_pct}% {s_name}" if lang == "en" else f"{s_emoji}{chance_pct}%機率{s_name}")
+
+        heal_pct = item_data.get("on_hit_heal_percent")
+        if heal_pct:
+            pct = int(heal_pct * 100)
+            tags.append(f"🩸{pct}% Lifesteal" if lang == "en" else f"🩸攻擊吸血{pct}%")
+
+        if item_data.get("spd_scaling"):
+            tags.append("🏃Speed-scaling ATK" if lang == "en" else "🏃速度加成攻擊")
+
+        anti_boss_id = item_data.get("anti_boss_id")
+        if anti_boss_id:
+            boss_name = self._resolve_boss_name(anti_boss_id)
+            tags.append(f"👑vs.{boss_name} Bonus" if lang == "en" else f"👑對{boss_name}特效")
+
+        if not tags:
+            return ""
+        return "{" + " ".join(tags) + "}"
+
     def build_battle_menu(self):
         self.clear_items()
         self.in_battle = True
@@ -649,13 +811,17 @@ class TRPGGameView(discord.ui.View):
         self.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.success, custom_id="b_sta", row=1, emoji="📜")
 
     def _area_unlocked(self, area: dict) -> bool:
-        """區域解鎖條件：舊有的 requires_flag（例如傳說洞窟）或新的 requires_boss
-        （必須先在 player.killed_bosses 裡有指定區域的首殺紀錄）。"""
+        """區域解鎖條件：requires_flag（例如傳說洞窟）、requires_boss（必須先在
+        player.killed_bosses 裡有指定區域的首殺紀錄），或 requires_boss_count
+        （累計首殺過 N 個不同區域 BOSS——給修羅鬥技場這種「集齊戰功才受邀」的隱藏區域用）。"""
         requires_flag = area.get("requires_flag")
         if requires_flag and not getattr(self.player, requires_flag, False):
             return False
         requires_boss = area.get("requires_boss")
         if requires_boss and requires_boss not in getattr(self.player, "killed_bosses", []):
+            return False
+        requires_count = area.get("requires_boss_count", 0)
+        if requires_count and len(getattr(self.player, "killed_bosses", [])) < requires_count:
             return False
         return True
 
@@ -672,14 +838,24 @@ class TRPGGameView(discord.ui.View):
             if area_id == self.player.current_area:
                 continue
             if not self._area_unlocked(area):
+                area_name = tf(area, "area_name", lang) or area_id
                 requires_boss = area.get("requires_boss")
+                requires_count = area.get("requires_boss_count", 0)
                 if requires_boss:
-                    area_name = tf(area, "area_name", lang) or area_id
                     boss_name = self._boss_name_for_area(requires_boss, lang)
                     locked_hints.append(t(
                         lang, "menu.area_locked_hint", "🔒 {area_name}（需先擊敗【{boss_name}】）",
                         area_name=area_name, boss_name=boss_name,
                     ))
+                elif requires_count:
+                    # 隱藏區域的存在本身是彩蛋：戰功累積過半才開始聽到「傳聞」，
+                    # 之前完全不顯示，保留初次發現的驚喜感。
+                    have = len(getattr(self.player, "killed_bosses", []))
+                    if have * 2 >= requires_count:
+                        locked_hints.append(t(
+                            lang, "menu.area_locked_count_hint", "🔒 {area_name}（需累計首殺 {need} 個不同區域BOSS，目前 {have}）",
+                            area_name=area_name, need=requires_count, have=have,
+                        ))
                 continue
             req = area.get("req_level", 1)
             area_name = tf(area, "area_name", lang) if area.get("area_name") else t(lang, "menu.unknown_area", "未知區域")
@@ -695,7 +871,7 @@ class TRPGGameView(discord.ui.View):
         scale = 1.0 + max(0, boss_level - area_req_level) * 0.15
         m["max_hp"] = max(1, int(m.get("base_hp", m.get("max_hp", 10)) * scale))
         m["atk"] = max(1, int(m.get("base_atk", m.get("atk", 5)) * scale))
-        m["def"] = max(1, int(m.get("base_def", m.get("def", 2)) * scale))
+        m["def"] = max(0, int(m.get("base_def", m.get("def", 0)) * scale))
         m["spd"] = max(1, int(m.get("base_spd", m.get("spd", 5)) * scale))
         return m
 
@@ -770,10 +946,25 @@ class TRPGGameView(discord.ui.View):
         self.log_message = t(lang, "menu.boss_encounter_warning", "🚨 【區域領主警告】 🚨\n大地在震動... 你驚動了隱藏的首領【{boss_name}】！{anti_boss_text}", boss_name=tf(boss_instance, "name", lang), anti_boss_text=anti_boss_text)
         self.build_battle_menu()
 
-    async def handle_equip_menu(self, notice="", paging=False):
-        self.clear_items()
+    def _paginate(self, items: list, items_per_page: int, paging: bool) -> tuple:
+        """共用分頁計算，取代原本在裝備/出售/道具/技能配置/工坊選單各自重複的頁碼算法。
+        paging=False 代表這次是「開啟這個選單」而不是「換頁」，一律從第一頁看起。
+        回傳 (這一頁的項目清單, 目前頁碼(0-based), 最大頁碼(0-based))。"""
         if not paging:
             self.inventory_page = 0
+        max_page = max(0, (len(items) - 1) // items_per_page)
+        self.inventory_page = min(self.inventory_page, max_page)
+        start = self.inventory_page * items_per_page
+        return items[start:start + items_per_page], self.inventory_page, max_page
+
+    def _add_pagination_buttons(self, total_items: int, items_per_page: int, row: int = 3):
+        if total_items > items_per_page:
+            lang = self.player.language
+            self.add_action_button(label=t(lang, "menu.btn_prev_page", "◀️ 上一頁"), style=discord.ButtonStyle.secondary, custom_id="btn_prev_page", row=row)
+            self.add_action_button(label=t(lang, "menu.btn_next_page", "▶️ 下一頁"), style=discord.ButtonStyle.secondary, custom_id="btn_next_page", row=row)
+
+    async def handle_equip_menu(self, notice="", paging=False):
+        self.clear_items()
         self.current_menu_state = "equip"
         lang = self.player.language
 
@@ -796,15 +987,7 @@ class TRPGGameView(discord.ui.View):
         # 合併所有可裝備的物品
         all_equips = weapons_in_bag + armors_in_bag + accessories_in_bag
         total_items = len(all_equips)
-
-        # 分頁範圍
-        items_per_page = 8
-        max_page = max(0, (total_items - 1) // items_per_page)
-        self.inventory_page = min(self.inventory_page, max_page)
-
-        start_idx = self.inventory_page * items_per_page
-        end_idx = start_idx + items_per_page
-        page_items = all_equips[start_idx:end_idx]
+        page_items, _, max_page = self._paginate(all_equips, 8, paging)
 
         self.log_message = (notice + "\n\n" if notice else "") + t(lang, "equip.menu_title", "🎒 【裝備管理】(第 {page}/{max_page} 頁)", page=self.inventory_page + 1, max_page=max_page + 1)
 
@@ -816,6 +999,7 @@ class TRPGGameView(discord.ui.View):
         c_accs = f"【{tf(self.cog.items[self.player.accessory], 'name', lang)}】" if self.player.accessory else none_label
 
         self.log_message += t(lang, "equip.current_gear_summary", "\n👉 武器：{weapon}\n👉 防具：{armor}\n👉 飾品：{accessory}", weapon=c_weap, armor=c_armr, accessory=c_accs)
+        self.log_message += "\n"
 
         for item_id in page_items:
             item_data = self.cog.items[item_id]
@@ -823,6 +1007,11 @@ class TRPGGameView(discord.ui.View):
             item_name = f"{item_emoji(item_data)} {tf(item_data, 'name', lang)}"
             req = item_data.get("exclusive_level", 0)
             locked = req > self.player.level
+
+            # 👇 把這件裝備的絕對數值 + 跟目前裝備的差異都印出來，不用再猜這把
+            # 武器/防具實際強度如何——鎖住的裝備一樣顯示，讓玩家知道升到門檻
+            # 等級後值不值得換。
+            self.log_message += "\n" + self._format_equip_item_line(item_id)
 
             if locked:
                 # 等級不足：灰色鎖定按鈕，標示等級需求（不可點擊）
@@ -853,11 +1042,7 @@ class TRPGGameView(discord.ui.View):
         if not all_equips:
             self.log_message += "\n\n" + t(lang, "equip.no_equippable_items", "背包裡沒有可裝備的物品。")
 
-        # 分頁按鈕
-        if total_items > items_per_page:
-            self.add_action_button(label=t(lang, "menu.btn_prev_page", "◀️ 上一頁"), style=discord.ButtonStyle.secondary, custom_id="btn_prev_page", row=3)
-            self.add_action_button(label=t(lang, "menu.btn_next_page", "▶️ 下一頁"), style=discord.ButtonStyle.secondary, custom_id="btn_next_page", row=3)
-
+        self._add_pagination_buttons(total_items, 8)
         self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙", row=4)
 
     async def handle_equip_action(self, item_id: str, equip: bool):
@@ -904,8 +1089,6 @@ class TRPGGameView(discord.ui.View):
 
         if equip:
             self.player.accessory = item_id
-            if item_id == "jester_mask":
-                activate_jester_immunity(self.player)
             recalc_player_stats(self.player, self.cog.items, heal_full=False)
             self.cog.save_players()
             await self.handle_equip_menu(t(lang, "equip.accessory_equip_success", "🎭 配戴了【{name}】！", name=item_name))
@@ -915,293 +1098,8 @@ class TRPGGameView(discord.ui.View):
             self.cog.save_players()
             await self.handle_equip_menu(t(lang, "equip.accessory_unequip_success", "🎭 卸下了【{name}】。", name=item_name))
 
-    # 👇 加上 notice 參數
-    def _format_shop_item_line(self, item_id: str) -> str:
-        lang = self.player.language
-        item = self.cog.items.get(item_id, {})
-        req = item.get("exclusive_level", 0)
-        req_str = t(lang, "shop.req_level_suffix", " | 需 Lv.{req}", req=req) if req else ""
-        item_name = tf(item, "name", lang) if item else item_id
-        item_desc = tf(item, "desc", lang) if item else ""
-        line = f"• {item_emoji(item)} {item_name}{req_str} | {item.get('price', 0)}$ | {item_desc}"
-
-        if item.get("type") in ("weapon", "armor", "accessory"):
-            comp_str = self._get_equipment_comparison_string(item)
-            if comp_str:
-                line += f" {comp_str}"
-
-        if item.get("type") == "skill_scroll":
-            skill = self.cog.skills.get(item.get("teaches", ""), {})
-            skill_desc = tf(skill, "desc", lang) if skill else ""
-            if skill_desc:
-                line += f"\n  ↳ {skill_desc}"
-        return line
-
-    def _shop_area_config(self, area_id: str) -> dict:
-        return AREA_SHOP_TIERS.get(area_id, {"gear_range": (0, 4), "potion_tier": "basic"})
-
-    def _shop_state(self) -> dict:
-        """目前所在區域的商店狀態（每個區域各自獨立進貨/刷新，不再共用一份全域貨架）。"""
-        if not isinstance(getattr(self.player, "shop_state", None), dict):
-            self.player.shop_state = {}
-        return self.player.shop_state.setdefault(self.player.current_area, {})
-
-    def _roll_shop_stock(self):
-        area_id = self.player.current_area
-        cfg = self._shop_area_config(area_id)
-        gear_min, gear_max = cfg.get("gear_range", (0, 4))
-        hp_potion, mp_potion = SHOP_POTION_TIERS.get(cfg.get("potion_tier", "basic"), SHOP_POTION_TIERS["basic"])
-        state = self._shop_state()
-        today_str = datetime.today().strftime("%Y-%m-%d")
-
-        if state.get("last_refresh") != today_str:
-            state["last_refresh"] = today_str
-            state["refresh_count"] = 0
-            state["items"] = []
-
-        if state.get("mystery_date") != today_str:
-            state["mystery_date"] = today_str
-            if random.random() < 0.20:
-                state["mystery_active"] = True
-                mystery_pool = [
-                    k for k, v in self.cog.items.items()
-                    if v.get("mystery_only") and v.get("price", 0) > 0
-                    and (v.get("type") not in ("weapon", "armor", "accessory") or gear_min <= v.get("exclusive_level", 0) <= gear_max)
-                ]
-                state["mystery_items"] = random.sample(
-                    mystery_pool, min(3, len(mystery_pool))
-                ) if mystery_pool else []
-            else:
-                state["mystery_active"] = False
-                state["mystery_items"] = []
-
-        if not state.get("items"):
-            general_pool = []
-            general_weights = []
-            for k, v in self.cog.items.items():
-                w = v.get("shop_weight", 0)
-                if w <= 0 or k in (hp_potion, mp_potion):
-                    continue
-                # 裝備才受區域等級帶限制；材料/卷軸/藥劑等維持原本只看玩家等級門檻
-                if v.get("type") in ("weapon", "armor", "accessory"):
-                    if not (gear_min <= v.get("exclusive_level", 0) <= gear_max):
-                        continue
-                if _item_shop_level_ok(self.player, k, v, self.cog.skills):
-                    general_pool.append(k)
-                    general_weights.append(w)
-
-            picks = []
-            if general_pool:
-                for _ in range(5):
-                    if not general_pool:
-                        break
-                    choice = random.choices(general_pool, weights=general_weights, k=1)[0]
-                    picks.append(choice)
-                    idx = general_pool.index(choice)
-                    general_pool.pop(idx)
-                    general_weights.pop(idx)
-
-            state["items"] = [hp_potion, mp_potion] + picks
-            self.cog.save_players()
-
-    async def handle_shop_menu(self, notice=""):
-        self._roll_shop_stock()
-        self.current_menu_state = "shop"
-        lang = self.player.language
-        area_id = self.player.current_area
-        state = self._shop_state()
-        is_village = "village" in area_id
-        area_name = tf(self.cog.areas.get(area_id, {}), "area_name", lang) or area_id
-
-        self.clear_items()
-        lines = []
-        prefix = (notice + "\n\n" if notice else "")
-        title_key = "shop.village_store_title" if is_village else "shop.area_store_title"
-        title_fallback = "🛒 【村莊雜貨鋪】今日限定貨架：" if is_village else "🛒 【{area}商店】今日限定貨架："
-        self.log_message = prefix + t(lang, title_key, title_fallback, area=area_name) + "\n"
-
-        for item_id in state.get("items", []):
-            item = self.cog.items.get(item_id)
-            if item:
-                lines.append(self._format_shop_item_line(item_id))
-                req = item.get("exclusive_level", 0)
-                req_label = f" Lv.{req}" if req else ""
-
-                comp_str = ""
-                if item.get("type") in ("weapon", "armor", "accessory"):
-                    comp_str = self._get_equipment_comparison_string(item)
-                comp_suffix = f" {comp_str}" if comp_str else ""
-
-                item_name = f"{item_emoji(item)} {tf(item, 'name', lang)}"
-                label_text = t(lang, "shop.btn_buy_item", "買 {name}{req_label} ({price}$){comp_suffix}", name=item_name, req_label=req_label, price=item['price'], comp_suffix=comp_suffix)
-                self.add_action_button(
-                    label=label_text[:80],
-                    style=discord.ButtonStyle.primary,
-                    custom_id=f"buy_{item_id}",
-                )
-
-        if state.get("mystery_active") and state.get("mystery_items"):
-            self.log_message += "\n\n" + t(lang, "shop.mystery_merchant_title", "🎭 【神秘商人 · 今日限定】") + "\n"
-            for item_id in state["mystery_items"]:
-                item = self.cog.items.get(item_id)
-                if not item:
-                    continue
-                lines.append(self._format_shop_item_line(item_id))
-
-                comp_str = ""
-                if item.get("type") in ("weapon", "armor", "accessory"):
-                    comp_str = self._get_equipment_comparison_string(item)
-                comp_suffix = f" {comp_str}" if comp_str else ""
-
-                item_name = f"{item_emoji(item)} {tf(item, 'name', lang)}"
-                label_text = t(lang, "shop.btn_buy_mystery_item", "🎭 {name} ({price}$){comp_suffix}", name=item_name, price=item['price'], comp_suffix=comp_suffix)
-                self.add_action_button(
-                    label=label_text[:80],
-                    style=discord.ButtonStyle.success,
-                    custom_id=f"buy_{item_id}",
-                )
-
-        self.log_message += "\n".join(lines)
-
-        refresh_cost = 100 * (2 ** state.get("refresh_count", 0))
-
-        self.add_action_button(label=t(lang, "shop.btn_refresh_shop", "刷新商店 ({cost}$)", cost=refresh_cost), style=discord.ButtonStyle.danger, custom_id="btn_shop_refresh", emoji="🔄")
-        self.add_action_button(label=t(lang, "shop.btn_sell_items", "出售物品"), style=discord.ButtonStyle.success, custom_id="btn_shop_sell", emoji="💰")
-        back_label = t(lang, "menu.btn_back_village", "返回村莊") if is_village else t(lang, "char.btn_back", "返回")
-        self.add_action_button(label=back_label, style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
-
-    async def handle_shop_refresh(self):
-        state = self._shop_state()
-        count = state.get("refresh_count", 0)
-        cost = 100 * (2 ** count)
-        user_bal = self.cog.get_bank_balance(self.user_id)
-
-        if user_bal < cost:
-            await self.handle_shop_menu(t(self.player.language, "shop.refresh_insufficient_gold", "❌ 金幣不足！手動進貨需要支付 {cost}$ 給老闆。", cost=cost))
-            return
-
-        self.cog.adjust_bank(self.user_id, -cost)
-        if not getattr(self.player, "stats", None):
-            self.player.stats = {}
-        self.player.stats["money_spent"] = self.player.stats.get("money_spent", 0) + cost
-
-        state["refresh_count"] = count + 1
-        state["items"] = []
-
-        achv_text = self.check_achievements()
-        notice_text = t(self.player.language, "shop.refresh_success", "🔄 支付了 {cost}$ 刷新商店！老闆為你進了一批新貨。", cost=cost)
-        if achv_text:
-            notice_text += achv_text
-
-        self.cog.save_players()
-        await self.handle_shop_menu(notice_text)
-
-    async def _refresh_buy_menu(self, notice: str):
-        if getattr(self, "current_menu_state", None) == "tower_merchant":
-            await self.handle_tower_merchant(notice)
-        else:
-            await self.handle_shop_menu(notice)
-
-    async def execute_buy(self, item_id: str, amount: int):
-        item = self.cog.items.get(item_id)
-        lang = self.player.language
-        if not item:
-            await self._refresh_buy_menu(t(lang, "shop.item_no_longer_available", "❌ 這個商品已經不在貨架上了。"))
-            return
-
-        item_name = tf(item, "name", lang)
-        total_cost = item.get("price", 0) * amount
-        user_bal = self.cog.get_bank_balance(self.user_id)
-        if user_bal < total_cost:
-            await self._refresh_buy_menu(t(lang, "shop.buy_insufficient_gold", "❌ 金幣不足！購買 {amount} 個【{name}】需要 {total_cost}$，但你只有 {user_bal}$。", amount=amount, name=item_name, total_cost=total_cost, user_bal=user_bal))
-            return
-
-        self.cog.adjust_bank(self.user_id, -total_cost)
-        self.player.inventory[item_id] = self.player.inventory.get(item_id, 0) + amount
-        if not getattr(self.player, "stats", None):
-            self.player.stats = {}
-        self.player.stats["money_spent"] = self.player.stats.get("money_spent", 0) + total_cost
-
-        achv_text = self.check_achievements()
-        notice_text = t(lang, "shop.buy_success", "✅ 購買了 {amount} 個【{name}】，花費 {total_cost}$！", amount=amount, name=item_name, total_cost=total_cost)
-        if achv_text:
-            notice_text += achv_text
-
-        self.cog.save_players()
-        await self._refresh_buy_menu(notice_text)
-
-    async def execute_sell(self, item_id: str, amount: int):
-        item = self.cog.items.get(item_id)
-        lang = self.player.language
-        owned = self.player.inventory.get(item_id, 0)
-        if not item or owned <= 0:
-            await self.handle_sell_menu(t(lang, "shop.item_not_owned", "❌ 你並未持有這個物品。"), paging=True)
-            return
-
-        item_name = tf(item, "name", lang)
-        if amount > owned:
-            await self.handle_sell_menu(t(lang, "shop.sell_amount_exceeds_owned", "❌ 數量超過持有量！你只有 {owned} 個【{name}】。", owned=owned, name=item_name), paging=True)
-            return
-
-        unit_price = get_sell_price(item_id, self.cog.items)
-        total_price = unit_price * amount
-
-        self.player.inventory[item_id] -= amount
-        if self.player.inventory[item_id] <= 0:
-            del self.player.inventory[item_id]
-        self.cog.adjust_bank(self.user_id, total_price)
-
-        self.cog.save_players()
-        await self.handle_sell_menu(t(lang, "shop.sell_success", "✅ 賣出了 {amount} 個【{name}】，獲得 {total_price}$！", amount=amount, name=item_name, total_price=total_price), paging=True)
-
-    async def handle_sell_menu(self, notice="", paging=False):
-        self.clear_items()
-        if not paging:
-            self.inventory_page = 0
-        self.current_menu_state = "sell"
-        lang = self.player.language
-
-        sellable = []
-        for item_id, count in self.player.inventory.items():
-            if count > 0 and item_id != "jester_mask":
-                item = self.cog.items.get(item_id)
-                if item and get_sell_price(item_id, self.cog.items) > 0:
-                    sellable.append(item_id)
-
-        total_items = len(sellable)
-        items_per_page = 8
-        max_page = max(0, (total_items - 1) // items_per_page)
-        self.inventory_page = min(self.inventory_page, max_page)
-
-        start_idx = self.inventory_page * items_per_page
-        end_idx = start_idx + items_per_page
-        page_items = sellable[start_idx:end_idx]
-
-        prefix = notice + "\n\n" if notice else ""
-        if not sellable:
-            self.log_message = prefix + t(lang, "shop.sell_menu_empty", "💰 【出售物品】\n沒有可以賣給商店的東西。")
-        else:
-            self.log_message = prefix + t(lang, "shop.sell_menu_title", "💰 【出售物品】(第 {page}/{max_page} 頁)\n選擇要賣出的物品：", page=self.inventory_page + 1, max_page=max_page + 1)
-            for item_id in page_items:
-                item = self.cog.items[item_id]
-                price = get_sell_price(item_id, self.cog.items)
-                count = self.player.inventory[item_id]
-                self.add_action_button(
-                    label=t(lang, "shop.btn_sell_item", "賣 {name} ({price}$) x{count}", name=f"{item_emoji(item)} {tf(item, 'name', lang)}", price=price, count=count),
-                    style=discord.ButtonStyle.primary,
-                    custom_id=f"sell_{item_id}",
-                )
-
-        if total_items > items_per_page:
-            self.add_action_button(label=t(lang, "menu.btn_prev_page", "◀️ 上一頁"), style=discord.ButtonStyle.secondary, custom_id="btn_prev_page", row=3)
-            self.add_action_button(label=t(lang, "menu.btn_next_page", "▶️ 下一頁"), style=discord.ButtonStyle.secondary, custom_id="btn_next_page", row=3)
-
-        self.add_action_button(label=t(lang, "shop.btn_back_to_shop", "返回商店"), style=discord.ButtonStyle.secondary, custom_id="btn_shop_menu", emoji="🔙", row=4)
-
     async def handle_item_menu(self, paging=False):
         self.clear_items()
-        if not paging:
-            self.inventory_page = 0
         self.current_menu_state = "item"
         lang = self.player.language
 
@@ -1213,13 +1111,7 @@ class TRPGGameView(discord.ui.View):
                     usable.append(item_id)
 
         total_items = len(usable)
-        items_per_page = 8
-        max_page = max(0, (total_items - 1) // items_per_page)
-        self.inventory_page = min(self.inventory_page, max_page)
-
-        start_idx = self.inventory_page * items_per_page
-        end_idx = start_idx + items_per_page
-        page_items = usable[start_idx:end_idx]
+        page_items, _, max_page = self._paginate(usable, 8, paging)
 
         if not usable:
             self.log_message = t(lang, "menu.no_usable_items", "❌ 背包裡沒有可用的道具。")
@@ -1238,10 +1130,7 @@ class TRPGGameView(discord.ui.View):
                 custom_id=f"use_item_{item_id}",
             )
 
-        if total_items > items_per_page:
-            self.add_action_button(label=t(lang, "menu.btn_prev_page", "◀️ 上一頁"), style=discord.ButtonStyle.secondary, custom_id="btn_prev_page", row=3)
-            self.add_action_button(label=t(lang, "menu.btn_next_page", "▶️ 下一頁"), style=discord.ButtonStyle.secondary, custom_id="btn_next_page", row=3)
-
+        self._add_pagination_buttons(total_items, 8)
         back_id = "btn_back_battle" if self.in_battle else "btn_back_main"
         self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id=back_id, emoji="🔙", row=4)
 
@@ -1447,11 +1336,38 @@ class TRPGGameView(discord.ui.View):
                     if acts >= 1:
                         warn = " " + "❗" * min(acts, 3)
                 action_label = t(lang, "battle.action_bar_label", "⚡ 行動: `[{bar}]`", bar=monster_bar) + warn
+                # 防禦是「身份標籤」不是通用數值：大多數怪物 0 防（不顯示），少數
+                # 鐵殼/重甲型怪物的高防才值得佔一格版面，讓玩家一眼認出要換打法。
+                def_part = f" | 🛡️ DEF: `{m['def']}`" if m.get("def", 0) > 0 else ""
                 monster_desc = (
                     f"❤️ HP: `{max(0, slot['hp']):03d}/{m['max_hp']:03d}`\n"
-                    f"⚔️ ATK: `{m['atk']}` | 🛡️ DEF: `{m['def']}` | 🚀 SPD: `{m.get('spd', 0)}`\n"
+                    f"⚔️ ATK: `{m['atk']}`{def_part} | 🚀 SPD: `{m.get('spd', 0)}`\n"
                     f"{action_label}"
                 )
+                # 👇 警示系統：怪物的下一步意圖與防禦性機制全部搬上檯面，玩家不用去
+                # 翻戰鬥紀錄才知道要防、要打斷、還是要留一發小招戳破聖盾。
+                intent_lines = []
+                if slot["hp"] > 0:
+                    tele = slot.get("telegraph")
+                    if tele:
+                        intent_lines.append(t(lang, "battle.intent_telegraph", "⚠️ 蓄力中：【{skill}】即將發動！", skill=tf(tele, "name", lang)))
+                    if slot.get("is_charging"):
+                        intent_lines.append(t(lang, "battle.intent_charging", "⚡ 正在聚集毀滅性的能量！"))
+                    if slot.get("telegraph_flee"):
+                        intent_lines.append(t(lang, "battle.intent_flee", "😰 準備逃跑！（下回合就會逃走）"))
+                    badges = []
+                    if slot.get("divine_shield"):
+                        badges.append(t(lang, "battle.badge_divine_shield", "🛡️聖盾"))
+                    if slot.get("magic_absorb_shield"):
+                        badges.append(t(lang, "battle.badge_magic_absorb", "🌀魔法吸收"))
+                    if m.get("damage_cap"):
+                        badges.append(t(lang, "battle.badge_damage_cap", "🧱承傷上限{cap}/回合", cap=m["damage_cap"]))
+                    if slot.get("status"):
+                        badges.append(format_status_list(slot["status"], self.cog.status_effects, lang))
+                    if badges:
+                        intent_lines.append(" | ".join(badges))
+                if intent_lines:
+                    monster_desc += "\n" + "\n".join(intent_lines)
                 embed.add_field(name=f"{row_tag}：{monster_name}", value=monster_desc, inline=len(self.monster_slots) > 1)
 
         embed.description = f"```\n{self.log_message}\n```"
@@ -1484,6 +1400,12 @@ class TRPGGameView(discord.ui.View):
             return
 
         monster_ids = list(area_data["monsters"].keys())
+        # 👇 新手保護：Lv.3 以下只會遇到史萊姆——新手村附近其他怪物（野豬/山賊等）
+        # 對剛開局、還沒武器沒技能的玩家來說殺傷力太不穩定，容易一上來就被血洗。
+        # 練到 Lv.3 之後才會恢復正常的野外怪物池。
+        if self.player.level < 3 and "slime" in area_data["monsters"]:
+            monster_ids = ["slime"]
+
         weights = [area_data["monsters"][m_id]["spawn_rate"] for m_id in monster_ids]
 
         selected_id = random.choices(monster_ids, weights=weights)[0]
@@ -1507,7 +1429,7 @@ class TRPGGameView(discord.ui.View):
             monster_instance["name_en"] = f"{base_monster['name_en']} (Lv.{m_level})"
         monster_instance["max_hp"] = max(1, int(base_monster["max_hp"] * scale))
         monster_instance["atk"] = max(1, int(base_monster["atk"] * scale))
-        monster_instance["def"] = max(1, int(base_monster["def"] * scale))
+        monster_instance["def"] = max(0, int(base_monster.get("def", 0) * scale))
         monster_instance["exp"] = max(1, int(base_monster.get("exp", 10) * scale))
         if "magic" in base_monster:
             monster_instance["magic"] = max(1, int(base_monster["magic"] * scale))
@@ -1705,26 +1627,22 @@ class TRPGGameView(discord.ui.View):
         lang = self.player.language
         self.clear_items()
         self.current_menu_state = "skill_equip"
-        if not paging:
-            self.inventory_page = 0
         prefix = notice + "\n\n" if notice else ""
 
         if not getattr(self.player, "equipped_skills", None):
             self.player.equipped_skills = []
 
-        p_skills = list(dict.fromkeys(s for s in getattr(self.player, "skills", []) if self.cog.skills.get(s, {}).get("type") != "passive"))
+        # 👇 被動技能也要能裝備、也要佔掉技能槽——它們只是不能在戰鬥中主動點來放
+        # （那份過濾在 handle_skill_menu 那邊），配置畫面這裡不該把它們藏起來。
+        p_skills = list(dict.fromkeys(getattr(self.player, "skills", [])))
 
         if not p_skills:
-            self.log_message = prefix + t(lang, "skill.equip_menu_no_skills", "🔧 【技能配置】\n你尚未習得任何主動技能。請先【學習魔法】！")
+            self.log_message = prefix + t(lang, "skill.equip_menu_no_skills", "🔧 【技能配置】\n你尚未習得任何技能。請先【學習魔法】！")
             self.add_action_button(label=t(lang, "skill.btn_back_to_church", "返回教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", emoji="🔙")
             return
 
         equipped_count = len(self.player.equipped_skills)
-        per_page = 8
-        max_page = max(0, (len(p_skills) - 1) // per_page)
-        self.inventory_page = min(self.inventory_page, max_page)
-        start = self.inventory_page * per_page
-        page_skills = p_skills[start:start + per_page]
+        page_skills, _, max_page = self._paginate(p_skills, 8, paging)
 
         header = prefix + t(lang, "skill.equip_menu_header", "🔧 【技能配置】 (已裝備: {equipped_count}/8)\n點擊下方按鈕來裝備或卸下你的戰鬥技能。", equipped_count=equipped_count)
         if max_page > 0:
@@ -1739,11 +1657,24 @@ class TRPGGameView(discord.ui.View):
             mark = "🟢" if equipped else "⚪"
             lines.append(f"{mark} {skill_name}: {skill_desc}")
 
+            # 👇 轉生會把等級重置回 1，但學過的技能與裝備清單都不會被清掉——沒有這道
+            # 門檻的話，玩家可以在轉生後帶著遠超當下等級的技能繼續裝備/戰鬥。跟裝備
+            # 選單的鎖定裝備一樣，等級不足時把按鈕鎖起來、標示需求等級。
+            req_lv = skill.get("req_level", 1)
+            locked = (not equipped) and self.player.level < req_lv
+
             if equipped:
                 self.add_action_button(
                     label=t(lang, "skill.btn_unequip", "🟢 卸下: {skill_name}", skill_name=skill_name)[:80],
                     style=discord.ButtonStyle.success,
                     custom_id=f"unequip_skill_{skill_id}"
+                )
+            elif locked:
+                self.add_action_button(
+                    label=t(lang, "skill.btn_locked", "🔒 {skill_name} (需 Lv.{req})", skill_name=skill_name, req=req_lv)[:80],
+                    style=discord.ButtonStyle.secondary,
+                    custom_id=f"locked_skill_{skill_id}",
+                    disabled=True,
                 )
             else:
                 is_full = equipped_count >= 8
@@ -1754,11 +1685,7 @@ class TRPGGameView(discord.ui.View):
                 )
 
         self.log_message = "\n".join(lines)
-        if max_page > 0:
-            self.add_action_button(label=t(lang, "menu.btn_prev_page", "◀️ 上一頁"), style=discord.ButtonStyle.secondary, custom_id="btn_prev_page", row=3)
-            self.add_action_button(label=t(lang, "menu.btn_next_page", "▶️ 下一頁"), style=discord.ButtonStyle.secondary, custom_id="btn_next_page", row=3)
-        self.add_action_button(label=t(lang, "skill.btn_back_to_church", "返回教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", emoji="🔙")
-
+        self._add_pagination_buttons(len(p_skills), 8)
         self.add_action_button(label=t(lang, "skill.btn_back_to_church", "返回教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", emoji="🔙")
 
     async def handle_skill_equip_action(self, skill_id: str, equip: bool):
@@ -1769,6 +1696,12 @@ class TRPGGameView(discord.ui.View):
         if equip:
             if len(self.player.equipped_skills) >= 8:
                 await self.handle_skill_equip_menu(t(lang, "skill.equip_limit_reached", "❌ 技能裝備已達上限 (8/8)！請先卸下其他技能。"))
+                return
+            skill = self.cog.skills.get(skill_id, {})
+            req_lv = skill.get("req_level", 1)
+            if self.player.level < req_lv:
+                skill_name = tf(skill, "name", lang) or skill_id
+                await self.handle_skill_equip_menu(t(lang, "skill.equip_level_too_low", "❌ 等級不足！裝備【{skill_name}】需要 Lv.{req_lv}。", skill_name=skill_name, req_lv=req_lv))
                 return
             if skill_id not in self.player.equipped_skills:
                 self.player.equipped_skills.append(skill_id)
@@ -1816,22 +1749,32 @@ class TRPGGameView(discord.ui.View):
             del self.player.inventory[scroll_id]
 
         self.player.skills.append(skill_id)
+
+        # 👇 學完技能後，技能欄還有空位的話直接幫忙裝備上——不然新手常常學了技能
+        # 卻不知道還要另外跑一趟教堂的「技能配置」才能真正在戰鬥中用得到。
+        if not getattr(self.player, "equipped_skills", None):
+            self.player.equipped_skills = []
+        auto_equipped = len(self.player.equipped_skills) < 8
+        if auto_equipped:
+            self.player.equipped_skills.append(skill_id)
+
         self.cog.save_players()
         item_name = tf(item, "name", lang)
         skill_desc = tf(skill, "desc", lang)
-        await self.handle_learn_skill_menu(t(lang, "skill.studied_and_learned", "📖 你研讀了【{item_name}】，成功習得技能【{skill_name}】！\n{skill_desc}", item_name=item_name, skill_name=skill_name, skill_desc=skill_desc))
+        learned_msg = t(lang, "skill.studied_and_learned", "📖 你研讀了【{item_name}】，成功習得技能【{skill_name}】！\n{skill_desc}", item_name=item_name, skill_name=skill_name, skill_desc=skill_desc)
+        if auto_equipped:
+            learned_msg += "\n" + t(lang, "skill.auto_equipped", "✅ 技能欄還有空位，已自動為你裝備上【{skill_name}】！", skill_name=skill_name)
+        await self.handle_learn_skill_menu(learned_msg)
 
 
     async def handle_move_execute(self, custom_id):
+        # 👇 等級只是「建議」不是硬性門檻——真正把關的是 requires_boss/requires_boss_count
+        # （能不能打贏上一個區域的 BOSS，或累積首殺過夠多區域 BOSS），能贏就代表有實力
+        # 進去了，不需要再疊加一層等級限制卡人。req_level 依然會顯示在移動選單的按鈕
+        # 標籤上，純粹給玩家參考「這裡建議幾級來」。
         lang = self.player.language
         target_area = custom_id.replace("move_to_", "")
         area_data = self.cog.areas.get(target_area, {})
-        req_level = area_data.get("req_level", 1)
-        # 現在先不用動因為要測試遊戲
-        # if self.player.level < req_level:
-        #     self.log_message = f"❌ 等級不足！前往【{area_data.get('area_name', target_area)}】需要 Lv.{req_level}。"
-        #     self.build_main_menu()
-        #     return
         if not self._area_unlocked(area_data):
             requires_boss = area_data.get("requires_boss")
             if requires_boss:
@@ -1915,6 +1858,7 @@ class TRPGGameView(discord.ui.View):
                 f"💧 MP: {p.current_mp}/{p.max_mp}\n"
                 f"⚔️ ATK: {get_player_atk(p, self.cog.items, self.cog.status_effects)} | 🛡️ DEF: {get_player_def(p, self.cog.items)}\n"
                 f"✨ MAG: {get_player_magic(p, self.cog.items, self.cog.status_effects)} | 🔰 RES: {getattr(p, 'base_res', 0)}\n"
+                f"🍀 LUCK: {getattr(p, 'base_luck', 0)}\n"
                 f"{alloc_text}"
             ),
             inline=False,
@@ -1931,6 +1875,15 @@ class TRPGGameView(discord.ui.View):
 
         await interaction.followup.send(embed=status_embed, ephemeral=True)
 
+    # (label, custom_id 用的 stat key, emoji) —— 6 個屬性，每組（+1／手動輸入）都要跨
+    # 兩排才放得下（Discord 每排最多 5 顆按鈕），版面固定用 row 0/1（+1）與 2/3（手動輸入）。
+    # 「手動輸入」開的是 StatPointModal（單一屬性、單一數字欄位）：打小數字=精準微調、
+    # 打一個很大的數字＝等於全押到這項，取代原本另外一顆 All-in 按鈕的功能。
+    _STAT_ALLOC_BUTTONS = (
+        ("ATK", "atk", "⚔️"), ("VIT", "vit", "🛡️"), ("INT", "int", "✨"),
+        ("SPD", "spd", "💨"), ("RES", "res", "🔰"), ("LUCK", "luck", "🍀"),
+    )
+
     async def handle_stat_alloc_menu(self, notice=""):
         self.clear_items()
         lang = self.player.language
@@ -1940,34 +1893,31 @@ class TRPGGameView(discord.ui.View):
             prefix
             + t(lang, "char.stat_alloc_header", "📊 【屬性分配】每級 2 點，死亡後重置。\n")
             + format_stat_alloc_summary(self.player)
-            + t(lang, "char.stat_alloc_legend", "\n\n攻擊+3 ATK/點 | 體力+12 HP & +2 DEF/點 | 魔力+4 MAG & +3 MP/點 | 速度+2 SPD/點 |抗性+2 RES/點")
+            + t(lang, "char.stat_alloc_legend", "\n\n攻擊+3 ATK/點 | 體力+12 HP & +2 DEF/點 | 魔力+4 MAG & +3 MP/點 | "
+                "速度+2 SPD/點 | 抗性+2 RES/點 | 運氣+1 LUCK/點（提升暴擊率與掉寶率）")
         )
         if unspent > 0:
             self.log_message += t(
                 lang,
                 "char.stat_alloc_unspent",
-                "\n\n**您還有 {unspent} 點屬性點可以分配！**\n(💡 點擊「+1」按鈕投資1點，點擊「All-in」投資所有剩餘點數，或點擊「批量分配」填寫數字)",
+                "\n\n**您還有 {unspent} 點屬性點可以分配！**\n(💡 點擊「+1」按鈕投資1點，點擊「手動輸入」打數字精準分配，數字打超過剩餘點數就等於全押)",
                 unspent=unspent,
             )
 
-            self.add_action_button(label="+1 ATK", style=discord.ButtonStyle.primary, custom_id="stat_add_atk", row=0, emoji="⚔️")
-            self.add_action_button(label="+1 VIT", style=discord.ButtonStyle.primary, custom_id="stat_add_vit", row=0, emoji="🛡️")
-            self.add_action_button(label="+1 INT", style=discord.ButtonStyle.primary, custom_id="stat_add_int", row=0, emoji="✨")
-            self.add_action_button(label="+1 SPD", style=discord.ButtonStyle.primary, custom_id="stat_add_spd", row=0, emoji="💨")
-            self.add_action_button(label="+1 RES", style=discord.ButtonStyle.primary, custom_id="stat_add_res", row=0, emoji="🔰")
+            for label, key, emoji in self._STAT_ALLOC_BUTTONS:
+                row = 0 if key != "luck" else 1
+                self.add_action_button(label=f"+1 {label}", style=discord.ButtonStyle.primary, custom_id=f"stat_add_{key}", row=row, emoji=emoji)
+            for label, key, emoji in self._STAT_ALLOC_BUTTONS:
+                row = 2 if key != "luck" else 3
+                self.add_action_button(label=t(lang, "char.btn_stat_manual", "輸入 {stat}", stat=label), style=discord.ButtonStyle.success, custom_id=f"stat_manual_{key}", row=row, emoji=emoji)
 
-            self.add_action_button(label="All-in ATK", style=discord.ButtonStyle.danger, custom_id="stat_add_all_atk", row=1, emoji="⚔️")
-            self.add_action_button(label="All-in VIT", style=discord.ButtonStyle.danger, custom_id="stat_add_all_vit", row=1, emoji="🛡️")
-            self.add_action_button(label="All-in INT", style=discord.ButtonStyle.danger, custom_id="stat_add_all_int", row=1, emoji="✨")
-            self.add_action_button(label="All-in SPD", style=discord.ButtonStyle.danger, custom_id="stat_add_all_spd", row=1, emoji="💨")
-            self.add_action_button(label="All-in RES", style=discord.ButtonStyle.danger, custom_id="stat_add_all_res", row=1, emoji="🔰")
+        last_row = 4 if unspent > 0 else 0
+        self.add_action_button(label=t(lang, "char.btn_reset_stats", "重置所有屬性點"), style=discord.ButtonStyle.danger, custom_id="btn_stat_reset", row=last_row, emoji="🔄")
+        self.add_action_button(label=t(lang, "char.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", row=last_row, emoji="🔙")
 
-            self.add_action_button(label=t(lang, "char.btn_bulk_alloc", "批量分配"), style=discord.ButtonStyle.success, custom_id="btn_stat_bulk", row=2, emoji="⌨️")
-
-        self.add_action_button(label=t(lang, "char.btn_reset_stats", "重置所有屬性點"), style=discord.ButtonStyle.danger, custom_id="btn_stat_reset", row=2 if unspent > 0 else 0, emoji="🔄")
-        self.add_action_button(label=t(lang, "char.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
-
-    async def handle_stat_add(self, stat_key: str, all_in: bool = False):
+    async def handle_stat_add(self, stat_key: str, amount: int = 1):
+        """amount 超過目前剩餘點數時直接封頂到剩餘點數——這樣手動輸入視窗打一個
+        很大的數字（例如 999）就等於「全押」，不需要另外維護一顆 All-in 按鈕。"""
         from trpg.stats import get_unspent_points, recalc_player_stats, default_stat_alloc
         lang = self.player.language
         unspent = get_unspent_points(self.player)
@@ -1978,7 +1928,7 @@ class TRPGGameView(discord.ui.View):
         if not getattr(self.player, "stat_alloc", None):
             self.player.stat_alloc = default_stat_alloc()
 
-        add_amount = unspent if all_in else 1
+        add_amount = min(amount, unspent)
         self.player.stat_alloc[stat_key] = self.player.stat_alloc.get(stat_key, 0) + add_amount
         recalc_player_stats(self.player, self.cog.items, heal_full=False)
         self.cog.save_players()
@@ -1993,18 +1943,12 @@ class TRPGGameView(discord.ui.View):
 
     async def handle_rest(self):
         lang = self.player.language
-        user_bal = self.cog.get_bank_balance(self.user_id)
-        if user_bal < 20:
-            self.log_message = t(lang, "char.cant_afford_inn", "❌ 你身上的硬幣連旅館的乾草床都租不起！去打怪賺錢！")
-            return
         if self.player.current_hp == self.player.max_hp and self.player.current_mp == self.player.max_mp and not self.player.status_effects:
             self.log_message = t(lang, "char.rest_not_needed", "❓ 你精神飽滿，去睡覺只是在浪費錢。")
             return
-
-        self.cog.adjust_bank(self.user_id, -20)
-        if not getattr(self.player, "stats", None):
-            self.player.stats = {}
-        self.player.stats["money_spent"] = self.player.stats.get("money_spent", 0) + 20
+        if not self.cog.try_spend(self.user_id, self.player, 20):
+            self.log_message = t(lang, "char.cant_afford_inn", "❌ 你身上的硬幣連旅館的乾草床都租不起！去打怪賺錢！")
+            return
 
         self.player.current_hp = self.player.max_hp
         self.player.current_mp = self.player.max_mp
@@ -2025,19 +1969,24 @@ class TRPGGameView(discord.ui.View):
             self.build_main_menu()
             return
 
-        # 👇 玩家一進來就先進休息室補滿血，並決定要不要出商人
-        if not getattr(self, "tower_safe_room_visited", False):
-            self.tower_safe_room_visited = True
+        # 👇 玩家一進來就先進休息室補滿血，並決定要不要出商人。這些狀態存在玩家存檔
+        # 的 tower_state（不是 View），關掉/重開面板或面板逾時都不會重置——不然玩家
+        # 只要重打 /trpg 就能在同一層無限刷回滿血、無限重骰是否出神秘商人。
+        t_state = self.player.tower_state
+        if not t_state.get("safe_room_visited"):
+            t_state["safe_room_visited"] = True
 
             # 滿血回魔
             self.player.current_hp = self.player.max_hp
             self.player.current_mp = self.player.max_mp
 
             # 10% 機率出商人，若出現則預先抽好商品 (防玩家反覆進出刷新)
-            self.tower_merchant_spawned = (random.random() < 0.10)
-            if self.tower_merchant_spawned:
+            t_state["merchant_spawned"] = (random.random() < 0.10)
+            if t_state["merchant_spawned"]:
                 mystery_pool = [k for k, v in self.cog.items.items() if v.get("mystery_only") and v.get("price", 0) > 0]
-                self.tower_merchant_items = random.sample(mystery_pool, min(3, len(mystery_pool))) if mystery_pool else []
+                t_state["merchant_items"] = random.sample(mystery_pool, min(3, len(mystery_pool))) if mystery_pool else []
+            else:
+                t_state["merchant_items"] = []
 
             self.cog.save_players()
             await self.handle_tower_safe_room()
@@ -2074,7 +2023,7 @@ class TRPGGameView(discord.ui.View):
         self.clear_items()
 
         msg = t(lang, "tower.safe_room_intro", "🏕️ 【魔塔第 {floor} 層 - 休息區】\n強大的魔力流經你的身體，你的體力與魔力已完全恢復！", floor=floor)
-        if getattr(self, "tower_merchant_spawned", False):
+        if self.player.tower_state.get("merchant_spawned"):
             msg += t(lang, "tower.merchant_present", "\n\n🎭 一名披著斗篷的神祕商人正坐在角落，似乎在等你過去。")
             self.add_action_button(label=t(lang, "tower.btn_trade_merchant", "與商人交易"), style=discord.ButtonStyle.primary, custom_id="btn_tower_merchant", emoji="🎭")
 
@@ -2088,7 +2037,7 @@ class TRPGGameView(discord.ui.View):
         self.current_menu_state = "tower_merchant"
         lang = self.player.language
         floor = self.player.tower_floor
-        items = getattr(self, "tower_merchant_items", [])
+        items = self.player.tower_state.get("merchant_items", [])
 
         prefix = notice + "\n\n" if notice else ""
         self.log_message = prefix + t(lang, "tower.merchant_greeting", "🎭 【第 {floor} 層 - 神祕商人】\n「稀有貨色，看看吧，過了這層樓可不一定還能再遇到我。」", floor=floor)
@@ -2108,328 +2057,116 @@ class TRPGGameView(discord.ui.View):
 
         self.add_action_button(label=t(lang, "char.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_tower_safe_room", emoji="🔙")
 
-    # ============================ 地下城（Roguelike） ============================
+    # ============================ 修羅鬥技場（隱藏連戰區域） ============================
+    # 解鎖條件：累計首殺 6 個不同區域 BOSS（requires_boss_count，見 area_60colosseum.json）。
+    # 三輪連戰、輪與輪之間不回復（藥水自理），終點是帶著聖盾+沉默+承傷上限三件套的
+    # 不敗冠軍。首次通關送 champions_belt，之後每日可再挑戰拿金幣與卷軸機率。
 
-    def _dstate(self):
-        return self.player.real_player.dungeon_state if hasattr(self.player, 'real_player') else self.player.dungeon_state
+    def _colosseum_state(self) -> dict:
+        real = getattr(self.player, "real_player", self.player)
+        if not isinstance(getattr(real, "colosseum_state", None), dict):
+            real.colosseum_state = {"round": 0}
+        return real.colosseum_state
 
-    def build_dungeon_menu(self):
+    def build_colosseum_menu(self):
         self.clear_items()
         lang = self.player.language
-        d_state = self._dstate()
+        area = self.cog.areas.get(self.player.current_area, {})
+        state = self._colosseum_state()
+        total_rounds = len(area.get("rounds", [])) + 1  # 小怪輪 + 冠軍戰
+        cur_round = min(state.get("round", 0), total_rounds - 1)
 
-        # 沒有進行中的 run，或偵測到「舊格式」的 run（缺少改版後的欄位）→ 重新開一場乾淨的探索
-        stale = "relics" not in d_state or "max_mp" not in d_state or "archetype" not in d_state
-        if not d_state.get("in_run") or stale:
-            dg.start_run(d_state)
-            self.log_message = t(lang, "dungeon.intro", "🕳️ **【無盡深淵地下城】**\n你的真實力量在此被封印，將從零開始。靠著撿到的裝備、遺物(relic)與菁英傳授的技能打造流派，撐到第 15 層擊敗深淵領主！只有通關或死亡才會結算真實獎勵。")
-            self.cog.save_players()
+        today_str = datetime.today().strftime("%Y-%m-%d")
+        cleared_today = self.player.daily_boss_kills.get(self.player.current_area) == today_str
 
-        if not d_state.get("archetype"):
-            self.build_archetype_menu()
-            return
-
-        if d_state.get("floor_state") == "resolved":
-            self._render_floor_resolved_menu()
-            return
-
-        self._resolve_floor_room()
-
-    def build_archetype_menu(self):
-        self.clear_items()
-        lang = self.player.language
-        lines = [self.log_message, "", t(lang, "dungeon.archetype_prompt", "⚔️ 在踏入深淵之前，選擇你的起手流派（之後仍可靠戰利品與菁英傳授的技能轉型）：")]
-        for aid, adef in dg.ARCHETYPES.items():
-            name = tf(adef, "name", lang)
-            desc = tf(adef, "desc", lang)
-            lines.append(f"• **{name}** — {desc}")
-            self.add_action_button(label=name, style=discord.ButtonStyle.primary, custom_id=f"darch_{aid}")
+        lines = [t(lang, "colosseum.title",
+                   "🏟️ **【修羅鬥技場】**\n觀眾的咆哮聲震耳欲聾。這裡沒有退路——連續三輪死鬥，輪與輪之間傷勢不會恢復，"
+                   "終點站著從未嘗過敗績的冠軍「剎羅」。")]
+        if cleared_today:
+            lines.append(t(lang, "colosseum.cleared_today", "\n🏆 你今天已經站上冠軍寶座了。明天再來衛冕吧！"))
+        else:
+            lines.append(t(lang, "colosseum.round_status", "\n⚔️ 目前進度：第 {cur}/{total} 輪", cur=cur_round + 1, total=total_rounds))
+            if cur_round == total_rounds - 1:
+                lines.append(t(lang, "colosseum.champion_next", "👑 下一戰：不敗冠軍・剎羅本人！"))
         self.log_message = "\n".join(lines)
 
-    async def handle_dung_archetype(self, archetype_id: str):
-        lang = self.player.language
-        d_state = self._dstate()
-        if not dg.apply_archetype(self.player, d_state, self.cog, archetype_id):
-            self.build_archetype_menu()
-            return
-        adef = dg.ARCHETYPES[archetype_id]
-        self.log_message = t(lang, "dungeon.archetype_chosen", "✅ 你選擇了【{name}】流派！{desc}", name=tf(adef, "name", lang), desc=tf(adef, "desc", lang))
-        self.cog.save_players()
-        self.build_dungeon_menu()
-
-    def _render_floor_resolved_menu(self):
-        lang = self.player.language
-        d_state = self._dstate()
-        floor = d_state.get("floor", 1)
-        relics = len(d_state.get("relics", []))
-        hp_line = f"{d_state.get('current_hp', 0)}/{d_state.get('max_hp', 0)}"
-        prefix = f"{self.log_message}\n\n" if self.log_message else ""
-        self.log_message = prefix + t(
-            lang, "dungeon.floor_cleared_status",
-            "🏰 **深淵地下城 - 第 {floor}/{maxf} 層**\n❤️ {hp} | 🗿 遺物 {relics}",
-            floor=floor, maxf=DUNGEON_MAX_FLOOR, hp=hp_line, relics=relics,
+        self.add_action_button(
+            label=t(lang, "colosseum.btn_fight", "進入下一輪") if not cleared_today else t(lang, "colosseum.btn_done", "✅ 今日已通關"),
+            style=discord.ButtonStyle.danger, custom_id="btn_colo_fight", row=0, emoji="🏟️",
+            disabled=cleared_today,
         )
-        self.add_action_button(label=t(lang, "dungeon.btn_next_floor", "🪜 前往下一層"), style=discord.ButtonStyle.primary, custom_id="btn_dung_next")
-        self.add_action_button(label=t(lang, "dungeon.btn_abandon", "放棄探索"), style=discord.ButtonStyle.danger, custom_id="btn_dung_flee", emoji="🏃")
+        self.add_action_button(label=t(lang, "menu.btn_move", "移動"), style=discord.ButtonStyle.secondary, custom_id="btn_move_menu", row=0, emoji="🗺️")
+        self.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.success, custom_id="btn_status", row=0, emoji="📜")
+        self.add_action_button(label=t(lang, "menu.btn_potions", "藥水"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=1, emoji="🎒")
+        self.add_action_button(label=t(lang, "menu.btn_log", "記錄"), style=discord.ButtonStyle.secondary, custom_id="btn_combat_history", row=1, emoji="📝")
 
-    def _resolve_floor_room(self):
-        """每層只有一個房間：一進層就立刻結算（戰鬥／休息／事件），不再有 AP 或開門選擇，
-        流派、戰利品與遺物才是力量的唯一來源。"""
+    async def handle_colosseum_fight(self):
         lang = self.player.language
-        d_state = self._dstate()
-        floor = d_state.get("floor", 1)
-
-        boss_kind = dg.forced_boss_kind(floor)
-        if boss_kind:
-            mon = dg.build_monster(self.cog, floor, "boss")
-            self.start_combat([mon])
-            if boss_kind == "final_boss":
-                self.log_message = t(lang, "dungeon.boss_floor_arrival", "🪜 你來到了第 {floor} 層... 深處傳來恐怖的咆哮聲——深淵領主就在前方！", floor=floor)
-            else:
-                self.log_message = t(lang, "dungeon.miniboss_floor_arrival", "🪜 你來到了第 {floor} 層... 一名地下城守衛頭目擋住了去路！擊敗牠將獲得一個遺物。", floor=floor)
-            self.build_battle_menu()
+        if self.player.current_hp <= 0:
+            self.log_message = t(lang, "menu.near_death_rest", "❌ 你快死掉了，請先回村莊休息！")
             return
 
-        rt = dg.roll_room(floor)
-        if rt in ("monster", "elite"):
-            mon = dg.build_monster(self.cog, floor, rt)
-            self.start_combat([mon])
-            if rt == "elite":
-                self.log_message = t(lang, "dungeon.elite_encounter", "💠 菁英怪物擋住去路！擊敗牠能學會一個新技能！\n你遇到了 {monster_name}！", monster_name=tf(mon, "name", lang))
-            else:
-                self.log_message = t(lang, "dungeon.monster_encounter", "⚔️ 遭遇戰鬥！你遇到了 {monster_name}！", monster_name=tf(mon, "name", lang))
-            self.build_battle_menu()
+        area = self.cog.areas.get(self.player.current_area, {})
+        today_str = datetime.today().strftime("%Y-%m-%d")
+        if self.player.daily_boss_kills.get(self.player.current_area) == today_str:
+            self.build_colosseum_menu()
             return
 
-        if rt == "rest":
-            heal = int(d_state["max_hp"] * 0.4)
-            d_state["current_hp"] = min(d_state["max_hp"], d_state.get("current_hp", 0) + heal)
-            self.log_message = t(lang, "dungeon.room_rest_done", "🔥 你在房間裡升起營火好好休息，回復了 {heal} 點 HP！", heal=heal)
-            d_state["floor_state"] = "resolved"
-            self.cog.save_players()
-            self.build_dungeon_menu()
-            return
+        state = self._colosseum_state()
+        rounds_cfg = area.get("rounds", [])
+        cur_round = state.get("round", 0)
 
-        # event：治療、陷阱、伏擊，或找到一點永久小加成（磨刀石／秘力泉水）——
-        # 隨機事件不再只有安全的兩種結果，也不會每次都跟戰鬥有關。
-        roll = random.random()
-        if roll < 0.25:
-            heal = int(d_state["max_hp"] * 0.3)
-            d_state["current_hp"] = min(d_state["max_hp"], d_state.get("current_hp", 0) + heal)
-            self.log_message = t(lang, "dungeon.event_heal", "✨ 你發現一池散發柔光的泉水，回復了 {heal} 點 HP！", heal=heal)
-            d_state["floor_state"] = "resolved"
-            self.cog.save_players()
-            self.build_dungeon_menu()
-            return
-        if roll < 0.45:
-            dmg = int(d_state["max_hp"] * 0.15)
-            d_state["current_hp"] -= dmg
-            self.log_message = t(lang, "dungeon.event_trap", "💥 不小心踩到陷阱！受到了 {dmg} 點傷害！", dmg=dmg)
-            if d_state["current_hp"] <= 0:
-                self._dungeon_run_over(t(lang, "dungeon.death_in_run", "\n💀 你在地下城中喪命了...所有臨時力量都消散了。"))
-                return
-            d_state["floor_state"] = "resolved"
-            self.cog.save_players()
-            self.build_dungeon_menu()
-            return
-        if roll < 0.65:
-            # 30%：隨機事件其實是普通怪物的伏擊
-            mon = dg.build_monster(self.cog, floor, "monster")
-            self.start_combat([mon])
-            self.log_message = t(lang, "dungeon.event_ambush", "😱 這根本是陷阱！一隻怪物從暗處撲了出來！\n你遇到了 {monster_name}！", monster_name=tf(mon, "name", lang))
-            self.build_battle_menu()
-            return
-        if roll < 0.825:
-            # 17.5%：磨刀石，永久（本次探索）小幅提升攻擊力
-            bonus = d_state.setdefault("event_bonuses", {})
-            gain = 3 + floor // 3
-            bonus["atk"] = bonus.get("atk", 0) + gain
-            dg.recompute_loadout(self.player, d_state, self.cog)
-            self.log_message = t(lang, "dungeon.event_whetstone", "🗡️ 你找到一塊磨刀石，仔細打磨了武器！攻擊力永久提升 {gain} 點（本次探索有效）！", gain=gain)
-            d_state["floor_state"] = "resolved"
-            self.cog.save_players()
-            self.build_dungeon_menu()
-            return
-        # 17.5%：秘力泉水，永久（本次探索）小幅提升最大HP，並當場回滿新增的血量
-        bonus = d_state.setdefault("event_bonuses", {})
-        gain = 12 + floor
-        bonus["hp"] = bonus.get("hp", 0) + gain
-        dg.recompute_loadout(self.player, d_state, self.cog)
-        d_state["current_hp"] = min(d_state["max_hp"], d_state.get("current_hp", 0) + gain)
-        self.log_message = t(lang, "dungeon.event_vitality_spring", "💧 你喝下了散發神秘力量的泉水，最大HP永久提升 {gain} 點（本次探索有效）！", gain=gain)
-        d_state["floor_state"] = "resolved"
-        self.cog.save_players()
-        self.build_dungeon_menu()
+        if cur_round < len(rounds_cfg):
+            cfg = rounds_cfg[cur_round]
+            encounter = []
+            for _ in range(min(3, cfg.get("count", 2))):
+                mon = pick_random_monster(self.cog.monster_pool, cfg.get("floor", 60), want_boss=False, floor_scale=1.0)
+                mon["is_colosseum"] = True
+                mon["money_min"] = 0  # 鬥技場的報酬集中在冠軍戰與每日獎勵，小怪輪不發薪水
+                mon["money_max"] = 0
+                mon["exp"] = int(mon.get("exp", 0) * 0.5)
+                encounter.append(mon)
+            self.start_combat(encounter)
+            self.log_message = t(lang, "colosseum.round_start",
+                                 "🏟️ 【第 {n} 輪】鐵閘升起，{count} 名挑戰者同時衝入場中！觀眾的歡呼聲響徹雲霄！",
+                                 n=cur_round + 1, count=len(encounter))
+        else:
+            champion = dict(area.get("champion", {}))
+            champion["is_colosseum"] = True
+            self.start_combat([champion])
+            self.log_message = t(lang, "colosseum.champion_start",
+                                 "🏟️ 【冠軍戰】全場忽然安靜下來。\n「剎羅」緩緩起身，聖盾的光輝包覆著他的身軀——"
+                                 "「讓我看看，你配不配站在這裡。」")
+        self.build_battle_menu()
 
-    async def handle_dung_next(self):
-        d_state = self._dstate()
-        d_state["floor"] = d_state.get("floor", 1) + 1
-        d_state["floor_state"] = "pending"
-        dg.recompute_loadout(self.player, d_state, self.cog)
-        self.log_message = ""
-        self.cog.save_players()
-        self.build_dungeon_menu()
-
-    def on_dungeon_victory(self, is_elite=False, is_boss=False, base_log=""):
+    def on_colosseum_victory(self, primary_monster: dict) -> str:
+        """鬥技場戰鬥勝利後由 combat._process_victory 呼叫：推進輪次／發放通關獎勵，回傳附加戰報。"""
         lang = self.player.language
-        d_state = self._dstate()
-        floor = d_state.get("floor", 1)
+        area = self.cog.areas.get(self.player.current_area, {})
+        state = self._colosseum_state()
 
-        if is_boss and floor >= DUNGEON_BOSS_FLOOR:
-            real = self.player.real_player if hasattr(self.player, 'real_player') else self.player
-            reward_gold = real.level * 2000
-            reward_exp = real.level * 1500
-            self.cog.adjust_bank(self.user_id, reward_gold)
-            d_state["in_run"] = False
-            dg.end_run(self.player)
-            real.add_exp(reward_exp, self.cog.items)
-            real.current_area = "area_00village"
-            self.log_message = base_log + t(
-                lang, "dungeon.cleared",
-                "\n🎉 你擊敗了深淵領主，通關了無盡深淵！\n所有臨時力量消散，但你帶回了豐厚寶藏：\n💰 {reward_gold} 金幣\n✨ {reward_exp} 經驗值",
-                reward_gold=reward_gold, reward_exp=reward_exp,
-            )
-            self.build_main_menu()
-            return
+        if primary_monster.get("is_boss"):
+            # 冠軍戰獲勝：重置輪次（每日鎖與卷軸獎勵由 _handle_boss_kill_rewards 處理）
+            state["round"] = 0
+            log = ""
+            gold = area.get("clear_reward_gold", 0)
+            if gold > 0:
+                self.cog.adjust_bank(self.user_id, gold)
+                log += "\n" + t(lang, "colosseum.clear_gold", "🏟️ 全場起立鼓掌！鬥技場獎勵你 {gold} 金幣！", gold=gold)
+            belt_id = area.get("first_clear_reward_item")
+            real = getattr(self.player, "real_player", self.player)
+            if belt_id and real.inventory.get(belt_id, 0) <= 0 and real.accessory != belt_id:
+                real.inventory[belt_id] = real.inventory.get(belt_id, 0) + 1
+                belt_name = tf(self.cog.items.get(belt_id, {}), "name", lang) or belt_id
+                log += "\n" + t(lang, "colosseum.first_clear_belt",
+                                "👑 【新王加冕】剎羅解下腰間的【{belt}】拋給你：「它是你的了。下次…我不會再輸。」", belt=belt_name)
+            return log
 
-        d_state["floor_state"] = "resolved"
-
-        # 樓層 5/10 的守衛頭目 → 遺物三選一（遺物只從這兩個頭目取得，避免太浮濫）；
-        # 菁英 → 技能三選一（讓玩家中途轉型流派）；一般怪 → 裝備三選一。
-        if is_boss and floor in DUNGEON_MINIBOSS_FLOORS:
-            relics = dg.roll_relics(self.cog, d_state, floor, 3)
-            if relics:
-                d_state["pending_relics"] = relics
-                self.cog.save_players()
-                self.build_dungeon_relic_menu(base_log)
-                return
-            # 遺物已收集完 → 退而給裝備
-        elif is_elite:
-            skills = dg.roll_dungeon_skills(self.cog, d_state, 3)
-            if skills:
-                d_state["pending_skills"] = skills
-                self.cog.save_players()
-                self.build_dungeon_skill_menu(base_log)
-                return
-            # 技能池已收集完 → 退而給裝備
-
-        loot = dg.roll_loot(self.cog, floor, 3)
-        d_state["pending_loot"] = loot
-        self.cog.save_players()
-        self.build_dungeon_loot_menu(base_log)
-
-    def build_dungeon_loot_menu(self, base_log=""):
-        self.clear_items()
-        lang = self.player.language
-        d_state = self._dstate()
-        loot = d_state.get("pending_loot", [])
-        lines = [base_log, "", t(lang, "dungeon.loot_header", "🎁 戰利品！選擇一件帶走：")]
-        for i, iid in enumerate(loot):
-            idef = self.cog.dungeon_items.get(iid, {})
-            name = tf(idef, "name", lang)
-            desc = tf(idef, "desc", lang)
-            rarity = idef.get("rarity", "common")
-            lines.append(f"{i+1}. [{rarity}] {item_emoji(idef)} {name} — {desc}")
-            self.add_action_button(label=f"{item_emoji(idef)} {name}"[:70], style=discord.ButtonStyle.success, custom_id=f"dpick_{i}", emoji="🎁")
-        self.add_action_button(label=t(lang, "dungeon.loot_skip", "略過（不更換裝備）"), style=discord.ButtonStyle.secondary, custom_id="dpick_skip")
-        self.log_message = "\n".join(lines)
-
-    async def handle_dung_loot_pick(self, arg: str):
-        lang = self.player.language
-        d_state = self._dstate()
-        loot = d_state.get("pending_loot", [])
-        if arg != "skip":
-            try:
-                idx = int(arg)
-            except ValueError:
-                idx = -1
-            if 0 <= idx < len(loot):
-                dg.equip_item(self.player, d_state, self.cog, loot[idx])
-                idef = self.cog.dungeon_items.get(loot[idx], {})
-                self.log_message = t(lang, "dungeon.loot_equipped", "✅ 你裝備了【{name}】！", name=tf(idef, "name", lang))
-        d_state["pending_loot"] = []
-        self.cog.save_players()
-        self.build_dungeon_menu()
-
-    def build_dungeon_relic_menu(self, base_log=""):
-        self.clear_items()
-        lang = self.player.language
-        d_state = self._dstate()
-        relics = d_state.get("pending_relics", [])
-        lines = [base_log, "", t(lang, "dungeon.relic_header", "💠 擊敗守衛頭目！選擇一個遺物（永久強化本次探索）：")]
-        for i, rid in enumerate(relics):
-            rdef = self.cog.dungeon_relics.get(rid, {})
-            name = tf(rdef, "name", lang)
-            desc = tf(rdef, "desc", lang)
-            rarity = rdef.get("rarity", "common")
-            lines.append(f"{i+1}. [{rarity}] 🗿 {name} — {desc}")
-            self.add_action_button(label=f"🗿 {name}"[:70], style=discord.ButtonStyle.success, custom_id=f"drelic_{i}")
-        self.add_action_button(label=t(lang, "dungeon.relic_skip", "略過"), style=discord.ButtonStyle.secondary, custom_id="drelic_skip")
-        self.log_message = "\n".join(lines)
-
-    async def handle_dung_relic_pick(self, arg: str):
-        lang = self.player.language
-        d_state = self._dstate()
-        relics = d_state.get("pending_relics", [])
-        if arg != "skip":
-            try:
-                idx = int(arg)
-            except ValueError:
-                idx = -1
-            if 0 <= idx < len(relics):
-                dg.grant_relic(self.player, d_state, self.cog, relics[idx])
-                rdef = self.cog.dungeon_relics.get(relics[idx], {})
-                self.log_message = t(lang, "dungeon.relic_taken", "🗿 你獲得了遺物【{name}】！\n{desc}", name=tf(rdef, "name", lang), desc=tf(rdef, "desc", lang))
-        d_state["pending_relics"] = []
-        self.cog.save_players()
-        self.build_dungeon_menu()
-
-    def build_dungeon_skill_menu(self, base_log=""):
-        self.clear_items()
-        lang = self.player.language
-        d_state = self._dstate()
-        skills = d_state.get("pending_skills", [])
-        lines = [base_log, "", t(lang, "dungeon.skill_header", "💠 擊敗菁英！選擇一個技能學會（立即可用，能讓你臨時轉換流派）：")]
-        for i, sid in enumerate(skills):
-            sdef = self.cog.skills.get(sid, {})
-            name = tf(sdef, "name", lang)
-            desc = tf(sdef, "desc", lang)
-            lines.append(f"{i+1}. ✨ {name} — {desc}")
-            self.add_action_button(label=f"✨ {name}"[:70], style=discord.ButtonStyle.success, custom_id=f"dskill_{i}")
-        self.add_action_button(label=t(lang, "dungeon.skill_skip", "略過"), style=discord.ButtonStyle.secondary, custom_id="dskill_skip")
-        self.log_message = "\n".join(lines)
-
-    async def handle_dung_skill_pick(self, arg: str):
-        lang = self.player.language
-        d_state = self._dstate()
-        skills = d_state.get("pending_skills", [])
-        if arg != "skip":
-            try:
-                idx = int(arg)
-            except ValueError:
-                idx = -1
-            if 0 <= idx < len(skills):
-                dg.grant_skill(d_state, skills[idx])
-                sdef = self.cog.skills.get(skills[idx], {})
-                self.log_message = t(lang, "dungeon.skill_learned", "✨ 你學會了技能【{name}】！\n{desc}", name=tf(sdef, "name", lang), desc=tf(sdef, "desc", lang))
-        d_state["pending_skills"] = []
-        self.cog.save_players()
-        self.build_dungeon_menu()
-
-    def _dungeon_run_over(self, reason_log: str):
-        """地下城死亡/結束：清掉 run 狀態與遺物效果，回到村莊。"""
-        d_state = self._dstate()
-        d_state["in_run"] = False
-        dg.end_run(self.player)
-        real = self.player.real_player if hasattr(self.player, 'real_player') else self.player
-        real.current_area = "area_00village"
-        self.log_message = reason_log
-        self.cog.save_players()
-        self.build_main_menu()
-
-    async def handle_dungeon_flee(self):
-        lang = self.player.language
-        self._dungeon_run_over(t(lang, "dungeon.flee_notice", "🏃 你帶著遺憾離開了地下城。所有臨時裝備、遺物與經驗都化為烏有了。"))
+        state["round"] = state.get("round", 0) + 1
+        total_rounds = len(area.get("rounds", [])) + 1
+        return "\n" + t(lang, "colosseum.round_cleared",
+                        "🏟️ 第 {n} 輪獲勝！鐵閘再度轟隆作響……（傷勢不會恢復，記得喝藥水再按下一輪）",
+                        n=min(state["round"], total_rounds - 1))
 
     def build_legend_cave_menu(self):
         self.clear_items()
@@ -2567,6 +2304,10 @@ class TRPGGameView(discord.ui.View):
         self.player.prestige_count = prestige + 1
 
         # 👇 轉生重置：魔塔/地下城回到第一層、清空地下城暫時加成、卸下所有裝備（避免轉生後因殘留裝備直接過強）
+        # 已裝備的技能欄也要一併清空——轉生只重置等級，不會清掉已學會的技能，若不清空
+        # equipped_skills，玩家可以帶著轉生前遠超 Lv.1 的技能繼續裝備使用，等於繞過等級門檻。
+        # 技能本身仍留在 player.skills，練回等級後可以重新裝備。
+        self.player.equipped_skills = []
         self.player.tower_floor = 1
         self.player.dungeon_state = {"floor": 1, "choices": [], "in_run": False}
         self.player.dungeon_buffs = {}
@@ -2574,7 +2315,7 @@ class TRPGGameView(discord.ui.View):
         self.player.armor = None
         self.player.accessory = None
         self.player.daily_boss_kills = {}
-        self.tower_safe_room_visited = False
+        self.player.tower_state = {"safe_room_visited": False, "merchant_spawned": False, "merchant_items": []}
 
         recalc_player_stats(self.player, self.cog.items, heal_full=True)
         self.cog.save_players()
@@ -2586,300 +2327,6 @@ class TRPGGameView(discord.ui.View):
             bonus=self.player.prestige_count * 10,
         )
         self.build_main_menu()
-
-    async def handle_craft_menu(self, notice=""):
-        self.clear_items()
-        lang = self.player.language
-        prefix = notice + "\n\n" if notice else ""
-
-        self.log_message = prefix + t(lang, "craft.title", "🔨 【手藝工坊】\n利用冒險收集的材料合成強力的裝備吧！\n")
-
-        user_bal = self.cog.get_bank_balance(self.user_id)
-
-        for item_id, recipe in CRAFTING_RECIPES.items():
-            materials_desc = []
-            can_craft = True
-
-            for mat_id, req_qty in recipe["materials"].items():
-                mat_name = tf(self.cog.items.get(mat_id, {}), "name", lang) or mat_id
-                current_qty = self.player.inventory.get(mat_id, 0)
-                materials_desc.append(f"{mat_name} ({current_qty}/{req_qty})")
-                if current_qty < req_qty:
-                    can_craft = False
-
-            if user_bal < recipe["gold"]:
-                can_craft = False
-
-            item_data = self.cog.items.get(item_id, {})
-            comp_str = self._get_equipment_comparison_string(item_data)
-            comp_suffix = f" {comp_str}" if comp_str else ""
-
-            recipe_name = tf(recipe, "name", lang)
-            desc_line = t(
-                lang,
-                "craft.recipe_line",
-                "• **{name}**{comp_suffix} | {gold}$ | 材料: {materials}",
-                name=recipe_name,
-                comp_suffix=comp_suffix,
-                gold=recipe["gold"],
-                materials=", ".join(materials_desc),
-            )
-            self.log_message += f"\n{desc_line}"
-
-            style = discord.ButtonStyle.primary if can_craft else discord.ButtonStyle.secondary
-
-            btn_label = t(lang, "craft.btn_craft", "製作 {name}", name=recipe_name)
-            if comp_str:
-                btn_label += f" {comp_str}"
-
-            self.add_action_button(
-                label=btn_label[:80],
-                style=style,
-                custom_id=f"craft_{item_id}"
-            )
-
-        self.add_action_button(label=t(lang, "menu.btn_back_village", "返回村莊"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
-
-    async def handle_craft_execute(self, item_id: str):
-        lang = self.player.language
-        recipe = CRAFTING_RECIPES.get(item_id)
-        if not recipe: return
-
-        user_bal = self.cog.get_bank_balance(self.user_id)
-        if user_bal < recipe["gold"]:
-            await self.handle_craft_menu(t(lang, "craft.err_no_gold", "❌ 金幣不足！"))
-            return
-
-        for mat_id, req_qty in recipe["materials"].items():
-            current_qty = self.player.inventory.get(mat_id, 0)
-            if current_qty < req_qty:
-                await self.handle_craft_menu(t(lang, "craft.err_no_materials", "❌ 材料不足！"))
-                return
-
-        # 扣除材料和金幣
-        for mat_id, req_qty in recipe["materials"].items():
-            self.player.inventory[mat_id] -= req_qty
-            if self.player.inventory[mat_id] <= 0:
-                del self.player.inventory[mat_id]
-
-        self.cog.adjust_bank(self.user_id, -recipe["gold"])
-
-        if not getattr(self.player, "stats", None):
-            self.player.stats = {}
-        self.player.stats["money_spent"] = self.player.stats.get("money_spent", 0) + recipe["gold"]
-
-        # 給予物品
-        self.player.inventory[item_id] = self.player.inventory.get(item_id, 0) + 1
-
-        # 裝備自動穿戴邏輯
-        item_data = self.cog.items.get(item_id, {})
-        equip_msg = ""
-        if item_data.get("type") == "weapon":
-            self.player.weapon = item_id
-            equip_msg = t(lang, "craft.auto_equip_weapon", "，已為你自動裝備")
-        elif item_data.get("type") == "armor":
-            self.player.armor = item_id
-            equip_msg = t(lang, "craft.auto_equip_armor", "，已為你自動穿戴")
-
-        recalc_player_stats(self.player, self.cog.items, heal_full=False)
-
-        achv_text = self.check_achievements()
-        notice_text = t(
-            lang,
-            "craft.success",
-            "🎉 製作成功！你獲得了【{name}】{equip_msg}！",
-            name=tf(recipe, "name", lang),
-            equip_msg=equip_msg,
-        )
-        if achv_text:
-            notice_text += achv_text
-
-        self.cog.save_players()
-        await self.handle_craft_menu(notice_text)
-
-    async def handle_blacksmith_menu(self, notice=""):
-        self.clear_items()
-        lang = self.player.language
-        prefix = notice + "\n\n" if notice else ""
-
-        p = self.player
-        self.log_message = prefix + t(lang, "blacksmith.title", "⚒️ 【鐵匠鋪】\n把你的裝備交給熟練的鐵匠吧！花費金幣與怪物的材料，可以強化武器與防具。\n")
-
-        # 取得目前裝備資訊
-        w_id = getattr(p, "weapon", None)
-        a_id = getattr(p, "armor", None)
-
-        none_label = t(lang, "blacksmith.none", "無")
-        w_name = tf(self.cog.items.get(w_id, {}), "name", lang) if w_id else none_label
-        a_name = tf(self.cog.items.get(a_id, {}), "name", lang) if a_id else none_label
-
-        w_up = getattr(p, "weapon_upgrades", {}).get(w_id, 0) if w_id else 0
-        a_up = getattr(p, "armor_upgrades", {}).get(a_id, 0) if a_id else 0
-
-        self.log_message += "\n" + t(lang, "blacksmith.current_weapon", "⚔️ 目前武器：【{name}】", name=w_name) + (f" (+{w_up})" if w_id and w_up > 0 else "")
-        self.log_message += "\n" + t(lang, "blacksmith.current_armor", "🛡️ 目前防具：【{name}】", name=a_name) + (f" (+{a_up})" if a_id and a_up > 0 else "")
-        self.log_message += "\n"
-
-        user_bal = self.cog.get_bank_balance(self.user_id)
-
-        # 武器強化資訊
-        can_up_w = False
-        w_desc = t(lang, "blacksmith.cannot_upgrade_no_weapon", "無法強化（未裝備武器）")
-        if w_id:
-            if w_up >= 5:
-                w_desc = t(lang, "blacksmith.max_level", "已達到最高強化等級 (+5)")
-            else:
-                next_lvl = w_up + 1
-                cost = UPGRADE_COSTS[next_lvl]
-                mat_name = tf(self.cog.items.get(cost["material"], {}), "name", lang) or cost["material"]
-                current_qty = p.inventory.get(cost["material"], 0)
-
-                w_desc = t(
-                    lang,
-                    "blacksmith.upgrade_info",
-                    "升級至 +{next_lvl} | 成功率: {rate_label}\n花費: {gold}$ | 材料: {mat_name} ({current_qty}/{mat_qty})",
-                    next_lvl=next_lvl,
-                    rate_label=cost["label"],
-                    gold=cost["gold"],
-                    mat_name=mat_name,
-                    current_qty=current_qty,
-                    mat_qty=cost["mat_qty"],
-                )
-
-                if user_bal >= cost["gold"] and current_qty >= cost["mat_qty"]:
-                    can_up_w = True
-
-        self.log_message += "\n" + t(lang, "blacksmith.weapon_upgrade_section", "**武器強化：**\n{desc}\n", desc=w_desc)
-
-        # 防具強化資訊
-        can_up_a = False
-        a_desc = t(lang, "blacksmith.cannot_upgrade_no_armor", "無法強化（未裝備防具）")
-        if a_id:
-            if a_up >= 5:
-                a_desc = t(lang, "blacksmith.max_level", "已達到最高強化等級 (+5)")
-            else:
-                next_lvl = a_up + 1
-                cost = UPGRADE_COSTS[next_lvl]
-                mat_name = tf(self.cog.items.get(cost["material"], {}), "name", lang) or cost["material"]
-                current_qty = p.inventory.get(cost["material"], 0)
-
-                a_desc = t(
-                    lang,
-                    "blacksmith.upgrade_info",
-                    "升級至 +{next_lvl} | 成功率: {rate_label}\n花費: {gold}$ | 材料: {mat_name} ({current_qty}/{mat_qty})",
-                    next_lvl=next_lvl,
-                    rate_label=cost["label"],
-                    gold=cost["gold"],
-                    mat_name=mat_name,
-                    current_qty=current_qty,
-                    mat_qty=cost["mat_qty"],
-                )
-
-                if user_bal >= cost["gold"] and current_qty >= cost["mat_qty"]:
-                    can_up_a = True
-
-        self.log_message += "\n" + t(lang, "blacksmith.armor_upgrade_section", "**防具強化：**\n{desc}\n", desc=a_desc)
-
-        # 按鈕
-        w_style = discord.ButtonStyle.primary if can_up_w else discord.ButtonStyle.secondary
-        w_label = t(lang, "blacksmith.btn_upgrade_weapon", "強化武器")
-        if w_id and w_up < 5:
-            w_label += " [⚔️ATK+3▲]"
-        self.add_action_button(
-            label=w_label,
-            style=w_style,
-            custom_id="btn_upgrade_weapon" if can_up_w else "btn_disabled_w"
-        )
-
-        a_style = discord.ButtonStyle.primary if can_up_a else discord.ButtonStyle.secondary
-        a_label = t(lang, "blacksmith.btn_upgrade_armor", "強化防具")
-        if a_id and a_up < 5:
-            a_label += " [🛡️DEF+2▲ ❤️HP+15▲]"
-        self.add_action_button(
-            label=a_label,
-            style=a_style,
-            custom_id="btn_upgrade_armor" if can_up_a else "btn_disabled_a"
-        )
-
-        self.add_action_button(label=t(lang, "menu.btn_back_village", "返回村莊"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
-
-    async def handle_upgrade_execute(self, is_weapon: bool):
-        p = self.player
-        lang = p.language
-        slot = "weapon" if is_weapon else "armor"
-        item_id = getattr(p, slot, None)
-        if not item_id:
-            await self.handle_blacksmith_menu(t(lang, "blacksmith.err_no_equipment", "❌ 你沒有裝備任何對應的裝備！"))
-            return
-
-        upgrades_dict = getattr(p, f"{slot}_upgrades", None)
-        if not isinstance(upgrades_dict, dict):
-            upgrades_dict = {}
-            setattr(p, f"{slot}_upgrades", upgrades_dict)
-        current_up = upgrades_dict.get(item_id, 0)
-        if current_up >= 5:
-            await self.handle_blacksmith_menu(t(lang, "blacksmith.err_max_level", "❌ 該裝備已達到最高強化等級 (+5)！"))
-            return
-
-        next_lvl = current_up + 1
-        cost = UPGRADE_COSTS[next_lvl]
-
-        user_bal = self.cog.get_bank_balance(self.user_id)
-        if user_bal < cost["gold"]:
-            await self.handle_blacksmith_menu(t(lang, "blacksmith.err_no_gold", "❌ 金幣不足！"))
-            return
-
-        current_qty = p.inventory.get(cost["material"], 0)
-        if current_qty < cost["mat_qty"]:
-            await self.handle_blacksmith_menu(t(lang, "blacksmith.err_no_materials", "❌ 強化材料不足！"))
-            return
-
-        # 扣除材料和金幣
-        p.inventory[cost["material"]] -= cost["mat_qty"]
-        if p.inventory[cost["material"]] <= 0:
-            del p.inventory[cost["material"]]
-
-        self.cog.adjust_bank(self.user_id, -cost["gold"])
-
-        # 強化此時將金幣花費計入 money_spent
-        if not getattr(p, "stats", None):
-            p.stats = {}
-        p.stats["money_spent"] = p.stats.get("money_spent", 0) + cost["gold"]
-
-        # 強化判定
-        success = (random.random() < cost["rate"])
-
-        if success:
-            upgrades_dict[item_id] = next_lvl
-            recalc_player_stats(p, self.cog.items, heal_full=False)
-
-            achv_text = self.check_achievements()
-            item_name = tf(self.cog.items.get(item_id, {}), "name", lang) or item_id
-            notice_text = t(
-                lang,
-                "blacksmith.upgrade_success",
-                "✨ 🌟 強化成功！\n你的【{name}】成功強化至 **+{next_lvl}**！",
-                name=item_name,
-                next_lvl=next_lvl,
-            )
-            if achv_text:
-                notice_text += achv_text
-
-            self.cog.save_players()
-            await self.handle_blacksmith_menu(notice_text)
-        else:
-            achv_text = self.check_achievements()
-            notice_text = t(
-                lang,
-                "blacksmith.upgrade_fail",
-                "💥 強化失敗！\n材料被熔毀了，但是鐵匠拼命保住了你的裝備，等級維持在 **+{current_up}**。",
-                current_up=current_up,
-            )
-            if achv_text:
-                notice_text += achv_text
-
-            self.cog.save_players()
-            await self.handle_blacksmith_menu(notice_text)
 
     def build_leaderboard_embed(self) -> discord.Embed:
         lang = self.player.language
@@ -2970,6 +2417,8 @@ class TRPGGameView(discord.ui.View):
             await self.handle_item_menu(paging=True)
         elif state == "skill_equip":
             await self.handle_skill_equip_menu(paging=True)
+        elif state == "craft":
+            await self.handle_craft_menu(paging=True)
         else:
             self.build_main_menu()
 

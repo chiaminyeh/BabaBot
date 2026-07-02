@@ -9,7 +9,6 @@ import os
 from trpg.i18n import t
 from trpg.monster_pool import load_monster_pool
 from trpg.stats import recalc_player_stats, migrate_player_stats
-from trpg.status import activate_jester_immunity
 from trpg.player import TRPGPlayer
 from trpg.view import TRPGGameView
 
@@ -33,6 +32,10 @@ class TRPGCog(commands.Cog):
         self.dungeon_events = {}
         self.dungeon_relics = {}
         self.dungeon_items = {}
+        # user_id(str) -> 該玩家目前開著的那份 TRPGGameView。用來在 /trpg 重開時停用
+        # 舊面板——不然兩份面板的 active_battle 快照會共用同一個 monster_slots list
+        # 物件，玩家能兩邊面板輪流點按鈕，等於一回合打兩次（見 start_trpg）。
+        self.active_views = {}
         self.load_all_config()
 
     def get_bank_balance(self, user_id) -> int:
@@ -50,6 +53,21 @@ class TRPGCog(commands.Cog):
         new_bal = max(0, current_bal + amount)
         self.bank[uid] = (new_bal, is_vip)
         self.bot.baba.refresh_bank_file()
+
+    def try_spend(self, user_id, player, amount: int) -> bool:
+        """扣款 + 累計 money_spent 統計，供商店／鍛造／鐵匠／旅館等所有花錢動作共用。
+        餘額不足時完全不動作、回傳 False；文案（要顯示什麼不足訊息）交給呼叫端，
+        這裡只保證「錢有沒有夠、扣了沒、money_spent 統計有沒有記」三件事一致，不會
+        有地方漏記 money_spent（漏記過去發生過，因為每個花錢的地方都各自兜一次）。"""
+        if amount <= 0:
+            return True
+        if self.get_bank_balance(user_id) < amount:
+            return False
+        self.adjust_bank(user_id, -amount)
+        if not isinstance(getattr(player, "stats", None), dict):
+            player.stats = {}
+        player.stats["money_spent"] = player.stats.get("money_spent", 0) + amount
+        return True
 
     @staticmethod
     def _load_json(filename: str, default):
@@ -108,10 +126,7 @@ class TRPGCog(commands.Cog):
             self.save_players()
         else:
             migrate_player_stats(self.players[uid], self.items)
-        player = self.players[uid]
-        if player.accessory == "jester_mask":
-            activate_jester_immunity(player)
-        return player
+        return self.players[uid]
     
     async def generate_npc_dialogue(self, prompt: str):
         # 抓取掛載在 bot 上的 response_cog
@@ -122,8 +137,29 @@ class TRPGCog(commands.Cog):
 
     @app_commands.command(name="trpg", description=" 登入並開啟你的專屬 TRPG 冒險面板")
     async def start_trpg(self, interaction: discord.Interaction):
+        uid = str(interaction.user.id)
+
+        # 停用這名玩家還開著的舊面板（如果有）：兩份面板同時活著會共用同一個
+        # active_battle 快照，讓玩家能兩邊輪流點按鈕變相多打一回合。
+        old_view = self.active_views.get(uid)
+        if old_view is not None and not old_view.is_finished():
+            old_view.stop()
+            if old_view.message is not None:
+                try:
+                    for child in old_view.children:
+                        if hasattr(child, "disabled"):
+                            child.disabled = True
+                    lang = getattr(old_view.player, "language", "zh")
+                    notice = t(lang, "menu.superseded_notice", "⚠️ 你在別處開啟了新的冒險面板，這份面板已停用。")
+                    embed = old_view.generate_embed()
+                    embed.description = f"```\n{notice}\n```"
+                    await old_view.message.edit(embed=embed, view=old_view)
+                except Exception:
+                    pass
+
         # 初始化專屬此使用者的按鈕控制視圖
         view = TRPGGameView(self, interaction.user.id)
+        self.active_views[uid] = view
         embed = view.generate_embed()
         await interaction.response.send_message(embed=embed, view=view)
         try:
@@ -150,3 +186,15 @@ class TRPGCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(TRPGCog(bot))
+
+
+async def teardown(bot):
+    # 👇 這個 cog 實際定義在 trpg/cog.py，但外面是用 trpg_cog.py 這個相容 shim 的名字
+    # (`"trpg_cog"`) 去 load_extension/reload_extension——discord.py 判斷一個 cog
+    # 是不是屬於某個 extension，是用「cog.__module__ 是不是等於或是 extension 名字
+    # 的子模組」（_is_submodule），而 TRPGCog.__module__ 是 "trpg.cog"，跟 extension
+    # 名字 "trpg_cog" 對不起來，所以 reload 時自動清除機制完全不會觸發，舊的 cog
+    # 永遠留著，第二次 reload 就會撞上「Cog named 'TRPGCog' already loaded」。
+    # 補一個明確的 teardown，reload 時就會先呼叫這個把舊 cog 卸掉，不再依賴那個
+    # 對不上的自動比對。
+    await bot.remove_cog("TRPGCog")

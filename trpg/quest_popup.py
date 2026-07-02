@@ -29,19 +29,37 @@ COOLDOWN_SECONDS = 90
 OFFER_CHANCE = 0.15
 
 
-async def process_quest_popups(view, interaction: discord.Interaction):
+def _real_player(view):
+    """任務系統一律針對「永久角色」運作，絕不能碰地下城探索用的封印替身：
+    RoguePlayerWrapper 在探索中會把 level/inventory/exp 等欄位轉址到臨時的
+    dungeon_state（見 trpg/dungeon.py SEALED_FIELDS）。如果任務判定/發獎直接用
+    view.player，玩家在地下城裡的等級門檻判斷會讀到固定的封印等級、任務獎勵的
+    經驗值與道具也會被寫進探索結束就整份丟棄的臨時角色，變成任務完成了但獎勵
+    憑空消失。這裡統一解包成真正的存檔角色。"""
+    return getattr(view.player, "real_player", view.player)
+
+
+async def process_quest_popups(view, interaction: discord.Interaction, allow_offer: bool = True):
+    """allow_offer=False 讓呼叫端（view.global_callback）壓下「突發委託邀請」——完成獎勵
+    彈窗永遠照常檢查，只有邀請新委託這個隨機打擾，限定在玩家真的做了冒險行動時才會出現。"""
     recompute_live_progress(view)
 
     popped = await _try_pop_completed_active_quest(view, interaction)
     if not popped:
         popped = await _try_pop_completed_hidden_quest(view, interaction)
-    if not popped and not getattr(view, "in_battle", False):
+    if not popped and allow_offer and not getattr(view, "in_battle", False):
         await _maybe_send_offer_popup(view, interaction)
 
 
 def recompute_live_progress(view):
-    """即時型任務進度不是靠事件累加，而是直接從玩家當前狀態算出來，每次都重算。"""
-    player = view.player
+    """即時型任務進度不是靠事件累加，而是直接從玩家當前狀態算出來，每次都重算。
+
+    這裡一律讀 real_player（見 _real_player），因為 collect/reach_level 用到的
+    inventory/level 是「封印欄位」——地下城探索中 wrapper 會回傳臨時封印角色的值
+    （等級固定 10、背包是本次探索撿到的臨時道具），拿來算永久任務進度會誤判：等級
+    不足的玩家一進地下城就會被判定「已達到 Lv.10」，材料收集任務也會被地下城臨時
+    撿到的同名道具灌水，跟玩家實際永久狀態完全對不上。"""
+    player = _real_player(view)
     for quest_id, quest_data in player.active_quests.items():
         quest_info = view.cog.quests.get(quest_id)
         if not quest_info:
@@ -81,7 +99,7 @@ def _quest_on_cooldown(player, quest_id, quest_info) -> bool:
 
 
 def can_accept_quest(view, quest_id, quest_info) -> bool:
-    player = view.player
+    player = _real_player(view)
     if quest_info.get("hidden"):
         return False
     if player.level < quest_info.get("req_level", 1):
@@ -108,14 +126,14 @@ def accept_quest(view, quest_id) -> bool:
     quest_info = view.cog.quests.get(quest_id)
     if not quest_info or not can_accept_quest(view, quest_id, quest_info):
         return False
-    view.player.active_quests[quest_id] = {"progress": 0}
+    _real_player(view).active_quests[quest_id] = {"progress": 0}
     view.cog.save_players()
     return True
 
 
 def quest_progress_text(view, quest_id, quest_info, lang) -> str:
     """任務大廳裡單一進行中任務的進度行。"""
-    qdata = view.player.active_quests.get(quest_id, {})
+    qdata = _real_player(view).active_quests.get(quest_id, {})
     progress = min(qdata.get("progress", 0), quest_info.get("target_count", 1))
     target = quest_info.get("target_count", 1)
     title = tf(quest_info, "title", lang)
@@ -127,7 +145,7 @@ def quest_progress_text(view, quest_id, quest_info, lang) -> str:
 
 def _grant_quest_rewards(view, quest_info) -> str:
     """發放 exp / 金幣 / 道具，回傳道具獎勵的描述文字（沒有道具則為空字串）。"""
-    player = view.player
+    player = _real_player(view)
     cog = view.cog
     lang = getattr(player, "language", "zh")
     player.add_exp(quest_info.get("reward_exp", 0), cog.items)
@@ -176,7 +194,7 @@ async def _send_reward_popup(view, interaction, title, quest_line, npc_name, raw
 
 
 async def _try_pop_completed_active_quest(view, interaction) -> bool:
-    player = view.player
+    player = _real_player(view)
     cog = view.cog
     for quest_id, quest_data in list(player.active_quests.items()):
         quest_info = cog.quests.get(quest_id)
@@ -208,7 +226,7 @@ async def _try_pop_completed_active_quest(view, interaction) -> bool:
 
 
 async def _try_pop_completed_hidden_quest(view, interaction) -> bool:
-    player = view.player
+    player = _real_player(view)
     cog = view.cog
     progress_map = getattr(player, "hidden_quest_progress", None) or {}
     for quest_id, progress in list(progress_map.items()):
@@ -240,7 +258,11 @@ async def _try_pop_completed_hidden_quest(view, interaction) -> bool:
 
 
 async def _maybe_send_offer_popup(view, interaction):
-    player = view.player
+    """突發委託：直接自動接取，不再跳出「接受／拒絕」的限時視窗。之前那個視窗只有
+    120 秒的 ephemeral 逾時，玩家沒剛好看到就等於平白錯過這個委託（下次能不能再
+    抽到純看運氣）；直接接取不會有任何損失（委託本來就不強制，玩家永遠可以放著
+    不管），也不會再讓突發委託憑空消失。"""
+    player = _real_player(view)
     cog = view.cog
     now = time.time()
     if now - getattr(player, "last_quest_popup_ts", 0) < COOLDOWN_SECONDS:
@@ -257,6 +279,7 @@ async def _maybe_send_offer_popup(view, interaction):
 
     quest_id, quest_info = random.choice(candidates)
     player.last_quest_popup_ts = now
+    accept_quest(view, quest_id)
     cog.save_players()
 
     lang = getattr(player, "language", "zh")
@@ -274,34 +297,11 @@ async def _maybe_send_offer_popup(view, interaction):
     npc_name = tf(quest_info, "npc_name", lang) or "???"
     content = t(
         lang, "quest.offer_popup",
-        "❗ **突發委託出現！** {tag}\n**{title}**\n💬 {npc_name}：「{ai_text}」\n\n要接受這個委託嗎？",
+        "❗ **突發委託出現！** {tag}\n**{title}**\n💬 {npc_name}：「{ai_text}」\n\n"
+        "✅ 已自動為你接下這個委託，可在任務大廳查看進度。",
         tag=tag, title=title, npc_name=npc_name, ai_text=ai_text,
     )
     try:
-        await interaction.followup.send(content, view=QuestOfferView(view, quest_id), ephemeral=True)
+        await interaction.followup.send(content, ephemeral=True)
     except Exception as e:
         print(f"突發任務彈出視窗發送失敗: {e}")
-
-
-class QuestOfferView(discord.ui.View):
-    def __init__(self, game_view, quest_id: str):
-        super().__init__(timeout=120)
-        self.game_view = game_view
-        self.quest_id = quest_id
-        lang = getattr(game_view.player, "language", "zh")
-        self.accept.label = t(lang, "quest.accept_button", "接受")
-        self.decline.label = t(lang, "quest.decline_button", "拒絕")
-
-    @discord.ui.button(label="接受", style=discord.ButtonStyle.success, emoji="✅")
-    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
-        lang = getattr(self.game_view.player, "language", "zh")
-        accept_quest(self.game_view, self.quest_id)
-        await interaction.response.edit_message(
-            content=t(lang, "quest.accepted_msg", "✅ 已接受委託！進度會自動累積，達成時會再跳出視窗領取獎勵。"), view=None)
-        self.stop()
-
-    @discord.ui.button(label="拒絕", style=discord.ButtonStyle.secondary, emoji="❌")
-    async def decline(self, interaction: discord.Interaction, button: discord.ui.Button):
-        lang = getattr(self.game_view.player, "language", "zh")
-        await interaction.response.edit_message(content=t(lang, "quest.declined_msg", "已拒絕這個委託。"), view=None)
-        self.stop()

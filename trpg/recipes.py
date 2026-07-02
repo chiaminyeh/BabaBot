@@ -43,6 +43,18 @@ CRAFTING_RECIPES = {
         "materials": {"ancient_wood": 5, "ectoplasm": 3},
         "gold": 800
     },
+    "wyrmscale_barrier": {
+        "name": "龍鱗壁壘",
+        "name_en": "Wyrmscale Barrier",
+        "materials": {"dragon_scale_shard": 8, "drake_fang": 5},
+        "gold": 15000
+    },
+    "voidforged_edge": {
+        "name": "虛空鍛刃",
+        "name_en": "Voidforged Edge",
+        "materials": {"void_shard": 8, "void_crystal": 1},
+        "gold": 25000
+    },
     # 神話裝備鍛造：不再開放一般裝備隨意鍛造，只有這四件終局裝備能鍛造，
     # 且各自需要對應的稀有王級材料，不是靠一般素材就能湊出來的。
     "demon_king_horn": {

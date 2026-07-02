@@ -12,6 +12,48 @@ Combatant 是玩家／怪物共同實作的介面：hp、mp、atk、def_、magic
 from trpg.i18n import t, tf
 
 
+def absorb_monster_damage(slot: dict, new_hp: int) -> int:
+    """所有對怪物的扣血都要先過這一關（MonsterCombatant.hp setter 與 view.monster_hp
+    setter 都會呼叫），統一結算三種防禦性頭目機制，回傳修正後的 new_hp：
+
+    - divine_shield（聖盾，靈感來自爐石）：完全抵銷下一次受到的傷害，然後破裂。
+      slot["divine_shield"] = True 開啟。
+    - intangible（無實體，靈感來自殺戮尖塔）：狀態存在期間，任何一次傷害最多 1 點。
+      掛在 slot["status"]["intangible"] 上，回合數照一般狀態倒數。
+    - damage_cap（傷害上限，靈感來自 FF 系列的傷害閾值戰）：monster["damage_cap"]
+      設定牠「兩次行動之間」最多能承受的總傷害，超過的部分直接無效；每次牠行動時
+      重置額度（見 monster_ai.run_monster_ai）。
+
+    被吸收/削減時會把原因寫進 slot["last_absorb"]，呼叫端（player_attack /
+    execute_skill）可以取走並顯示給玩家，不然玩家只會看到「造成 500 傷害」但
+    血條紋風不動，以為遊戲壞了。"""
+    old_hp = slot.get("hp", 0)
+    dmg = old_hp - new_hp
+    if dmg <= 0:  # 治療或無變化不經過任何吸收
+        return new_hp
+
+    if slot.get("divine_shield"):
+        slot["divine_shield"] = False
+        slot["last_absorb"] = "shield"
+        return old_hp
+
+    if (slot.get("status") or {}).get("intangible"):
+        if dmg > 1:
+            slot["last_absorb"] = "intangible"
+        dmg = min(dmg, 1)
+
+    cap = slot.get("monster", {}).get("damage_cap")
+    if cap:
+        taken = slot.get("dmg_taken_since_act", 0)
+        allowed = max(0, cap - taken)
+        if dmg > allowed:
+            slot["last_absorb"] = "cap"
+        dmg = min(dmg, allowed)
+        slot["dmg_taken_since_act"] = taken + dmg
+
+    return old_hp - dmg
+
+
 class Combatant:
     """共同介面，不直接實例化。"""
 
@@ -68,6 +110,10 @@ class Combatant:
         raise NotImplementedError
 
     @property
+    def luck(self) -> int:
+        raise NotImplementedError
+
+    @property
     def status_effects(self) -> dict:
         raise NotImplementedError
 
@@ -78,6 +124,11 @@ class Combatant:
 
     def is_alive(self) -> bool:
         return self.hp > 0
+
+    def pop_absorb_note(self) -> str:
+        """取走「上一次傷害被聖盾/無實體/傷害上限吸收」的原因代號（沒有就回傳空字串）。
+        玩家沒有這些機制，預設空實作；MonsterCombatant 會覆寫。"""
+        return ""
 
 
 class PlayerCombatant(Combatant):
@@ -148,6 +199,10 @@ class PlayerCombatant(Combatant):
         return getattr(self.player, "base_res", 0)
 
     @property
+    def luck(self) -> int:
+        return getattr(self.player, "base_luck", 0)
+
+    @property
     def status_effects(self) -> dict:
         return self.player.status_effects
 
@@ -190,7 +245,10 @@ class MonsterCombatant(Combatant):
 
     @hp.setter
     def hp(self, value: int):
-        self.slot["hp"] = max(0, value)
+        self.slot["hp"] = max(0, absorb_monster_damage(self.slot, value))
+
+    def pop_absorb_note(self) -> str:
+        return self.slot.pop("last_absorb", "") or ""
 
     @property
     def max_hp(self) -> int:
@@ -241,6 +299,10 @@ class MonsterCombatant(Combatant):
     @property
     def res(self) -> int:
         return self.monster_dict.get("res", 0)
+
+    @property
+    def luck(self) -> int:
+        return self.monster_dict.get("luck", 0)
 
     @property
     def status_effects(self) -> dict:

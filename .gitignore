@@ -1,2 +1,14 @@
 .env
 info.txt
+
+# Python bytecode cache
+__pycache__/
+*.pyc
+
+# Runtime data — mutates during normal bot operation, not game content.
+# (trpg_data/*.json content files like items.json/skills.json/monsters.json/quests.json
+# stay tracked; only the player save file is runtime state.)
+logs/
+bank.json
+daily.json
+trpg_data/trpg_players.json

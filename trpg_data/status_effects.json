@@ -56,10 +56,26 @@
     },
     "corrosion": {
         "name": "腐蝕",
-        "desc": "地下城專屬：每層每回合造成固定傷害，會持續累積",
+        "desc": "地下城專屬：每層每回合造成固定傷害，會持續累積（有層數上限）",
         "emoji": "🧪",
         "name_en": "Corrosion",
-        "desc_en": "Dungeon-only: each stack deals flat damage every turn and keeps accumulating",
+        "desc_en": "Dungeon-only: each stack deals flat damage every turn and keeps accumulating (up to a stack cap)",
+        "jester_immune": false
+    },
+    "silence": {
+        "name": "沉默",
+        "emoji": "🤐",
+        "cure_item": "echo_herb",
+        "desc": "無法施放任何技能（普通攻擊、防禦與道具不受影響）",
+        "name_en": "Silence",
+        "desc_en": "Cannot cast any skills (basic attacks, defending, and items are unaffected)"
+    },
+    "intangible": {
+        "name": "無實體",
+        "emoji": "👻",
+        "desc": "化為虛影，期間受到的任何一次傷害至多只有 1 點",
+        "name_en": "Intangible",
+        "desc_en": "Fades into a phantom — every instance of damage taken is reduced to at most 1",
         "jester_immune": false
     }
 }

@@ -15,19 +15,21 @@ from datetime import datetime
 
 from trpg.entity import PlayerCombatant, MonsterCombatant
 from trpg.i18n import t, tf
-from trpg.balance import CORROSION_TURNS
+from trpg.balance import CORROSION_TURNS, CORROSION_MAX_STACKS
 
 
 def apply_corrosion(status_dict: dict, stacks_add: int, dmg_per_stack: int, turns: int = CORROSION_TURNS) -> int:
     """地下城專屬：對 status_dict（怪物的異常狀態字典）疊加腐蝕層數。
-    每層每回合造成固定傷害（不吃 %HP），會一直累積。回傳目前總層數。"""
+    每層每回合造成固定傷害（不吃 %HP）。層數有上限（CORROSION_MAX_STACKS）——
+    沒有上限的話腐蝕流每打一下都在永久加碼 DOT，中後期會滾雪球到把頭目
+    兩三回合直接融掉，比任何正面輸出流派都強太多。回傳目前總層數。"""
     cur = status_dict.get("corrosion")
     if cur:
-        cur["stacks"] = cur.get("stacks", 0) + stacks_add
+        cur["stacks"] = min(CORROSION_MAX_STACKS, cur.get("stacks", 0) + stacks_add)
         cur["dmg_per_stack"] = max(cur.get("dmg_per_stack", 0), dmg_per_stack)
         cur["turns"] = turns
     else:
-        status_dict["corrosion"] = {"turns": turns, "stacks": stacks_add, "dmg_per_stack": dmg_per_stack}
+        status_dict["corrosion"] = {"turns": turns, "stacks": min(CORROSION_MAX_STACKS, stacks_add), "dmg_per_stack": dmg_per_stack}
     return status_dict["corrosion"]["stacks"]
 
 
@@ -65,11 +67,6 @@ def get_daily_jester_immunity(player, status_defs: dict) -> str:
     # 利用今天的日期與玩家ID作為種子，確保今天之內每次呼叫都是同一個結果
     rng = random.Random(f"{today}_{player.id}")
     return rng.choice(pool)
-
-
-# 保留原本的函式防止其他舊代碼報錯 (現在不需要手動紀錄日期了)
-def activate_jester_immunity(player):
-    pass
 
 
 def _set_status_entry(status_dict: dict, status_id: str, turns: int, status_defs: dict, source: str, is_player: bool, lang: str = "zh") -> str:

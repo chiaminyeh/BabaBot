@@ -155,7 +155,7 @@
     },
     "thunder_strike": {
         "name": "🔮⚡ 落雷術",
-        "desc": "造成 80 點基礎雷屬性傷害，附帶麻痺效果 2 回合（CD: 5）",
+        "desc": "造成 80 點基礎雷屬性傷害，附帶麻痺效果 2 回合（CD: 5，需 Lv.5）",
         "type": "magic",
         "element": "thunder",
         "mp_cost": 35,
@@ -163,11 +163,11 @@
         "cd": 5,
         "apply_status": "paralysis",
         "status_turns": 2,
-        "req_level": 1,
+        "req_level": 5,
         "base_power": 80,
         "magic_scaling": 0.8,
         "name_en": "🔮⚡ Lightning Bolt",
-        "desc_en": "Deals 80 base thunder damage, inflicting Paralysis for 2 turns (CD: 5)",
+        "desc_en": "Deals 80 base thunder damage, inflicting Paralysis for 2 turns (CD: 5, requires Lv.5)",
         "dungeon_pool": true
     },
     "water_ball": {
@@ -280,7 +280,7 @@
     },
     "divine_thunder": {
         "name": "🔮⚡ 神聖落雷",
-        "desc": "對全體敵人造成 120 點基礎雷屬性傷害並麻痺 3 回合，範圍換取較低的單體傷害（CD: 6，需 Lv.18）",
+        "desc": "對全體敵人造成 170 點基礎雷屬性傷害並麻痺 3 回合，範圍換取較低的單體傷害（CD: 6，需 Lv.18）",
         "type": "magic",
         "element": "thunder",
         "mp_cost": 55,
@@ -290,10 +290,10 @@
         "status_turns": 3,
         "req_level": 18,
         "target_type": "all",
-        "base_power": 120,
+        "base_power": 170,
         "magic_scaling": 1.2,
         "name_en": "🔮⚡ Divine Thunder",
-        "desc_en": "Deals 120 base thunder damage to all enemies and inflicts Paralysis for 3 turns, trading lower single-target damage for area coverage (CD: 6, requires Lv.18)"
+        "desc_en": "Deals 170 base thunder damage to all enemies and inflicts Paralysis for 3 turns, trading lower single-target damage for area coverage (CD: 6, requires Lv.18)"
     },
     "void_eruption": {
         "name": "🔮🌑 虛空爆發",
@@ -328,7 +328,7 @@
     },
     "frost_nova": {
         "name": "🔮❄️ 冰霜新星",
-        "desc": "對全體敵人造成 120 點基礎冰屬性傷害，有高機率凍結敵人 2 回合（CD: 5，需 Lv.18）",
+        "desc": "對全體敵人造成 170 點基礎冰屬性傷害，有高機率凍結敵人 2 回合（CD: 5，需 Lv.18）",
         "type": "magic",
         "element": "ice",
         "mp_cost": 55,
@@ -338,14 +338,14 @@
         "status_turns": 2,
         "req_level": 18,
         "target_type": "all",
-        "base_power": 120,
+        "base_power": 170,
         "magic_scaling": 1.2,
         "name_en": "🔮❄️ Frost Nova",
-        "desc_en": "Deals 120 base ice damage to all enemies, with a high chance to Freeze them for 2 turns (CD: 5, requires Lv.18)"
+        "desc_en": "Deals 170 base ice damage to all enemies, with a high chance to Freeze them for 2 turns (CD: 5, requires Lv.18)"
     },
     "meteor_swarm": {
         "name": "🔮🔥 隕石風暴",
-        "desc": "對全體敵人造成 300 點基礎火屬性巨大傷害，並強力燃燒 3 回合（CD: 6，需 Lv.25）",
+        "desc": "對全體敵人造成 400 點基礎火屬性巨大傷害，並強力燃燒 3 回合（CD: 6，需 Lv.25）",
         "type": "magic",
         "element": "fire",
         "mp_cost": 90,
@@ -355,10 +355,10 @@
         "status_turns": 3,
         "req_level": 25,
         "target_type": "all",
-        "base_power": 300,
+        "base_power": 400,
         "magic_scaling": 2.5,
         "name_en": "🔮🔥 Meteor Swarm",
-        "desc_en": "Deals massive 300 base fire damage to all enemies, inflicting intense Burn for 3 turns (CD: 6, requires Lv.25)"
+        "desc_en": "Deals massive 400 base fire damage to all enemies, inflicting intense Burn for 3 turns (CD: 6, requires Lv.25)"
     },
     "earthquake": {
         "name": "🔮🌍💫 大地震擊",
