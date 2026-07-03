@@ -141,6 +141,121 @@ def quest_progress_text(view, quest_id, quest_info, lang) -> str:
     return f"{done} {title} ({progress}/{target})"
 
 
+# --- 任務目標說明（怎麼完成） ------------------------------------------------
+
+def _locate_monster_source(view, monster_id: str, lang: str):
+    """回傳 (怪物名, 地點說明) — 先找一般區域（含區域BOSS），找不到才查魔塔/地下城
+    共用怪物池（樓層隨機刷新，沒有固定地點可指）。"""
+    cog = view.cog
+    for area_id, area_data in cog.areas.items():
+        monster_def = (area_data.get("monsters") or {}).get(monster_id)
+        if monster_def:
+            area_name = tf(area_data, "area_name", lang) or area_id
+            return tf(monster_def, "name", lang) or monster_id, area_name
+        boss_def = area_data.get("boss") or {}
+        if boss_def.get("id") == monster_id:
+            area_name = tf(area_data, "area_name", lang) or area_id
+            return tf(boss_def, "name", lang) or monster_id, area_name
+
+    pool = getattr(cog, "monster_pool", {}) or {}
+    for tier in pool.values():
+        for pool_dict_key in ("monsters", "boss_minions"):
+            monster_def = (tier.get(pool_dict_key) or {}).get(monster_id)
+            if monster_def:
+                return tf(monster_def, "name", lang) or monster_id, None
+        boss_def = tier.get("boss") or {}
+        if boss_def.get("id") == monster_id:
+            return tf(boss_def, "name", lang) or monster_id, None
+    return monster_id, None
+
+
+def _locate_item_sources(view, item_id: str, lang: str, limit: int = 2) -> list:
+    """回傳 [(area_name_or_None, monster_name), ...]，area_name=None 代表來自魔塔/
+    地下城怪物池。每個地點只取第一隻會掉這個物品的怪物當代表，最多回傳 limit 筆。"""
+    cog = view.cog
+    found = []
+    seen_areas = set()
+    for area_id, area_data in cog.areas.items():
+        candidates = list((area_data.get("monsters") or {}).values())
+        boss_def = area_data.get("boss")
+        if boss_def:
+            candidates.append(boss_def)
+        for monster_def in candidates:
+            if item_id in (monster_def.get("drops") or {}):
+                area_name = tf(area_data, "area_name", lang) or area_id
+                if area_name not in seen_areas:
+                    seen_areas.add(area_name)
+                    found.append((area_name, tf(monster_def, "name", lang) or monster_def.get("id", "?")))
+                break
+        if len(found) >= limit:
+            return found
+
+    pool = getattr(cog, "monster_pool", {}) or {}
+    for tier in pool.values():
+        candidates = list((tier.get("monsters") or {}).values()) + list((tier.get("boss_minions") or {}).values())
+        if tier.get("boss"):
+            candidates.append(tier["boss"])
+        for monster_def in candidates:
+            if item_id in (monster_def.get("drops") or {}):
+                found.append((None, tf(monster_def, "name", lang) or monster_def.get("id", "?")))
+                return found[:limit]
+    return found[:limit]
+
+
+def describe_quest_goal(view, quest_info: dict, lang: str) -> str:
+    """任務目標的白話說明——「怎麼完成這個任務」，給任務大廳／NPC 委託選單顯示，
+    不用再靠玩家自己猜 target_monster/target_item 藏在哪裡。"""
+    cog = view.cog
+    qtype = quest_info.get("quest_type")
+    dungeon_tower_note = t(lang, "quest.location_dungeon_tower", "（魔塔／地下城怪物池，樓層隨機出現）")
+
+    if qtype in ("kill", "boss_kill"):
+        monster_id = quest_info.get("target_monster")
+        monster_name, area_name = _locate_monster_source(view, monster_id, lang)
+        if qtype == "boss_kill":
+            if area_name:
+                return t(lang, "quest.goal_boss_kill", "🎯 前往【{area}】，使用「區域BOSS」按鈕挑戰【{monster}】", area=area_name, monster=monster_name)
+            return t(lang, "quest.goal_boss_kill_pool", "🎯 擊敗【{monster}】{note}", monster=monster_name, note=dungeon_tower_note)
+        if area_name:
+            return t(lang, "quest.goal_kill", "🎯 前往【{area}】探索，擊殺【{monster}】", area=area_name, monster=monster_name)
+        return t(lang, "quest.goal_kill_pool", "🎯 擊殺【{monster}】{note}", monster=monster_name, note=dungeon_tower_note)
+
+    if qtype == "collect":
+        item_id = quest_info.get("target_item")
+        item_name = tf(cog.items.get(item_id, {}), "name", lang) or item_id
+        sources = _locate_item_sources(view, item_id, lang)
+        if sources:
+            sep = ", " if lang == "en" else "、"
+            bits = [
+                t(lang, "quest.source_area", "【{area}】的{monster}", area=area, monster=monster) if area
+                else t(lang, "quest.source_pool", "【{monster}】{note}", monster=monster, note=dungeon_tower_note)
+                for area, monster in sources
+            ]
+            return t(lang, "quest.goal_collect", "🎯 擊殺 {sources} 有機率掉落【{item}】", sources=sep.join(bits), item=item_name)
+        return t(lang, "quest.goal_collect_generic", "🎯 收集【{item}】（冒險過程中拾取或購買取得）", item=item_name)
+
+    if qtype == "stat":
+        stat = quest_info.get("target_stat")
+        if stat == "total_deaths":
+            return t(lang, "quest.goal_deaths", "🎯 陣亡累計次數達標即可自動完成（戰鬥中被打倒會自動計入，不用刻意尋死）")
+        if stat == "money_spent":
+            return t(lang, "quest.goal_money_spent", "🎯 在商店／鐵匠鋪／旅館等處累計消費金幣達標即可")
+        return t(lang, "quest.goal_stat_generic", "🎯 累積達成指定的統計數值")
+
+    if qtype == "reach_level":
+        return t(lang, "quest.goal_reach_level", "🎯 擊殺怪物取得經驗值，把等級練到指定數字")
+
+    if qtype == "reach_area":
+        area_id = quest_info.get("target_area")
+        area_name = tf(cog.areas.get(area_id, {}), "area_name", lang) or area_id
+        return t(lang, "quest.goal_reach_area", "🎯 點選「移動」，前往【{area}】一次即可完成", area=area_name)
+
+    if qtype == "tower_floor":
+        return t(lang, "quest.goal_tower_floor", "🎯 前往魔塔挑戰，爬到指定樓層即可完成")
+
+    return ""
+
+
 # --- 獎勵發放 ---------------------------------------------------------------
 
 def _grant_quest_rewards(view, quest_info) -> str:

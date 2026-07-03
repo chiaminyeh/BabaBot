@@ -17,7 +17,8 @@
                 "holy"
             ],
             "resistance": [
-                "dark"
+                "dark",
+                "sleep"
             ],
             "drops": {
                 "void_shard": 0.45,
@@ -46,7 +47,8 @@
             ],
             "resistance": [
                 "dark",
-                "ice"
+                "ice",
+                "sleep"
             ],
             "drops": {
                 "void_shard": 0.55
@@ -73,7 +75,8 @@
                 "thunder"
             ],
             "resistance": [
-                "dark"
+                "dark",
+                "sleep"
             ],
             "drops": {
                 "void_shard": 0.4,
@@ -122,6 +125,10 @@
             "name_en": "Crystal Sentinel",
             "traits": [
                 "fortify"
+            ],
+            "immunity": [
+                "poison",
+                "sleep"
             ]
         },
         "phase_wraith": {
@@ -138,7 +145,8 @@
             ],
             "resistance": [
                 "dark",
-                "physical"
+                "physical",
+                "sleep"
             ],
             "drops": {
                 "void_shard": 0.5,
@@ -163,7 +171,10 @@
                     }
                 }
             ],
-            "name_en": "Phase Wraith"
+            "name_en": "Phase Wraith",
+            "immunity": [
+                "paralysis"
+            ]
         }
     },
     "boss": {
@@ -182,7 +193,10 @@
         "resistance": [
             "dark",
             "poison",
-            "ice"
+            "ice",
+            "sleep",
+            "paralysis",
+            "freeze"
         ],
         "money_min": 4200,
         "money_max": 6800,
@@ -303,6 +317,9 @@
             "name_en": "Void Spawnling",
             "traits": [
                 "pack_hunter"
+            ],
+            "resistance": [
+                "sleep"
             ]
         },
         "null_priest": {
@@ -320,6 +337,9 @@
             "name_en": "Null Priest",
             "traits": [
                 "mana_burn"
+            ],
+            "resistance": [
+                "sleep"
             ]
         }
     }

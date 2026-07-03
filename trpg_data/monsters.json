@@ -67,6 +67,9 @@
                 "name_en": "Venomous Spider Queen",
                 "traits": [
                     "dot_leech"
+                ],
+                "immunity": [
+                    "poison"
                 ]
             },
             "sonic_bat": {
@@ -255,6 +258,9 @@
                 "name_en": "Skeleton Swordsman",
                 "traits": [
                     "play_dead"
+                ],
+                "immunity": [
+                    "sleep"
                 ]
             },
             "shadow_assassin": {
@@ -306,6 +312,10 @@
                 "name_en": "Crystal Golem",
                 "traits": [
                     "fortify"
+                ],
+                "immunity": [
+                    "poison",
+                    "sleep"
                 ]
             },
             "dark_mage": {
@@ -319,7 +329,8 @@
                     "holy"
                 ],
                 "resistance": [
-                    "dark"
+                    "dark",
+                    "sleep"
                 ],
                 "ai": "random_caster",
                 "drops": {
@@ -341,7 +352,9 @@
                 "weakness": [
                     "fire"
                 ],
-                "resistance": [],
+                "resistance": [
+                    "poison"
+                ],
                 "ai": "debuffer",
                 "status_on_hit": [
                     "poison"
@@ -392,6 +405,9 @@
                 "name_en": "Skeleton Archer",
                 "traits": [
                     "play_dead"
+                ],
+                "immunity": [
+                    "sleep"
                 ]
             },
             "bone_priest": {
@@ -406,6 +422,9 @@
                 "name_en": "Skeleton Priest",
                 "traits": [
                     "play_dead"
+                ],
+                "immunity": [
+                    "sleep"
                 ]
             }
         },
@@ -474,6 +493,9 @@
             "name_en": "Skeleton Knight",
             "traits": [
                 "play_dead"
+            ],
+            "immunity": [
+                "sleep"
             ]
         }
     },
@@ -553,6 +575,10 @@
                 "name_en": "Stone Golem",
                 "traits": [
                     "fortify"
+                ],
+                "immunity": [
+                    "poison",
+                    "sleep"
                 ]
             },
             "void_weaver": {
@@ -569,7 +595,8 @@
                     "dark",
                     "fire",
                     "ice",
-                    "thunder"
+                    "thunder",
+                    "sleep"
                 ],
                 "ai": "void_mage",
                 "drops": {
@@ -595,8 +622,6 @@
                 "resistance": [
                     "fire",
                     "earth",
-                    "poison",
-                    "bleed",
                     "paralysis"
                 ],
                 "ai": "heavy_tank",
@@ -607,6 +632,10 @@
                 "name_en": "Ancient Guardian",
                 "traits": [
                     "fortify"
+                ],
+                "immunity": [
+                    "poison",
+                    "sleep"
                 ]
             },
             "wraith": {
@@ -627,7 +656,10 @@
                 "drops": {
                     "ectoplasm": 0.4
                 },
-                "name_en": "Vengeful Spirit"
+                "name_en": "Vengeful Spirit",
+                "immunity": [
+                    "sleep"
+                ]
             }
         },
         "boss_minions": {
@@ -756,7 +788,9 @@
                 ],
                 "resistance": [
                     "dark",
-                    "fire"
+                    "fire",
+                    "burn",
+                    "sleep"
                 ],
                 "ai": "berserk_low_hp",
                 "drops": {
@@ -780,7 +814,8 @@
                 "resistance": [
                     "dark",
                     "poison",
-                    "ice"
+                    "ice",
+                    "sleep"
                 ],
                 "ai": "random_caster",
                 "drops": {
@@ -816,6 +851,9 @@
                 "name_en": "Hellhound",
                 "traits": [
                     "executioner"
+                ],
+                "immunity": [
+                    "burn"
                 ]
             },
             "iron_golem": {
@@ -839,6 +877,10 @@
                 "name_en": "Iron Colossus",
                 "traits": [
                     "fortify"
+                ],
+                "immunity": [
+                    "poison",
+                    "sleep"
                 ]
             }
         },
@@ -886,7 +928,9 @@
             "resistance": [
                 "dark",
                 "poison",
-                "ice"
+                "ice",
+                "sleep",
+                "paralysis"
             ],
             "ai": "berserk_low_hp",
             "drops": {
@@ -977,7 +1021,8 @@
                 ],
                 "resistance": [
                     "dark",
-                    "physical"
+                    "physical",
+                    "burn"
                 ],
                 "ai": "heavy_tank",
                 "drops": {
@@ -1000,7 +1045,9 @@
                 ],
                 "resistance": [
                     "dark",
-                    "fire"
+                    "fire",
+                    "burn",
+                    "sleep"
                 ],
                 "ai": "random_caster",
                 "drops": {
@@ -1031,7 +1078,8 @@
                     "fire",
                     "thunder",
                     "earth",
-                    "poison"
+                    "poison",
+                    "sleep"
                 ],
                 "ai": "berserk_low_hp",
                 "drops": {
@@ -1041,6 +1089,9 @@
                 "traits": [
                     "elemental_shifter",
                     "wrath_stacker"
+                ],
+                "immunity": [
+                    "burn"
                 ]
             }
         },
@@ -1048,7 +1099,7 @@
             "sargeras_imp": {
                 "id": "sargeras_imp",
                 "name": "薩格拉斯的小鬼",
-                "base_hp": 1564,
+                "base_hp": 420,
                 "base_atk": 55,
                 "base_def": 0,
                 "base_spd": 30,
@@ -1160,7 +1211,61 @@
                     "name_en": "Chaos Storm"
                 }
             ],
-            "name_en": "Demon Lord Sargeras"
+            "name_en": "Demon Lord Sargeras",
+            "immunity": [
+                "sleep"
+            ],
+            "phase2": {
+                "hp_below": 0.35,
+                "heal_pct": 0.12,
+                "name_suffix": "・混沌化身",
+                "name_suffix_en": " (Chaos Incarnate)",
+                "transform_text": "薩格拉斯仰天長嘯，混沌之力撕裂了他的軀殼——魔王的真正面目顯現了！",
+                "transform_text_en": "Sargeras roars to the heavens as the power of chaos tears his shell apart — the Demon Lord's true form is revealed!",
+                "active_skills": [
+                    {
+                        "id": "summon_imp_p2",
+                        "name": "深淵召喚",
+                        "name_en": "Abyssal Summon",
+                        "trigger": {
+                            "type": "interval",
+                            "value": 2
+                        },
+                        "effect": {
+                            "type": "summon_minion",
+                            "summon_ids": [
+                                "sargeras_imp"
+                            ]
+                        }
+                    },
+                    {
+                        "id": "chaos_annihilation",
+                        "name": "混沌湮滅",
+                        "name_en": "Chaos Annihilation",
+                        "trigger": {
+                            "type": "chance",
+                            "value": 0.3
+                        },
+                        "effect": {
+                            "type": "heavy_attack",
+                            "mult": 6.0
+                        }
+                    },
+                    {
+                        "id": "chaos_storm_p2",
+                        "name": "混沌風暴",
+                        "name_en": "Chaos Storm",
+                        "trigger": {
+                            "type": "chance",
+                            "value": 0.4
+                        },
+                        "effect": {
+                            "type": "heavy_attack",
+                            "mult": 4.5
+                        }
+                    }
+                ]
+            }
         }
     }
 }

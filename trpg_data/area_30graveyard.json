@@ -15,7 +15,8 @@
                 "holy"
             ],
             "immunity": [
-                "poison"
+                "poison",
+                "sleep"
             ],
             "drops": {
                 "bone_shard": 1,
@@ -78,7 +79,11 @@
             "money_min": 90,
             "money_max": 150,
             "ai": "magic_absorb",
-            "name_en": "Wandering Wraith"
+            "name_en": "Wandering Wraith",
+            "immunity": [
+                "sleep",
+                "paralysis"
+            ]
         },
         "banshee": {
             "id": "banshee",
@@ -102,7 +107,10 @@
             "money_min": 95,
             "money_max": 160,
             "ai": "curse_weaver",
-            "name_en": "Wailing Banshee"
+            "name_en": "Wailing Banshee",
+            "immunity": [
+                "sleep"
+            ]
         },
         "grave_hound": {
             "id": "grave_hound",
@@ -130,6 +138,9 @@
             "traits": [
                 "executioner",
                 "play_dead"
+            ],
+            "immunity": [
+                "sleep"
             ]
         }
     },
@@ -149,10 +160,12 @@
         "resistance": [
             "dark",
             "poison",
-            "water"
+            "water",
+            "freeze"
         ],
         "immunity": [
-            "ice"
+            "ice",
+            "sleep"
         ],
         "money_min": 500,
         "money_max": 900,
@@ -237,6 +250,9 @@
             "name_en": "Graveyard Priest",
             "traits": [
                 "play_dead"
+            ],
+            "immunity": [
+                "sleep"
             ]
         },
         "grave_wraith": {
@@ -251,9 +267,23 @@
             "money_max": 0,
             "drops": {},
             "ai": "trickster",
-            "name_en": "Crypt Wraith"
+            "name_en": "Crypt Wraith",
+            "immunity": [
+                "sleep"
+            ]
         }
     },
     "area_name_en": "The Forgotten Graveyard",
-    "requires_boss": "area_20lab"
+    "requires_boss": "area_20lab",
+    "npc": {
+        "name": "亡靈學者・莫爾斯",
+        "name_en": "Scholar Mors",
+        "emoji": "🧛",
+        "intro": "一名披著破舊長袍的學者蹲在墓碑之間抄寫碑文，聽見腳步聲也沒有抬頭。\n「活人？稀客。既然來了……幫我解開這座墓園的異變吧。」",
+        "intro_en": "A scholar in a tattered robe crouches between the tombstones copying epitaphs, not even looking up at your footsteps.\n\"A living one? How rare. Since you are here... help me unravel what has disturbed this graveyard.\"",
+        "quest_ids": [
+            "npc_mors_1",
+            "npc_mors_2"
+        ]
+    }
 }

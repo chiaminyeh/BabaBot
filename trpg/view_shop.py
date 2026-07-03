@@ -19,7 +19,7 @@ from trpg.balance import AREA_SHOP_TIERS, SHOP_POTION_TIERS
 from trpg.player import _item_shop_level_ok
 from trpg.combat import get_sell_price
 from trpg.stats import recalc_player_stats
-from trpg.recipes import CRAFTING_RECIPES, UPGRADE_COSTS
+from trpg.recipes import CRAFTING_RECIPES, UPGRADE_COSTS, MAX_UPGRADE_LEVEL
 
 
 class ShopMixin:
@@ -290,24 +290,26 @@ class ShopMixin:
                     sellable.append(item_id)
 
         total_items = len(sellable)
-        page_items, _, max_page = self._paginate(sellable, 8, paging)
+        page_items, _, max_page = self._paginate(sellable, 25, paging)
 
         prefix = notice + "\n\n" if notice else ""
         if not sellable:
             self.log_message = prefix + t(lang, "shop.sell_menu_empty", "💰 【出售物品】\n沒有可以賣給商店的東西。")
         else:
-            self.log_message = prefix + t(lang, "shop.sell_menu_title", "💰 【出售物品】(第 {page}/{max_page} 頁)\n選擇要賣出的物品：", page=self.inventory_page + 1, max_page=max_page + 1)
+            self.log_message = prefix + t(lang, "shop.sell_menu_title_select", "💰 【出售物品】\n從下方選單挑選要賣出的物品（選中後輸入數量）：")
+            if max_page > 0:
+                self.log_message += t(lang, "equip.page_suffix", "（第 {page}/{max_page} 頁）", page=self.inventory_page + 1, max_page=max_page + 1)
+            options = []
             for item_id in page_items:
                 item = self.cog.items[item_id]
                 price = get_sell_price(item_id, self.cog.items)
                 count = self.player.inventory[item_id]
-                self.add_action_button(
-                    label=t(lang, "shop.btn_sell_item", "賣 {name} ({price}$) x{count}", name=f"{item_emoji(item)} {tf(item, 'name', lang)}", price=price, count=count),
-                    style=discord.ButtonStyle.primary,
-                    custom_id=f"sell_{item_id}",
-                )
+                label = t(lang, "shop.opt_sell_item", "{name}（{price}$）x{count}", name=tf(item, "name", lang), price=price, count=count)
+                options.append((label, f"sell_{item_id}", (tf(item, "desc", lang) or "")[:100], item_emoji(item)))
+            self.add_action_select(t(lang, "shop.select_sell_placeholder", "💰 選擇要賣出的物品"), options, row=0, custom_id="sel_sell_item")
 
-        self._add_pagination_buttons(total_items, 8)
+        if total_items > 25:
+            self._add_pagination_buttons(total_items, 25)
         self.add_action_button(label=t(lang, "shop.btn_back_to_shop", "返回商店"), style=discord.ButtonStyle.secondary, custom_id="btn_shop_menu", emoji="🔙", row=4)
 
     async def handle_craft_menu(self, notice="", paging=False):
@@ -317,15 +319,17 @@ class ShopMixin:
         prefix = notice + "\n\n" if notice else ""
 
         recipe_ids = list(CRAFTING_RECIPES.keys())
-        page_ids, _, max_page = self._paginate(recipe_ids, 4, paging)
+        page_ids, _, max_page = self._paginate(recipe_ids, 25, paging)
 
         self.log_message = prefix + t(
-            lang, "craft.title_paged", "🔨 【手藝工坊】(第 {page}/{max_page} 頁)\n利用冒險收集的材料合成強力的裝備吧！\n",
-            page=self.inventory_page + 1, max_page=max_page + 1,
+            lang, "craft.title_select", "🔨 【手藝工坊】\n利用冒險收集的材料合成強力的裝備吧！從下方選單挑選配方：\n",
         )
+        if max_page > 0:
+            self.log_message += t(lang, "equip.page_suffix", "（第 {page}/{max_page} 頁）", page=self.inventory_page + 1, max_page=max_page + 1)
 
         user_bal = self.cog.get_bank_balance(self.user_id)
 
+        options = []
         for item_id in page_ids:
             recipe = CRAFTING_RECIPES[item_id]
             materials_desc = []
@@ -357,19 +361,15 @@ class ShopMixin:
             )
             self.log_message += f"\n{desc_line}"
 
-            style = discord.ButtonStyle.primary if can_craft else discord.ButtonStyle.secondary
+            mark = "✅" if can_craft else "❌"
+            label = f"{mark} {recipe_name}（{recipe['gold']}$）"
+            opt_desc = ", ".join(materials_desc)[:100]
+            options.append((label, f"craft_{item_id}", opt_desc, "🔨"))
 
-            btn_label = t(lang, "craft.btn_craft", "製作 {name}", name=recipe_name)
-            if comp_str:
-                btn_label += f" {comp_str}"
+        self.add_action_select(t(lang, "craft.select_placeholder", "🔨 選擇要製作的配方（✅=材料齊全）"), options, row=0, custom_id="sel_craft")
 
-            self.add_action_button(
-                label=btn_label[:80],
-                style=style,
-                custom_id=f"craft_{item_id}"
-            )
-
-        self._add_pagination_buttons(len(recipe_ids), 4)
+        if len(recipe_ids) > 25:
+            self._add_pagination_buttons(len(recipe_ids), 25)
         self.add_action_button(label=t(lang, "menu.btn_back_village", "返回村莊"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙", row=4)
 
     async def handle_craft_execute(self, item_id: str):
@@ -451,8 +451,8 @@ class ShopMixin:
         can_up_w = False
         w_desc = t(lang, "blacksmith.cannot_upgrade_no_weapon", "無法強化（未裝備武器）")
         if w_id:
-            if w_up >= 5:
-                w_desc = t(lang, "blacksmith.max_level", "已達到最高強化等級 (+5)")
+            if w_up >= MAX_UPGRADE_LEVEL:
+                w_desc = t(lang, "blacksmith.max_level_reached", "已達到最高強化等級 (+{max})", max=MAX_UPGRADE_LEVEL)
             else:
                 next_lvl = w_up + 1
                 cost = UPGRADE_COSTS[next_lvl]
@@ -480,8 +480,8 @@ class ShopMixin:
         can_up_a = False
         a_desc = t(lang, "blacksmith.cannot_upgrade_no_armor", "無法強化（未裝備防具）")
         if a_id:
-            if a_up >= 5:
-                a_desc = t(lang, "blacksmith.max_level", "已達到最高強化等級 (+5)")
+            if a_up >= MAX_UPGRADE_LEVEL:
+                a_desc = t(lang, "blacksmith.max_level_reached", "已達到最高強化等級 (+{max})", max=MAX_UPGRADE_LEVEL)
             else:
                 next_lvl = a_up + 1
                 cost = UPGRADE_COSTS[next_lvl]
@@ -510,7 +510,7 @@ class ShopMixin:
         # 玩家看起來像能點，點了卻什麼事也沒發生。
         w_style = discord.ButtonStyle.primary if can_up_w else discord.ButtonStyle.secondary
         w_label = t(lang, "blacksmith.btn_upgrade_weapon", "強化武器")
-        if w_id and w_up < 5:
+        if w_id and w_up < MAX_UPGRADE_LEVEL:
             w_label += " [⚔️ATK+3▲]"
         self.add_action_button(
             label=w_label,
@@ -521,7 +521,7 @@ class ShopMixin:
 
         a_style = discord.ButtonStyle.primary if can_up_a else discord.ButtonStyle.secondary
         a_label = t(lang, "blacksmith.btn_upgrade_armor", "強化防具")
-        if a_id and a_up < 5:
+        if a_id and a_up < MAX_UPGRADE_LEVEL:
             a_label += " [🛡️DEF+2▲ ❤️HP+15▲]"
         self.add_action_button(
             label=a_label,
@@ -546,8 +546,8 @@ class ShopMixin:
             upgrades_dict = {}
             setattr(p, f"{slot}_upgrades", upgrades_dict)
         current_up = upgrades_dict.get(item_id, 0)
-        if current_up >= 5:
-            await self.handle_blacksmith_menu(t(lang, "blacksmith.err_max_level", "❌ 該裝備已達到最高強化等級 (+5)！"))
+        if current_up >= MAX_UPGRADE_LEVEL:
+            await self.handle_blacksmith_menu(t(lang, "blacksmith.err_max_level_v2", "❌ 該裝備已達到最高強化等級 (+{max})！", max=MAX_UPGRADE_LEVEL))
             return
 
         next_lvl = current_up + 1

@@ -146,8 +146,7 @@
         "resistance": [
             "poison",
             "dark",
-            "thunder",
-            "magic"
+            "thunder"
         ],
         "money_min": 400,
         "money_max": 700,

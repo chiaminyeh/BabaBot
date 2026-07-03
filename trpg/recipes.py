@@ -80,6 +80,14 @@ CRAFTING_RECIPES = {
         "name_en": "Forbidden Chalice of Blood",
         "materials": {"pure_blood_essence": 1},
         "gold": 12000
+    },
+    # 主線關鍵道具：三位主線 NPC 各給一枚碎片，集齊後在這裡合成。
+    # 放在行囊即可顯示敵人弱點＋在傳說洞窟指引勇者之劍（見 view.py _has_magic_eye）。
+    "magic_eye": {
+        "name": "魔法之眼",
+        "name_en": "Eye of Insight",
+        "materials": {"magic_shard_emerald": 1, "magic_shard_amethyst": 1, "magic_shard_crimson": 1},
+        "gold": 3000
     }
 }
 
@@ -89,4 +97,13 @@ UPGRADE_COSTS = {
     3: {"gold": 500, "material": "wolf_fur", "mat_qty": 2, "rate": 0.60, "label": "60%"},
     4: {"gold": 1000, "material": "ancient_wood", "mat_qty": 2, "rate": 0.40, "label": "40%"},
     5: {"gold": 2500, "material": "ectoplasm", "mat_qty": 2, "rate": 0.25, "label": "25%"},
+    # +6 以上是後期金幣回收管道：費用陡升、成功率保底不再往下掉太狠（失敗不降級，
+    # 純粹是「錢跟稀有材料的坑」），讓後期滿裝玩家的金幣有地方花。
+    6: {"gold": 6000, "material": "gargoyle_stone", "mat_qty": 3, "rate": 0.22, "label": "22%"},
+    7: {"gold": 12000, "material": "lich_soulstone", "mat_qty": 3, "rate": 0.20, "label": "20%"},
+    8: {"gold": 22000, "material": "dragon_scale_shard", "mat_qty": 3, "rate": 0.18, "label": "18%"},
+    9: {"gold": 38000, "material": "demon_core", "mat_qty": 2, "rate": 0.15, "label": "15%"},
+    10: {"gold": 60000, "material": "void_crystal", "mat_qty": 2, "rate": 0.12, "label": "12%"},
 }
+
+MAX_UPGRADE_LEVEL = max(UPGRADE_COSTS)

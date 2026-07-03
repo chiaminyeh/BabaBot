@@ -138,6 +138,32 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             btn.callback = callback  # 這行就是上次漏掉的靈魂
         self.add_item(btn)
 
+    def add_action_select(self, placeholder, options, row=None, custom_id=None):
+        """下拉選單版的 add_action_button：一排最多 5 顆按鈕的版面塞不下 20+ 件裝備/
+        技能，改用下拉選單一格就能容納 25 個選項。每個選項的 value 直接沿用既有按鈕
+        的 custom_id（equip_xxx / use_item_xxx / craft_xxx...），選中後轉交
+        global_callback——所有既有路由、等級檢查、彈窗邏輯完全複用，不用寫第二套。
+
+        options: [(label, value_custom_id, description, emoji), ...]，超過 25 個只取前 25
+        （呼叫端應先用 _paginate 以 25/頁分頁）。"""
+        opts = []
+        for label, value, desc, emoji in options[:25]:
+            opts.append(discord.SelectOption(
+                label=str(label)[:100], value=str(value)[:100],
+                description=(str(desc)[:100] or None) if desc else None,
+                emoji=emoji or None,
+            ))
+        if not opts:
+            return
+        select = discord.ui.Select(placeholder=str(placeholder)[:150], options=opts, row=row,
+                                   min_values=1, max_values=1, custom_id=custom_id or f"sel_{len(self.children)}")
+
+        async def callback(interaction: discord.Interaction):
+            await self.global_callback(interaction, select.values[0])
+
+        select.callback = callback
+        self.add_item(select)
+
     # 負責接收所有按鈕點擊的總管
     # --- Button routing -----------------------------------------------------
     # custom_id -> handler spec. To add a button: add a row here + an
@@ -152,6 +178,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "b_sta": {"m": "handle_status", "i": True},
         "btn_leaderboard": {"m": "handle_leaderboard"},
         "btn_quest_hall": {"m": "handle_quest_hall"},
+        "btn_area_npc": {"m": "handle_area_npc"},
+        "btn_lottery_menu": {"m": "handle_lottery_menu"},
+        "btn_lottery_draw": {"m": "handle_lottery_draw"},
         "btn_daily_claim": {"m": "handle_daily_claim"},
         "btn_achievements": {"m": "handle_achievements", "await": False},
         "btn_combat_history": {"m": "handle_combat_history", "i": True},
@@ -398,6 +427,11 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             # 👇 郊外是新手村的直接鄰接區域，給一顆直達按鈕互通，不用繞去移動選單裡找。
             if self.player.current_area == "area_01grassland":
                 self.add_action_button(label=t(lang, "menu.btn_back_village", "返回新手村"), style=discord.ButtonStyle.secondary, custom_id="move_to_area_00village", row=2, emoji="🏠")
+            # 👇 主線 NPC：區域 JSON 有定義 npc 的話，主選單多一顆拜訪按鈕（精靈長老/亡靈學者/龍語者）。
+            area_npc = self.cog.areas.get(self.player.current_area, {}).get("npc")
+            if area_npc:
+                npc_name = tf(area_npc, "name", lang) or "NPC"
+                self.add_action_button(label=npc_name[:80], style=discord.ButtonStyle.success, custom_id="btn_area_npc", row=2, emoji=area_npc.get("emoji") or "🧑")
 
     def build_artisan_menu(self):
         self.clear_items()
@@ -423,11 +457,85 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         else:
             self.add_action_button(label=t(lang, "menu.btn_daily", "每日簽到"), style=discord.ButtonStyle.success, custom_id="btn_daily_claim", emoji="🎁")
         self.add_action_button(label=t(lang, "menu.btn_quest_hall", "任務大廳"), style=discord.ButtonStyle.success, custom_id="btn_quest_hall", emoji="📜")
+        self.add_action_button(label=t(lang, "menu.btn_lottery", "幸運抽獎"), style=discord.ButtonStyle.primary, custom_id="btn_lottery_menu", emoji="🎰")
         self.add_action_button(label=t(lang, "menu.btn_achievements", "成就"), style=discord.ButtonStyle.primary, custom_id="btn_achievements", emoji="🏅")
         self.add_action_button(label=t(lang, "menu.btn_leaderboard", "排行榜"), style=discord.ButtonStyle.secondary, custom_id="btn_leaderboard", emoji="🏆")
         self.add_action_button(label=t(lang, "menu.btn_stat_alloc", "屬性分配"), style=discord.ButtonStyle.primary, custom_id="btn_stat_alloc", emoji="📊")
         self.add_action_button(label=t(lang, "menu.btn_combat_history", "戰鬥記錄"), style=discord.ButtonStyle.secondary, custom_id="btn_combat_history", emoji="📝")
         self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
+
+    # 🎰 公會幸運抽獎：後期金幣回收管道。獎池刻意「期望值小虧」（約回本 7 成），
+    # 但有小機率抽到卷軸/稀有飾品/大獎金幣，運氣屬性會微幅提高稀有獎項的權重，
+    # 讓 LUCK 流玩家多一個發揮的地方。
+    LOTTERY_COST = 800
+
+    def _lottery_prize_pool(self):
+        """回傳 [(weight, kind, payload), ...]。物品獎項在抽中時才 roll 具體內容。"""
+        scroll_ids = [iid for iid, it in self.cog.items.items()
+                      if it.get("type") == "skill_scroll" and it.get("shop_weight", 0) > 0]
+        luck = getattr(getattr(self.player, "real_player", self.player), "base_luck", 0)
+        luck_bonus = min(3.0, luck * 0.05)
+        return [
+            (34.0, "items", [("high_health_potion", 3), ("high_mana_potion", 3)]),
+            (20.0, "items", [("ancient_wood", 3), ("ectoplasm", 3), ("bone_shard", 3), ("gargoyle_stone", 2)]),
+            (15.0, "gold", (300, 1000)),
+            (12.0, "scroll", scroll_ids),
+            (9.0, "items", [("mystery_elixir", 1), ("elixir_of_cleansing", 2)]),
+            (6.0 + luck_bonus, "gold", (5000, 5000)),
+            (4.0 + luck_bonus, "items", [("lucky_clover_charm", 1), ("schrodinger_watch", 1)]),
+        ]
+
+    async def handle_lottery_menu(self, notice=""):
+        self.clear_items()
+        lang = self.player.language
+        prefix = notice + "\n\n" if notice else ""
+        balance = self.cog.get_bank_balance(self.user_id)
+        self.log_message = prefix + t(
+            lang, "lottery.menu_text",
+            "🎰 【公會幸運抽獎】\n公會接待員眨眨眼：「試試手氣嗎？每抽 {cost} 金幣，獎品從藥水、材料、"
+            "技能卷軸到稀有飾品都有可能——聽說運氣好的人更容易抽到大獎喔。」\n\n💰 目前餘額：{balance} 金幣",
+            cost=self.LOTTERY_COST, balance=balance,
+        )
+        can_draw = balance >= self.LOTTERY_COST
+        self.add_action_button(
+            label=t(lang, "lottery.btn_draw", "抽一次（{cost}$）", cost=self.LOTTERY_COST),
+            style=discord.ButtonStyle.success if can_draw else discord.ButtonStyle.secondary,
+            custom_id="btn_lottery_draw", emoji="🎰", disabled=not can_draw,
+        )
+        self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_guild_menu", emoji="🔙")
+
+    async def handle_lottery_draw(self):
+        lang = self.player.language
+        if not self.cog.try_spend(self.user_id, self.player, self.LOTTERY_COST):
+            await self.handle_lottery_menu(t(lang, "lottery.no_gold", "❌ 金幣不足，湊滿 {cost} 金幣再來試手氣吧！", cost=self.LOTTERY_COST))
+            return
+
+        pool = self._lottery_prize_pool()
+        weights = [w for w, _, _ in pool]
+        _, kind, payload = random.choices(pool, weights=weights)[0]
+        real = getattr(self.player, "real_player", self.player)
+
+        if kind == "gold":
+            lo, hi = payload
+            amount = random.randint(lo, hi)
+            self.cog.adjust_bank(self.user_id, amount)
+            if amount >= 5000:
+                notice = t(lang, "lottery.win_jackpot", "🎆 【頭獎】獎池的鈴鐺瘋狂作響——你抽中了 {amount} 金幣大獎！！", amount=amount)
+            else:
+                notice = t(lang, "lottery.win_gold", "🪙 抽中了 {amount} 金幣！", amount=amount)
+        elif kind == "scroll" and payload:
+            scroll_id = random.choice(payload)
+            real.inventory[scroll_id] = real.inventory.get(scroll_id, 0) + 1
+            name = tf(self.cog.items.get(scroll_id, {}), "name", lang) or scroll_id
+            notice = t(lang, "lottery.win_scroll", "📜 【稀有】抽中了技能卷軸：【{name}】！", name=name)
+        else:
+            item_id, qty = random.choice(payload if kind == "items" else [("health_potion", 3)])
+            real.inventory[item_id] = real.inventory.get(item_id, 0) + qty
+            name = tf(self.cog.items.get(item_id, {}), "name", lang) or item_id
+            notice = t(lang, "lottery.win_items", "🎁 抽中了【{name}】x{qty}！", name=name, qty=qty)
+
+        self.cog.save_players()
+        await self.handle_lottery_menu(notice)
 
     async def handle_daily_claim(self):
         lang = self.player.language
@@ -474,8 +582,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_guild_menu", emoji="🔙")
 
     def build_quest_hall_menu(self, notice=""):
-        """公會任務大廳：列出進行中任務的進度，以及可接取的看板委託。"""
-        from trpg.quest_popup import recompute_live_progress, available_board_quests, quest_progress_text
+        """公會任務大廳：列出進行中任務的進度，以及可接取的看板委託。
+        每筆委託底下都附一行「🎯 怎麼完成」，不用再自己猜要去哪裡打什麼怪。"""
+        from trpg.quest_popup import recompute_live_progress, available_board_quests, quest_progress_text, describe_quest_goal
         self.clear_items()
         lang = self.player.language
         p = self.player
@@ -486,12 +595,15 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             lines.append(notice + "\n")
         lines.append(t(lang, "quest_hall.title", "📜 【任務大廳】"))
 
-        # 進行中的委託（含進度）
+        # 進行中的委託（含進度 + 完成方式）
         active = [(qid, self.cog.quests.get(qid)) for qid in p.active_quests if self.cog.quests.get(qid)]
         if active:
             lines.append(t(lang, "quest_hall.active_header", "\n── 進行中的委託 ──"))
             for qid, qinfo in active:
                 lines.append(quest_progress_text(self, qid, qinfo, lang))
+                goal = describe_quest_goal(self, qinfo, lang)
+                if goal:
+                    lines.append(f"   {goal}")
         else:
             lines.append(t(lang, "quest_hall.no_active", "\n（目前沒有進行中的委託）"))
 
@@ -504,6 +616,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 tag = t(lang, "quest_hall.daily_tag", "（每日）") if qinfo.get("repeatable") else ""
                 reward = t(lang, "quest_hall.reward_brief", "獎勵 {exp} EXP / {money}$", exp=qinfo.get("reward_exp", 0), money=qinfo.get("reward_money", 0))
                 lines.append(f"• {title}{tag} — {reward}")
+                goal = describe_quest_goal(self, qinfo, lang)
+                if goal:
+                    lines.append(f"   {goal}")
                 self.add_action_button(
                     label=t(lang, "quest_hall.btn_accept", "接取：{title}", title=title[:70]),
                     style=discord.ButtonStyle.success, custom_id=f"qaccept_{qid}", emoji="✅",
@@ -518,6 +633,65 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
     async def handle_quest_hall(self, notice=""):
         self.build_quest_hall_menu(notice)
 
+    async def handle_area_npc(self, notice=""):
+        """主線 NPC 選單：顯示 NPC 開場白與其專屬任務鏈的狀態（可接取／進行中／已完成）。
+        任務資料標記 board=false + npc_offer=false，只能從這裡接取；完成後的交付與
+        獎勵彈窗沿用既有的自動任務結算流程（process_quest_popups）。"""
+        from trpg.quest_popup import recompute_live_progress, can_accept_quest, quest_progress_text, describe_quest_goal
+        self.clear_items()
+        lang = self.player.language
+        area_npc = self.cog.areas.get(self.player.current_area, {}).get("npc")
+        if not area_npc:
+            self.build_main_menu()
+            return
+
+        recompute_live_progress(self)
+        real = getattr(self.player, "real_player", self.player)
+        npc_name = tf(area_npc, "name", lang) or "NPC"
+        lines = []
+        if notice:
+            lines.append(notice + "\n")
+        lines.append(f"{area_npc.get('emoji', '🧑')} **{npc_name}**")
+        lines.append(tf(area_npc, "intro", lang) or "")
+
+        lines.append(t(lang, "npc.quest_header", "\n── 委託 ──"))
+        for qid in area_npc.get("quest_ids", []):
+            qinfo = self.cog.quests.get(qid)
+            if not qinfo:
+                continue
+            title = tf(qinfo, "title", lang) or qid
+            if qid in real.completed_quests:
+                lines.append(t(lang, "npc.quest_done", "✅ {title}（已完成）", title=title))
+            elif qid in real.active_quests:
+                lines.append(quest_progress_text(self, qid, qinfo, lang))
+                goal = describe_quest_goal(self, qinfo, lang)
+                if goal:
+                    lines.append(f"   {goal}")
+            elif can_accept_quest(self, qid, qinfo):
+                reward_bits = [f"{qinfo.get('reward_exp', 0)} EXP", f"{qinfo.get('reward_money', 0)}$"]
+                for item_id in (qinfo.get("reward_items") or {}):
+                    reward_bits.append(tf(self.cog.items.get(item_id, {}), "name", lang) or item_id)
+                lines.append(t(lang, "npc.quest_available", "❗ {title} — 獎勵：{rewards}", title=title, rewards=" / ".join(reward_bits)))
+                goal = describe_quest_goal(self, qinfo, lang)
+                if goal:
+                    lines.append(f"   {goal}")
+                self.add_action_button(
+                    label=t(lang, "quest_hall.btn_accept", "接取：{title}", title=title[:70]),
+                    style=discord.ButtonStyle.success, custom_id=f"qaccept_{qid}", emoji="✅",
+                )
+            else:
+                req_lv = qinfo.get("req_level", 1)
+                if real.level < req_lv:
+                    lines.append(t(lang, "npc.quest_locked_level", "🔒 {title}（需 Lv.{req}）", title=title, req=req_lv))
+                else:
+                    lines.append(t(lang, "npc.quest_locked_chain", "🔒 {title}（完成前一項委託後開啟）", title=title))
+
+        if all(qid in real.completed_quests for qid in area_npc.get("quest_ids", [])):
+            lines.append(t(lang, "npc.all_done_hint", "\n💠 這位 NPC 的委託已全部完成。集齊三色魔法碎片後，到鐵匠之地的手藝工坊合成【魔法之眼】吧！"))
+
+        self.log_message = "\n".join(lines)
+        self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
+
     async def handle_quest_accept(self, quest_id: str):
         from trpg.quest_popup import accept_quest
         lang = self.player.language
@@ -527,6 +701,11 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             notice = t(lang, "quest_hall.accepted", "✅ 已接取委託：{title}", title=title)
         else:
             notice = t(lang, "quest_hall.accept_failed", "❌ 無法接取此委託（可能已接取、已完成或等級不足）。")
+        # 從主線 NPC 接的委託：回到 NPC 畫面而不是公會任務大廳
+        area_npc = self.cog.areas.get(self.player.current_area, {}).get("npc")
+        if area_npc and quest_id in area_npc.get("quest_ids", []):
+            await self.handle_area_npc(notice)
+            return
         self.build_quest_hall_menu(notice)
 
     def build_church_menu(self):
@@ -592,22 +771,19 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         return final_log
 
     def _handle_sargeras_defeat(self) -> str:
-        """敗於魔王薩格拉斯時呼叫：累計敗北次數，滿三次觸發吟遊詩人提示傳說洞窟。"""
+        """敗於魔王薩格拉斯時呼叫：累計敗北次數（洞窟解鎖已改為「踏入魔王戰即解鎖」，
+        見 handle_boss_explore——這裡只留統計，並在玩家還沒拿到勇者之劍時給個提醒）。"""
         lang = self.player.language
         count = getattr(self.player, "sargeras_defeat_count", 0) + 1
         self.player.sargeras_defeat_count = count
 
-        if count == 3 and not getattr(self.player, "legend_cave_unlocked", False):
-            self.player.legend_cave_unlocked = True
-            self.cog.save_players()
+        real = getattr(self.player, "real_player", self.player)
+        if real.inventory.get("hero_sword", 0) <= 0 and real.weapon != "hero_sword":
             return "\n\n" + t(
                 lang,
-                "menu.legend_cave_unlock",
-                "🎻 **一位吟遊詩人不知何時出現在你身旁，撥動著琴弦：**\n"
-                "「敗給魔王三次的勇士啊，不要灰心……我聽聞在世界的角落，有一座【傳說洞窟】，"
-                "洞窟深處插著一把【勇者之劍】，劍身纏繞著聖光，連魔王也為之忌憚。\n"
-                "只是那洞窟裡瀰漫著濃郁的魔力，每走一步都會侵蝕你的生命……願聖光指引你的方向。」\n"
-                "✨ 【傳說洞窟】已出現在移動選單中！"
+                "menu.sargeras_defeat_hint",
+                "🎻 吟遊詩人的歌聲在腦海中迴響：「勇士啊，別忘了【傳說洞窟】深處的【勇者之劍】……"
+                "沒有它，魔王的力量深不可測。」",
             )
         return ""
 
@@ -942,6 +1118,12 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         if weapon.get("anti_boss_id") and weapon["anti_boss_id"] == boss_instance.get("id"):
             boss_instance["atk"] = max(1, int(boss_instance["atk"] * weapon.get("anti_boss_atk_mult", 1.0)))
             boss_instance["def"] = max(0, int(boss_instance["def"] * weapon.get("anti_boss_def_mult", 1.0)))
+            # 明定的魔防也要跟著聖劍削弱，不然法師流拿了劍反而打不動
+            if "mdef" in boss_instance:
+                boss_instance["mdef"] = max(0, int(boss_instance["mdef"] * weapon.get("anti_boss_def_mult", 1.0)))
+            # 聖光也削弱魔王的生命本源：沒有 hp_mult 的話，持劍戰依然是 3 萬血的耐久馬拉松，
+            # 「有來有回」的攻防在 40+ 回合的消耗戰裡會變成疲勞轟炸。
+            boss_instance["max_hp"] = max(1, int(boss_instance["max_hp"] * weapon.get("anti_boss_hp_mult", 1.0)))
             if "anti_boss_spd_set" in weapon:
                 boss_instance["spd"] = weapon["anti_boss_spd_set"]
             else:
@@ -951,6 +1133,18 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.start_combat(self._build_boss_encounter(boss_instance, area_data))
 
         self.log_message = t(lang, "menu.boss_encounter_warning", "🚨 【區域領主警告】 🚨\n大地在震動... 你驚動了隱藏的首領【{boss_name}】！{anti_boss_text}", boss_name=tf(boss_instance, "name", lang), anti_boss_text=anti_boss_text)
+
+        # 👇 傳說洞窟解鎖條件：踏入過魔王戰即可（不再需要敗北三次）。
+        # 第一次與薩格拉斯交手的瞬間，吟遊詩人的傳聞就此解鎖。
+        real = getattr(self.player, "real_player", self.player)
+        if boss_instance.get("id") == "sargeras" and not getattr(real, "legend_cave_unlocked", False):
+            real.legend_cave_unlocked = True
+            self.cog.save_players()
+            self.log_message += "\n\n" + t(
+                lang, "menu.legend_cave_unlock_on_fight",
+                "🎻 直面魔王的瞬間，你想起吟遊詩人的歌謠——世界角落的【傳說洞窟】深處，"
+                "沉睡著一把連魔王都忌憚的【勇者之劍】……\n✨ 【傳說洞窟】已出現在移動選單中！",
+            )
         self.build_battle_menu()
 
     def _paginate(self, items: list, items_per_page: int, paging: bool) -> tuple:
@@ -970,33 +1164,48 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.add_action_button(label=t(lang, "menu.btn_prev_page", "◀️ 上一頁"), style=discord.ButtonStyle.secondary, custom_id="btn_prev_page", row=row)
             self.add_action_button(label=t(lang, "menu.btn_next_page", "▶️ 下一頁"), style=discord.ButtonStyle.secondary, custom_id="btn_next_page", row=row)
 
+    def _equip_option_desc(self, item_id: str) -> str:
+        """下拉選項的說明列（上限 100 字）：數值加成 + 與目前裝備的差異。"""
+        lang = self.player.language
+        item = self.cog.items.get(item_id, {})
+        stat_parts = [
+            f"{label}{item[key]:+d}"
+            for key, (label, emoji) in EQUIP_STAT_DISPLAY.items()
+            if item.get(key)
+        ]
+        desc = " ".join(stat_parts) if stat_parts else t(lang, "equip.no_stat_bonus", "（無數值加成）")
+        comp = self._get_equipment_comparison_string(item)
+        if comp:
+            desc += f" {comp}"
+        return desc[:100]
+
     async def handle_equip_menu(self, notice="", paging=False):
+        """裝備管理：改用下拉選單——武器/防具/飾品各一格，一格容得下 25 件，
+        不再是一整面 8 顆一頁的按鈕牆。選中已裝備的品項＝卸下，其餘＝裝備；
+        等級不足的品項照樣列出（🔒 標示），點了會由既有的等級檢查擋下並提示。"""
         self.clear_items()
         self.current_menu_state = "equip"
         lang = self.player.language
 
-        weapons_in_bag = []
-        armors_in_bag = []
-        accessories_in_bag = []
-
-        # 包含等級不足的裝備（會以灰色鎖定按鈕顯示，並標示等級需求）
+        categories = {"weapon": [], "armor": [], "accessory": []}
         for item_id, count in self.player.inventory.items():
             if count > 0:
                 item_data = self.cog.items.get(item_id)
-                if not item_data: continue
-                if item_data.get("type") == "weapon":
-                    weapons_in_bag.append(item_id)
-                elif item_data.get("type") == "armor":
-                    armors_in_bag.append(item_id)
-                elif item_data.get("type") == "accessory":
-                    accessories_in_bag.append(item_id)
+                if item_data and item_data.get("type") in categories:
+                    categories[item_data["type"]].append(item_id)
 
-        # 合併所有可裝備的物品
-        all_equips = weapons_in_bag + armors_in_bag + accessories_in_bag
-        total_items = len(all_equips)
-        page_items, _, max_page = self._paginate(all_equips, 8, paging)
+        # 分頁以「最大的分類」為準（每格下拉選單上限 25 個選項），三個分類共用頁碼
+        per_page = 25
+        max_cat = max((len(v) for v in categories.values()), default=0)
+        if not paging:
+            self.inventory_page = 0
+        max_page = max(0, (max_cat - 1) // per_page)
+        self.inventory_page = min(self.inventory_page, max_page)
+        start = self.inventory_page * per_page
 
-        self.log_message = (notice + "\n\n" if notice else "") + t(lang, "equip.menu_title", "🎒 【裝備管理】(第 {page}/{max_page} 頁)", page=self.inventory_page + 1, max_page=max_page + 1)
+        self.log_message = (notice + "\n\n" if notice else "") + t(lang, "equip.menu_title_select", "🎒 【裝備管理】從下方選單挑選要裝備／卸下的品項：")
+        if max_page > 0:
+            self.log_message += t(lang, "equip.page_suffix", "（第 {page}/{max_page} 頁）", page=self.inventory_page + 1, max_page=max_page + 1)
 
         none_bare_handed = t(lang, "equip.none_bare_handed", "無 (空手)")
         none_cloth = t(lang, "equip.none_cloth", "無 (布衣)")
@@ -1006,50 +1215,42 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         c_accs = f"【{tf(self.cog.items[self.player.accessory], 'name', lang)}】" if self.player.accessory else none_label
 
         self.log_message += t(lang, "equip.current_gear_summary", "\n👉 武器：{weapon}\n👉 防具：{armor}\n👉 飾品：{accessory}", weapon=c_weap, armor=c_armr, accessory=c_accs)
-        self.log_message += "\n"
+        # 目前裝備的完整數值細節照舊印在面板上，選單選項則各自帶精簡說明
+        for eq_id in (self.player.weapon, getattr(self.player, "armor", None), self.player.accessory):
+            if eq_id and eq_id in self.cog.items:
+                self.log_message += "\n" + self._format_equip_item_line(eq_id)
 
-        for item_id in page_items:
-            item_data = self.cog.items[item_id]
-            item_type = item_data.get("type")
-            item_name = f"{item_emoji(item_data)} {tf(item_data, 'name', lang)}"
-            req = item_data.get("exclusive_level", 0)
-            locked = req > self.player.level
-
-            # 👇 把這件裝備的絕對數值 + 跟目前裝備的差異都印出來，不用再猜這把
-            # 武器/防具實際強度如何——鎖住的裝備一樣顯示，讓玩家知道升到門檻
-            # 等級後值不值得換。
-            self.log_message += "\n" + self._format_equip_item_line(item_id)
-
-            if locked:
-                # 等級不足：灰色鎖定按鈕，標示等級需求（不可點擊）
-                self.add_action_button(
-                    label=t(lang, "equip.btn_locked", "🔒 {name} (需 Lv.{req})", name=item_name, req=req)[:80],
-                    style=discord.ButtonStyle.secondary,
-                    custom_id=f"locked_{item_id}",
-                    disabled=True,
-                )
+        cat_meta = [
+            ("weapon", t(lang, "equip.select_weapon", "⚔️ 武器：選擇要裝備／卸下的武器"), "equip_", "unequip_", self.player.weapon, 0),
+            ("armor", t(lang, "equip.select_armor", "🛡️ 防具：選擇要穿戴／卸下的防具"), "equip_", "unequip_", getattr(self.player, "armor", None), 1),
+            ("accessory", t(lang, "equip.select_accessory", "💍 飾品：選擇要配戴／卸下的飾品"), "acc_", "unacc_", self.player.accessory, 2),
+        ]
+        for cat, placeholder, eq_prefix, uneq_prefix, current_id, row in cat_meta:
+            item_ids = categories[cat][start:start + per_page]
+            if not item_ids:
                 continue
+            options = []
+            for item_id in item_ids:
+                item_data = self.cog.items[item_id]
+                name = tf(item_data, "name", lang) or item_id
+                req = item_data.get("exclusive_level", 0)
+                if item_id == current_id:
+                    label = t(lang, "equip.opt_unequip", "✅ {name}（裝備中，選擇以卸下）", name=name)
+                    value = f"{uneq_prefix}{item_id}"
+                elif req > self.player.level:
+                    label = t(lang, "equip.opt_locked", "🔒 {name}（需 Lv.{req}）", name=name, req=req)
+                    value = f"{eq_prefix}{item_id}"  # 選了會被既有等級檢查擋下並提示
+                else:
+                    label = name
+                    value = f"{eq_prefix}{item_id}"
+                options.append((label, value, self._equip_option_desc(item_id), item_emoji(item_data)))
+            self.add_action_select(placeholder, options, row=row, custom_id=f"sel_equip_{cat}")
 
-            if item_type == "weapon":
-                if item_id == self.player.weapon:
-                    self.add_action_button(label=t(lang, "equip.btn_unequip", "卸下 {name}", name=item_name), style=discord.ButtonStyle.danger, custom_id=f"unequip_{item_id}")
-                else:
-                    self.add_action_button(label=t(lang, "equip.btn_equip_weapon", "裝備 {name}", name=item_name), style=discord.ButtonStyle.success, custom_id=f"equip_{item_id}")
-            elif item_type == "armor":
-                if item_id == getattr(self.player, "armor", None):
-                    self.add_action_button(label=t(lang, "equip.btn_unequip", "卸下 {name}", name=item_name), style=discord.ButtonStyle.danger, custom_id=f"unequip_{item_id}")
-                else:
-                    self.add_action_button(label=t(lang, "equip.btn_equip_armor", "穿戴 {name}", name=item_name), style=discord.ButtonStyle.primary, custom_id=f"equip_{item_id}")
-            elif item_type == "accessory":
-                if item_id == self.player.accessory:
-                    self.add_action_button(label=t(lang, "equip.btn_unequip", "卸下 {name}", name=item_name), style=discord.ButtonStyle.danger, custom_id=f"unacc_{item_id}")
-                else:
-                    self.add_action_button(label=t(lang, "equip.btn_equip_accessory", "配戴 {name}", name=item_name), style=discord.ButtonStyle.success, custom_id=f"acc_{item_id}")
-
-        if not all_equips:
+        if not any(categories.values()):
             self.log_message += "\n\n" + t(lang, "equip.no_equippable_items", "背包裡沒有可裝備的物品。")
 
-        self._add_pagination_buttons(total_items, 8)
+        if max_cat > per_page:
+            self._add_pagination_buttons(max_cat, per_page)
         self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙", row=4)
 
     async def handle_equip_action(self, item_id: str, equip: bool):
@@ -1118,7 +1319,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                     usable.append(item_id)
 
         total_items = len(usable)
-        page_items, _, max_page = self._paginate(usable, 8, paging)
+        page_items, _, max_page = self._paginate(usable, 25, paging)
 
         if not usable:
             self.log_message = t(lang, "menu.no_usable_items", "❌ 背包裡沒有可用的道具。")
@@ -1128,16 +1329,18 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 self.build_main_menu()
             return
 
-        self.log_message = t(lang, "menu.choose_item_to_use", "🎒 選擇要使用的道具：(第 {page}/{max_page} 頁)", page=self.inventory_page + 1, max_page=max_page + 1)
+        self.log_message = t(lang, "menu.choose_item_to_use_select", "🎒 從下方選單挑選要使用的道具：")
+        if max_page > 0:
+            self.log_message += t(lang, "equip.page_suffix", "（第 {page}/{max_page} 頁）", page=self.inventory_page + 1, max_page=max_page + 1)
+        options = []
         for item_id in page_items:
             item = self.cog.items[item_id]
-            self.add_action_button(
-                label=f"{item_emoji(item)} {tf(item, 'name', lang)} x{self.player.inventory[item_id]}",
-                style=discord.ButtonStyle.secondary,
-                custom_id=f"use_item_{item_id}",
-            )
+            label = f"{tf(item, 'name', lang)} x{self.player.inventory[item_id]}"
+            options.append((label, f"use_item_{item_id}", (tf(item, "desc", lang) or "")[:100], item_emoji(item)))
+        self.add_action_select(t(lang, "menu.select_item_placeholder", "🎒 選擇道具"), options, row=0, custom_id="sel_use_item")
 
-        self._add_pagination_buttons(total_items, 8)
+        if total_items > 25:
+            self._add_pagination_buttons(total_items, 25)
         back_id = "btn_back_battle" if self.in_battle else "btn_back_main"
         self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id=back_id, emoji="🔙", row=4)
 
@@ -1235,6 +1438,27 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             filled = int(round((current / maximum) * length))
             filled = min(max(filled, 0), length)
             return "▰" * filled + "▱" * (length - filled)
+
+    def _has_magic_eye(self) -> bool:
+        """魔法之眼是「放在行囊就生效」的主線道具——一律讀永久角色的背包，
+        地下城探索中封印替身的臨時背包不算數。"""
+        real = getattr(self.player, "real_player", self.player)
+        return real.inventory.get("magic_eye", 0) > 0
+
+    def _format_elem_list(self, elems, lang) -> str:
+        """把 weakness/resistance 清單轉成帶 emoji 的顯示字串（魔法之眼的弱點透視用）。
+        清單裡可能混著異常狀態 id（例如魔王抗性帶 poison/burn），不在元素表裡的
+        直接用狀態表的名字/emoji 顯示，都查不到就原樣印出。"""
+        parts = []
+        for e in elems:
+            if e in ELEMENT_DISPLAY:
+                emoji, name_zh, name_en = ELEMENT_DISPLAY[e]
+                parts.append(f"{emoji}{name_en if lang == 'en' else name_zh}")
+            else:
+                sdef = self.cog.status_effects.get(e, {})
+                name = tf(sdef, "name", lang) or e
+                parts.append(f"{sdef.get('emoji', '')}{name}")
+        return " ".join(parts)
 
     def _format_combat_mods(self, p) -> str:
         """把目前的增益/減益整理成一行精簡文字（戰鬥面板用）。"""
@@ -1354,6 +1578,19 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 # 👇 警示系統：怪物的下一步意圖與防禦性機制全部搬上檯面，玩家不用去
                 # 翻戰鬥紀錄才知道要防、要打斷、還是要留一發小招戳破聖盾。
                 intent_lines = []
+                # 🧿 魔法之眼：行囊裡有就透視這隻怪物的屬性弱點/抗性
+                if slot["hp"] > 0 and self._has_magic_eye():
+                    eye_bits = []
+                    if m.get("weakness"):
+                        eye_bits.append(t(lang, "battle.eye_weakness", "弱點 {elems}", elems=self._format_elem_list(m["weakness"], lang)))
+                    if m.get("resistance"):
+                        eye_bits.append(t(lang, "battle.eye_resistance", "抗性 {elems}", elems=self._format_elem_list(m["resistance"], lang)))
+                    if m.get("immunity"):
+                        eye_bits.append(t(lang, "battle.eye_immunity", "免疫 {elems}", elems=self._format_elem_list(m["immunity"], lang)))
+                    if eye_bits:
+                        intent_lines.append("🧿 " + " | ".join(eye_bits))
+                    else:
+                        intent_lines.append(t(lang, "battle.eye_no_weakness", "🧿 魔法之眼：這隻怪物沒有明顯的屬性弱點。"))
                 if slot["hp"] > 0:
                     tele = slot.get("telegraph")
                     if tele:
@@ -1622,23 +1859,29 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         if not scrolls:
             self.log_message = prefix + t(lang, "skill.learn_menu_no_scrolls", "📖 【學習魔法】\n背包裡沒有技能卷軸。可從商店購買，或討伐區域 BOSS 取得！")
         else:
+            # 已學會的列在面板文字，還沒學的放進下拉選單——之前一張卷軸一顆按鈕，
+            # 收集超過 24 種卷軸會撞上 Discord 25 個元件上限，整個面板直接渲染失敗。
             self.log_message = prefix + t(lang, "skill.learn_menu_choose_scroll", "📖 【學習魔法】\n選擇要研讀的卷軸（消耗 1 張）：")
+            learnable = []
+            learned_lines = []
             for scroll_id in scrolls:
                 item = self.cog.items[scroll_id]
                 skill_id = item.get("teaches", "")
                 skill = self.cog.skills.get(skill_id, {})
                 skill_name = tf(skill, "name", lang) if skill else skill_id
-                item_name = tf(item, "name", lang)
                 if skill_id in self.player.skills:
-                    label = t(lang, "skill.already_learned_label", "已學會：{skill_name}", skill_name=skill_name)
-                    btn = discord.ui.Button(label=label, style=discord.ButtonStyle.secondary, disabled=True)
-                    self.add_item(btn)
+                    learned_lines.append(t(lang, "skill.already_learned_label", "已學會：{skill_name}", skill_name=skill_name))
                 else:
-                    self.add_action_button(
-                        label=t(lang, "skill.btn_study_scroll", "研讀 {item_name}", item_name=item_name),
-                        style=discord.ButtonStyle.primary,
-                        custom_id=f"learn_{scroll_id}",
-                    )
+                    req_lv = skill.get("req_level", 1)
+                    item_name = tf(item, "name", lang) or scroll_id
+                    label = item_name if self.player.level >= req_lv else t(lang, "skill.opt_locked", "🔒 {skill_name}（需 Lv.{req}）", skill_name=item_name, req=req_lv)
+                    learnable.append((label, f"learn_{scroll_id}", (tf(skill, "desc", lang) or "")[:100], "📜"))
+            if learned_lines:
+                self.log_message += "\n" + "\n".join(f"✅ {ln}" for ln in learned_lines[:20])
+            if learnable:
+                self.add_action_select(t(lang, "skill.select_learn", "📜 選擇要研讀的卷軸"), learnable[:25], row=0, custom_id="sel_learn_scroll")
+            else:
+                self.log_message += "\n\n" + t(lang, "skill.all_scrolls_learned", "（背包裡卷軸的技能都已學會）")
 
         self.add_action_button(label=t(lang, "skill.btn_back_to_church", "返回教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", emoji="🔙")
 
@@ -1661,51 +1904,53 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             return
 
         equipped_count = len(self.player.equipped_skills)
-        page_skills, _, max_page = self._paginate(p_skills, 8, paging)
+        equipped_list = [s for s in p_skills if s in self.player.equipped_skills]
+        unequipped_list = [s for s in p_skills if s not in self.player.equipped_skills]
 
-        header = prefix + t(lang, "skill.equip_menu_header", "🔧 【技能配置】 (已裝備: {equipped_count}/8)\n點擊下方按鈕來裝備或卸下你的戰鬥技能。", equipped_count=equipped_count)
+        # 下拉選單一格 25 個選項；未裝備清單超過 25 才需要翻頁（已裝備最多 8 個）
+        per_page = 25
+        if not paging:
+            self.inventory_page = 0
+        max_page = max(0, (len(unequipped_list) - 1) // per_page)
+        self.inventory_page = min(self.inventory_page, max_page)
+        start = self.inventory_page * per_page
+
+        header = prefix + t(lang, "skill.equip_menu_header_select", "🔧 【技能配置】 (已裝備: {equipped_count}/8)\n用下方選單裝備／卸下你的戰鬥技能。", equipped_count=equipped_count)
         if max_page > 0:
             header += t(lang, "skill.equip_page_suffix", "  (第 {page}/{max_page} 頁)", page=self.inventory_page + 1, max_page=max_page + 1)
         lines = [header]
-
-        for skill_id in page_skills:
+        # 已裝備的技能照舊完整列在面板上，一眼看到目前的配置；技能說明放進選項的說明列
+        for skill_id in equipped_list:
             skill = self.cog.skills.get(skill_id, {})
-            skill_name = tf(skill, "name", lang) if skill else skill_id
-            skill_desc = tf(skill, "desc", lang) if skill else ""
-            equipped = skill_id in self.player.equipped_skills
-            mark = "🟢" if equipped else "⚪"
-            lines.append(f"{mark} {skill_name}: {skill_desc}")
+            lines.append(f"🟢 {tf(skill, 'name', lang) or skill_id}: {tf(skill, 'desc', lang) or ''}")
 
-            # 👇 轉生會把等級重置回 1，但學過的技能與裝備清單都不會被清掉——沒有這道
-            # 門檻的話，玩家可以在轉生後帶著遠超當下等級的技能繼續裝備/戰鬥。跟裝備
-            # 選單的鎖定裝備一樣，等級不足時把按鈕鎖起來、標示需求等級。
-            req_lv = skill.get("req_level", 1)
-            locked = (not equipped) and self.player.level < req_lv
+        if unequipped_list:
+            options = []
+            for skill_id in unequipped_list[start:start + per_page]:
+                skill = self.cog.skills.get(skill_id, {})
+                skill_name = tf(skill, "name", lang) or skill_id
+                # 👇 轉生會把等級重置回 1，但學過的技能不會清掉——等級不足的照樣列出
+                # （🔒 標示），選了會被 handle_skill_equip_action 的等級檢查擋下並提示。
+                req_lv = skill.get("req_level", 1)
+                if self.player.level < req_lv:
+                    label = t(lang, "skill.opt_locked", "🔒 {skill_name}（需 Lv.{req}）", skill_name=skill_name, req=req_lv)
+                else:
+                    label = skill_name
+                options.append((label, f"equip_skill_{skill_id}", (tf(skill, "desc", lang) or "")[:100], "⚪"))
+            self.add_action_select(t(lang, "skill.select_equip", "⚪ 裝備技能：選擇要裝上的技能"), options, row=0, custom_id="sel_skill_equip")
 
-            if equipped:
-                self.add_action_button(
-                    label=t(lang, "skill.btn_unequip", "🟢 卸下: {skill_name}", skill_name=skill_name)[:80],
-                    style=discord.ButtonStyle.success,
-                    custom_id=f"unequip_skill_{skill_id}"
-                )
-            elif locked:
-                self.add_action_button(
-                    label=t(lang, "skill.btn_locked", "🔒 {skill_name} (需 Lv.{req})", skill_name=skill_name, req=req_lv)[:80],
-                    style=discord.ButtonStyle.secondary,
-                    custom_id=f"locked_skill_{skill_id}",
-                    disabled=True,
-                )
-            else:
-                is_full = equipped_count >= 8
-                self.add_action_button(
-                    label=t(lang, "skill.btn_equip", "⚪ 裝備: {skill_name}", skill_name=skill_name)[:80],
-                    style=discord.ButtonStyle.secondary if is_full else discord.ButtonStyle.primary,
-                    custom_id=f"equip_skill_{skill_id}"
-                )
+        if equipped_list:
+            options = []
+            for skill_id in equipped_list[:25]:
+                skill = self.cog.skills.get(skill_id, {})
+                skill_name = tf(skill, "name", lang) or skill_id
+                options.append((skill_name, f"unequip_skill_{skill_id}", (tf(skill, "desc", lang) or "")[:100], "🟢"))
+            self.add_action_select(t(lang, "skill.select_unequip", "🟢 卸下技能：選擇要卸下的技能"), options, row=1, custom_id="sel_skill_unequip")
 
         self.log_message = "\n".join(lines)
-        self._add_pagination_buttons(len(p_skills), 8)
-        self.add_action_button(label=t(lang, "skill.btn_back_to_church", "返回教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", emoji="🔙")
+        if len(unequipped_list) > per_page:
+            self._add_pagination_buttons(len(unequipped_list), per_page)
+        self.add_action_button(label=t(lang, "skill.btn_back_to_church", "返回教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", emoji="🔙", row=4)
 
     async def handle_skill_equip_action(self, skill_id: str, equip: bool):
         lang = self.player.language
@@ -1931,7 +2176,10 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 self.add_action_button(label=t(lang, "char.btn_stat_manual", "輸入 {stat}", stat=label), style=discord.ButtonStyle.success, custom_id=f"stat_manual_{key}", row=row, emoji=emoji)
 
         last_row = 4 if unspent > 0 else 0
-        self.add_action_button(label=t(lang, "char.btn_reset_stats", "重置所有屬性點"), style=discord.ButtonStyle.danger, custom_id="btn_stat_reset", row=last_row, emoji="🔄")
+        reset_cost = self._stat_reset_cost()
+        reset_label = (t(lang, "char.btn_reset_stats_paid", "重置所有屬性點（{cost}$）", cost=reset_cost) if reset_cost > 0
+                       else t(lang, "char.btn_reset_stats", "重置所有屬性點"))
+        self.add_action_button(label=reset_label, style=discord.ButtonStyle.danger, custom_id="btn_stat_reset", row=last_row, emoji="🔄")
         self.add_action_button(label=t(lang, "char.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", row=last_row, emoji="🔙")
 
     async def handle_stat_add(self, stat_key: str, amount: int = 1):
@@ -1953,12 +2201,25 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.cog.save_players()
         await self.handle_stat_alloc_menu(t(lang, "char.points_invested", "✅ 已將 {add_amount} 點投入【{stat_key}】。", add_amount=add_amount, stat_key=stat_key.upper()))
 
+    def _stat_reset_cost(self) -> int:
+        """屬性重置費用：Lv.10 以下免費（新手試錯期），之後隨等級成長——
+        後期洗點是金幣回收管道之一，也讓「隨便亂點再免費洗掉」有一點成本感。"""
+        real = getattr(self.player, "real_player", self.player)
+        return 0 if real.level < 10 else real.level * 30
+
     async def handle_stat_reset(self):
         lang = self.player.language
+        cost = self._stat_reset_cost()
+        if cost > 0 and not self.cog.try_spend(self.user_id, self.player, cost):
+            await self.handle_stat_alloc_menu(t(lang, "char.stat_reset_no_gold", "❌ 重置屬性配點需要 {cost} 金幣，你的餘額不足！", cost=cost))
+            return
         self.player.stat_alloc = default_stat_alloc()
         recalc_player_stats(self.player, self.cog.items, heal_full=False)
         self.cog.save_players()
-        await self.handle_stat_alloc_menu(t(lang, "char.stats_reset_notice", "🔄 已重置所有屬性配點，請重新分配。"))
+        if cost > 0:
+            await self.handle_stat_alloc_menu(t(lang, "char.stats_reset_paid_notice", "🔄 支付了 {cost} 金幣，已重置所有屬性配點，請重新分配。", cost=cost))
+        else:
+            await self.handle_stat_alloc_menu(t(lang, "char.stats_reset_notice", "🔄 已重置所有屬性配點，請重新分配。"))
 
     async def handle_rest(self):
         lang = self.player.language
@@ -2187,6 +2448,52 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                         "🏟️ 第 {n} 輪獲勝！鐵閘再度轟隆作響……（傷勢不會恢復，記得喝藥水再按下一輪）",
                         n=min(state["round"], total_rounds - 1))
 
+    def _cave_direction_to_sword(self, nodes: dict, start_id: str) -> str | None:
+        """BFS 找出從目前節點通往劍之石室的最短路徑，回傳第一步的方向
+        （forward/left/right）；已在死路或無路可通則回傳 None（該往回走了）。
+        給魔法之眼的指引功能用。"""
+        from collections import deque
+        if start_id == "sword_room":
+            return None
+        queue = deque([(start_id, None)])
+        visited = {start_id}
+        while queue:
+            node_id, first_dir = queue.popleft()
+            for direction, nxt in (nodes.get(node_id, {}).get("exits") or {}).items():
+                if not nxt or nxt in visited:
+                    continue
+                step = first_dir or direction
+                if nxt == "sword_room":
+                    return step
+                visited.add(nxt)
+                queue.append((nxt, step))
+        return None
+
+    def _collect_cave_loot(self, node_id: str, node: dict, lang: str) -> str:
+        """撿取節點上的物資（每個節點一人一生一次，記錄在 cave_state["looted_nodes"]）。
+        標記 loot_requires_eye 的隱藏暗格只有魔法之眼能照出來。"""
+        loot = node.get("loot")
+        if not loot:
+            return ""
+        if node.get("loot_requires_eye") and not self._has_magic_eye():
+            return ""
+        cave_state = self.player.cave_state
+        looted = cave_state.setdefault("looted_nodes", [])
+        if node_id in looted:
+            return ""
+        looted.append(node_id)
+        real = getattr(self.player, "real_player", self.player)
+        names = []
+        for item_id, qty in loot.items():
+            real.inventory[item_id] = real.inventory.get(item_id, 0) + qty
+            nm = tf(self.cog.items.get(item_id, {}), "name", lang) or item_id
+            names.append(f"{nm} x{qty}")
+        self.cog.save_players()
+        sep = ", " if lang == "en" else "、"
+        if node.get("loot_requires_eye"):
+            return "\n\n" + t(lang, "cave.loot_found_eye", "🧿 魔法之眼透視石壁，照出了一處隱藏暗格！獲得：{items}", items=sep.join(names))
+        return "\n\n" + t(lang, "cave.loot_found", "🎒 你在角落裡搜出了先人留下的物資：{items}", items=sep.join(names))
+
     def build_legend_cave_menu(self):
         self.clear_items()
         lang = self.player.language
@@ -2196,15 +2503,29 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         node_id = cave_state.get("current_node", "entrance")
         node = nodes.get(node_id) or nodes.get("entrance", {})
         sword_id = area_data.get("sword_item", "hero_sword")
+        has_eye = self._has_magic_eye()
 
         if node.get("is_sword_room") and not self.player.inventory.get(sword_id, 0):
+            # 👇 沒有魔法之眼：聖劍被強大的隱匿結界藏著，石室看起來空無一物
+            if not has_eye:
+                self.log_message = t(
+                    lang,
+                    "cave.sword_room_hidden",
+                    "🕯️ 你來到一座圓形石室——這裡的魔力波動濃烈得令人窒息，但放眼望去卻空無一物。\n"
+                    "空氣中彷彿有什麼在微微震顫……肉眼看不見的東西。\n"
+                    "（也許需要某種能「看穿萬物」的祕寶才能找到它。）",
+                )
+                self.add_action_button(label=t(lang, "char.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="cave_dir_back", emoji="🔙")
+                return
             self.player.inventory[sword_id] = self.player.inventory.get(sword_id, 0) + 1
             sword_name = tf(self.cog.items.get(sword_id, {}), "name", lang) or sword_id
             self.cog.save_players()
             self.log_message = t(
                 lang,
-                "cave.sword_obtained",
-                "🕯️ {node_desc}\n\n✨ 你從石墩上拔起了【{sword_name}】！這把劍似乎在期待著與魔王的決戰。\n（記得回村莊把它裝備上！）",
+                "cave.sword_obtained_eye",
+                "🕯️ {node_desc}\n\n🧿 魔法之眼灼熱地震動，石室中央的隱匿結界如薄紗般被撕開——"
+                "石墩上，一把纏繞聖光的長劍顯露真身！\n"
+                "✨ 你拔起了【{sword_name}】！這把劍似乎在期待著與魔王的決戰。\n（記得回村莊把它裝備上！）",
                 node_desc=tf(node, "desc", lang) or "",
                 sword_name=sword_name,
             )
@@ -2222,6 +2543,22 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             hp_pct=hp_pct,
         )
 
+        # 🎒 節點物資（高級藥水等，一次性）
+        self.log_message += self._collect_cave_loot(node_id, node, lang)
+
+        # 🧿 魔法之眼指引：往劍之石室的下一步方向
+        if has_eye and not self.player.inventory.get(sword_id, 0):
+            direction = self._cave_direction_to_sword(nodes, node_id)
+            if direction:
+                dir_names = {
+                    "forward": t(lang, "cave.dir_forward", "前方"),
+                    "left": t(lang, "cave.dir_left", "左邊"),
+                    "right": t(lang, "cave.dir_right", "右邊"),
+                }
+                self.log_message += "\n\n" + t(lang, "cave.eye_guidance", "🧿 魔法之眼微微發熱，指向【{direction}】……", direction=dir_names.get(direction, direction))
+            else:
+                self.log_message += "\n\n" + t(lang, "cave.eye_guidance_back", "🧿 魔法之眼黯淡無光——這條路不通，先返回上一個岔路吧。")
+
         exits = node.get("exits", {})
         if exits.get("forward"):
             self.add_action_button(label=t(lang, "cave.btn_forward", "前進"), style=discord.ButtonStyle.primary, custom_id="cave_dir_forward", emoji="⬆️")
@@ -2229,6 +2566,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.add_action_button(label=t(lang, "cave.btn_left", "左邊"), style=discord.ButtonStyle.primary, custom_id="cave_dir_left", emoji="⬅️")
         if exits.get("right"):
             self.add_action_button(label=t(lang, "cave.btn_right", "右邊"), style=discord.ButtonStyle.primary, custom_id="cave_dir_right", emoji="➡️")
+        # 🧪 洞窟每一步都會扣血，藥水按鈕直接放在面板上（走既有的道具選單）
+        self.add_action_button(label=t(lang, "menu.btn_potions", "藥水"), style=discord.ButtonStyle.secondary, custom_id="b_itm", emoji="🎒")
         self.add_action_button(label=t(lang, "char.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="cave_dir_back", emoji="🔙")
 
     async def handle_cave_move(self, direction: str):

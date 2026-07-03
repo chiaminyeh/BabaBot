@@ -53,6 +53,9 @@
             "name_en": "Withered Treant",
             "traits": [
                 "regenerator"
+            ],
+            "immunity": [
+                "sleep"
             ]
         },
         "giant_spider": {

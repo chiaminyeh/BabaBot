@@ -28,7 +28,10 @@
         "start_divine_shield": true,
         "weakness": [],
         "resistance": [
-            "physical"
+            "physical",
+            "sleep",
+            "paralysis",
+            "freeze"
         ],
         "money_min": 5000,
         "money_max": 8000,

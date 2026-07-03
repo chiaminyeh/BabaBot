@@ -222,5 +222,16 @@
         ]
     },
     "area_name_en": "Misty Forest",
-    "requires_boss": "area_01grassland"
+    "requires_boss": "area_01grassland",
+    "npc": {
+        "name": "精靈長老・艾露娜",
+        "name_en": "Elder Elune",
+        "emoji": "🧝‍♀️",
+        "intro": "一位身披翠綠斗篷的精靈長老靜立在古樹之下，空靈的目光彷彿看穿了千年的風霜。\n「旅人啊……森林正在哭泣。你願意聆聽她的悲鳴嗎？」",
+        "intro_en": "An elven elder in an emerald cloak stands silently beneath an ancient tree, her ethereal gaze seeming to pierce a thousand years of frost.\n\"Traveler... the forest is weeping. Will you listen to her lament?\"",
+        "quest_ids": [
+            "npc_elune_1",
+            "npc_elune_2"
+        ]
+    }
 }

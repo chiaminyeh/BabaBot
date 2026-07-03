@@ -69,7 +69,10 @@
                 "left": null,
                 "right": null
             },
-            "desc_en": "A pile of weathered bones lies at the dead end, likely the remains of some past challenger... you dare not look too closely."
+            "desc_en": "A pile of weathered bones lies at the dead end, likely the remains of some past challenger... you dare not look too closely.",
+            "loot": {
+                "high_health_potion": 2
+            }
         },
         "c7": {
             "desc": "牆壁上刻著古老的符文，幽幽發著光，但路到此為止。",
@@ -96,7 +99,10 @@
                 "left": null,
                 "right": null
             },
-            "desc_en": "A dead end. Shattered fragments of a sword sheath litter the ground — it seems you are not the first to come this way."
+            "desc_en": "A dead end. Shattered fragments of a sword sheath litter the ground — it seems you are not the first to come this way.",
+            "loot": {
+                "high_mana_potion": 2
+            }
         },
         "c10": {
             "desc": "盡頭只有一面光滑的石牆，什麼都沒有，連回音都顯得格外空洞。",
@@ -105,7 +111,12 @@
                 "left": null,
                 "right": null
             },
-            "desc_en": "Nothing but a smooth stone wall at the end. There's nothing here at all — even the echo feels hollow."
+            "desc_en": "Nothing but a smooth stone wall at the end. There's nothing here at all — even the echo feels hollow.",
+            "loot": {
+                "mystery_elixir": 1,
+                "high_health_potion": 2
+            },
+            "loot_requires_eye": true
         },
         "c11": {
             "desc": "微弱的聖光從遠處透出，奇妙的是，周圍濃郁的魔力波動似乎也跟著減弱了一些。",
@@ -141,7 +152,10 @@
                 "left": null,
                 "right": null
             },
-            "desc_en": "A dead end. A shattered stone tablet lies on the ground, its inscription too weathered to read."
+            "desc_en": "A dead end. A shattered stone tablet lies on the ground, its inscription too weathered to read.",
+            "loot": {
+                "elixir_of_cleansing": 1
+            }
         },
         "sword_room": {
             "desc": "你來到了一座圓形石室，正中央的石墩上，插著一把散發著聖潔光輝的長劍——【勇者之劍】！",

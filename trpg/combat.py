@@ -483,41 +483,79 @@ class TRPGCombat:
         return max(1, int(m_spd * self._slow_factor(slot.get("status"))))
 
     def predict_monster_actions(self, slot: dict) -> int:
-        """預估玩家下一次行動後，這隻怪物會行動幾次（給行動條 ❗ 提示用，冰凍已納入計算）。"""
-        import math
+        """預估玩家下一次行動後，這隻怪物會行動幾次（給行動條 ❗ 提示用，冰凍已納入計算）。
+        與事件驅動的 advance_time 用同一套連續時間數學，預估值與實際行動次數一致。"""
         if slot["hp"] <= 0:
             return 0
         p_spd = self._effective_player_spd()
         m_spd = self._effective_monster_spd(slot)
-        start = self.player_av - 100
-        iters = max(0, math.ceil((100 - start) / p_spd)) if start < 100 else 0
-        total_av = slot.get("av", 0) + m_spd * iters
+        start = self.player_av - 100  # 玩家行動結算後的 AV
+        t_interval = max(0.0, (100 - start) / p_spd)
+        total_av = slot.get("av", 0) + m_spd * t_interval
         return max(0, int(total_av // 100))
 
     def advance_time(self, log: str) -> str:
-        """推進時間條：玩家 AV 滿 100 前，場上每隻活著的怪物各自依自己的速度累積 AV 並行動。"""
+        """事件驅動的行動條推進：把「誰先填滿 100 AV」換算成連續時間軸上的事件，
+        依序讓最快到點的單位行動，直到輪回玩家為止。
+
+        舊版以「玩家每 +p_spd、所有怪物就 +m_spd」的粗顆粒推進，有兩個肉眼可見的毛病：
+        1. 速度超過 100 的怪物（例如持聖劍時 spd 200 的魔王）會把多次行動擠在同一個
+           刻度一口氣爆發，而不是平均穿插在玩家行動之間。
+        2. 玩家速度超過 100 時，爬條溢出的 AV 被存起來，隔一回合直接免費行動——那個
+           回合世界時間完全不推進，全場怪物看起來像被定住；下一個真刻度又連環補償，
+           形成「動2次→不動→動2次→不動」的詭異節奏，玩家會以為遊戲壞了。
+        事件驅動後長期行動次數比例與舊制完全相同（spd 200 對 spd 100 依然是 1:2），
+        只是分佈平滑：快的單位平均穿插行動，不再忽停忽爆。"""
         self.player_av -= 100
-        p_spd = self._effective_player_spd()
 
-        while self.player_av < 100:
-            self.player_av += p_spd
+        # 復活倒數改為每個「玩家行動」數一次。舊版依玩家爬條迭代次數倒數，
+        # 玩家速度越慢、怪物反而復活得越快，並不合理。
+        from trpg.monster_ai import tick_revive
+        for slot in list(self.view.monster_slots):
+            if slot["hp"] <= 0:
+                log += tick_revive(slot, self.player.language)
 
-            for slot in list(self.view.monster_slots):
+        guard = 0
+        while guard < 400:
+            guard += 1
+            p_spd = self._effective_player_spd()
+            remaining = 100 - self.player_av
+            if remaining <= 0:
+                break  # 玩家已就緒（舊存檔可能帶著溢出 AV，直接輪到玩家）
+            t_player = remaining / p_spd
+
+            # 找出最快到點的怪物
+            next_slot, t_best = None, None
+            for slot in self.view.monster_slots:
                 if slot["hp"] <= 0:
-                    from trpg.monster_ai import tick_revive
-                    log += tick_revive(slot, self.player.language)
                     continue
                 m_spd = self._effective_monster_spd(slot)
-                slot["av"] += m_spd
+                t_mon = (100 - slot["av"]) / m_spd
+                if t_best is None or t_mon < t_best:
+                    next_slot, t_best = slot, t_mon
 
-                while slot["av"] >= 100:
-                    slot["av"] -= 100
-                    if slot["hp"] > 0 and self.player.current_hp > 0:
-                        log = self._monster_act_slot(slot, log)
-                    if self.player.current_hp <= 0:
-                        return log
-                    if self._all_monsters_dead():
-                        return log + self._process_victory()
+            # 玩家比所有怪物先到點：推進到玩家行動，結束
+            if next_slot is None or t_best > t_player:
+                self.player_av = 100
+                for slot in self.view.monster_slots:
+                    if slot["hp"] > 0:
+                        slot["av"] += self._effective_monster_spd(slot) * t_player
+                break
+
+            # 推進所有單位到這個事件的時間點，讓該怪物行動（同時到點時怪物先動，與舊制一致）
+            t_next = max(0.0, t_best)
+            self.player_av += p_spd * t_next
+            for slot in self.view.monster_slots:
+                if slot["hp"] > 0:
+                    slot["av"] += self._effective_monster_spd(slot) * t_next
+
+            next_slot["av"] -= 100
+            if next_slot["hp"] > 0 and self.player.current_hp > 0:
+                log = self._monster_act_slot(next_slot, log)
+            if self.player.current_hp <= 0:
+                return log
+            if self._all_monsters_dead():
+                return log + self._process_victory()
 
         # 場上沒有活著的怪物、卻還有等待復活的怪物時，立即快轉完成復活，
         # 避免玩家面對「敵人全倒、戰鬥卻沒結束也沒復活」的空回合（高速度時尤其明顯）
@@ -635,7 +673,7 @@ class TRPGCombat:
         wake_log = break_sleep_on_damage(target_status, lang)
         if wake_log:
             log += f"\n{wake_log}"
-        log = self._apply_weapon_on_hit(log, target_status)
+        log = self._apply_weapon_on_hit(log, target_status, target_slot["monster"] if target_slot else None)
 
         # 被動技能：連續攻擊（extra_attack_multiplier）—— 裝備了這個被動的話，
         # 普攻後會用同一套屬性/暴擊條件再補一下（之前這個欄位根本沒人讀，形同虛設）。
@@ -705,7 +743,7 @@ class TRPGCombat:
                 return skill[field]
         return None
 
-    def _apply_weapon_on_hit(self, log: str, target_status: dict) -> str:
+    def _apply_weapon_on_hit(self, log: str, target_status: dict, target_monster: dict = None) -> str:
         weapon_id = self.player.weapon
         if not weapon_id:
             return log
@@ -720,6 +758,7 @@ class TRPGCombat:
                 self.cog.status_effects,
                 f"【{weapon_name}】",
                 lang=self.player.language,
+                monster=target_monster,
             )
             if s_log:
                 log += f"\n{s_log}"
@@ -1104,8 +1143,11 @@ class TRPGCombat:
         killed_monsters = [slot["monster"] for slot in self.view.monster_slots if not slot.get("fled")]
         fled_monsters = [slot["monster"] for slot in self.view.monster_slots if slot.get("fled")]
 
-        # 地下城走獨立的勝利結算（戰利品/通關），不給真實 exp/金幣
-        if all_monsters[0].get("is_dungeon"):
+        # 👇 情境旗標（地下城/魔塔/鬥技場）要掃「全部」怪物，不能只看第一格：
+        # 召喚出來的援軍會被插到第 0 格，而援軍身上沒有這些旗標——只看第一格的話，
+        # 魔塔頭目召喚過小怪就會導致樓層不推進、地下城戰鬥更會漏走封印結算、
+        # 直接發放真實經驗金幣（每個魔塔/地下城的層主都會召喚，必踩）。
+        if any(m.get("is_dungeon") for m in all_monsters):
             return self._process_dungeon_victory(killed_monsters)
 
         total_gold = 0
@@ -1132,8 +1174,8 @@ class TRPGCombat:
             names = "、".join(tf(m, "name", lang) for m in fled_monsters)
             flee_log = "\n" + t(lang, "combat.monsters_fled", "🏃 {names} 趁亂逃離了戰場，沒有獲得牠們的擊殺獎勵。", names=names)
 
-        # 魔塔/地下城是整場戰鬥共享的情境旗標，用第一隻怪物的標記判斷即可
-        primary_monster = all_monsters[0]
+        # 魔塔/鬥技場旗標同樣掃全部怪物（見上：召喚援軍會佔據第一格且不帶旗標）
+        primary_monster = next((m for m in all_monsters if m.get("is_tower") or m.get("is_colosseum")), all_monsters[0])
 
         tower_log = ""
         if primary_monster.get("is_tower"):

@@ -30,6 +30,9 @@
             "name_en": "Moltenmaw Drake",
             "traits": [
                 "wrath_stacker"
+            ],
+            "immunity": [
+                "burn"
             ]
         },
         "dragonkin_warrior": {
@@ -46,7 +49,8 @@
             ],
             "resistance": [
                 "fire",
-                "earth"
+                "earth",
+                "burn"
             ],
             "drops": {
                 "drake_fang": 0.5,
@@ -74,7 +78,8 @@
                 "ice"
             ],
             "resistance": [
-                "earth"
+                "earth",
+                "burn"
             ],
             "drops": {
                 "drake_fang": 0.6,
@@ -119,6 +124,9 @@
             "name_en": "Lava Tortoise",
             "traits": [
                 "fortify"
+            ],
+            "immunity": [
+                "burn"
             ]
         },
         "dragon_priest": {
@@ -135,7 +143,8 @@
             ],
             "resistance": [
                 "fire",
-                "dark"
+                "dark",
+                "burn"
             ],
             "drops": {
                 "dragon_scale_shard": 0.3,
@@ -169,7 +178,9 @@
         ],
         "resistance": [
             "fire",
-            "earth"
+            "earth",
+            "sleep",
+            "paralysis"
         ],
         "money_min": 2600,
         "money_max": 4200,
@@ -242,6 +253,9 @@
         },
         "traits": [
             "wrath_stacker"
+        ],
+        "immunity": [
+            "burn"
         ]
     },
     "boss_minions": {
@@ -261,6 +275,9 @@
             "traits": [
                 "wrath_stacker",
                 "pack_hunter"
+            ],
+            "immunity": [
+                "burn"
             ]
         },
         "dragonkin_guard": {
@@ -278,7 +295,21 @@
             "name_en": "Dragonkin Guard",
             "traits": [
                 "wrath_stacker"
+            ],
+            "resistance": [
+                "burn"
             ]
         }
+    },
+    "npc": {
+        "name": "龍語者・卡爾德",
+        "name_en": "Dragonspeaker Kaldr",
+        "emoji": "🐲",
+        "intro": "峭壁旁的洞居前，一位滿身龍紋刺青的老者盤坐在篝火邊，沙啞的嗓音如龍吼低鳴。\n「小傢伙，敢踏進龍的領地……你有那個膽識接受試煉嗎？」",
+        "intro_en": "Before a cliffside cave dwelling, an old man covered in dragon tattoos sits cross-legged by a fire, his rasping voice rumbling like a dragon's growl.\n\"Little one, daring to tread the domain of dragons... have you the nerve to face the trial?\"",
+        "quest_ids": [
+            "npc_kaldr_1",
+            "npc_kaldr_2"
+        ]
     }
 }

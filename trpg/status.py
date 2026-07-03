@@ -104,17 +104,45 @@ def try_apply_status(player, status_id: str, turns: int, status_defs: dict, sour
     return _set_status_entry(player.status_effects, status_id, turns, status_defs, source, is_player=True, lang=lang)
 
 
-def apply_status_to_monster(monster_status_dict: dict, status_id: str, turns: int, status_defs: dict, source: str = "", lang: str = "zh") -> str:
-    """對敵人施加異常狀態"""
+def _monster_status_shrug(monster_dict: dict, status_id: str, status_defs: dict, lang: str) -> str:
+    """怪物資料的 immunity / resistance 清單裡可以放異常狀態 id（例如骷髏免疫中毒、
+    魔王抗麻痺）。回傳阻擋訊息；空字串代表沒有擋下、照常施加。
+
+    這份資料一直存在於 26 隻怪物身上，但引擎過去只拿 resistance 清單判定「屬性傷害」
+    相剋，狀態名寫在裡面完全沒有效果——魔王設計上抗中毒/麻痺/冰凍/燃燒，實際上被
+    玩家照樣永凍。魔法之眼會把這些清單顯示給玩家看，顯示出來的抗性就必須是真的。
+    規則：immunity 內 → 完全免疫；resistance 內 → 50% 機率抵抗。"""
+    if not monster_dict:
+        return ""
+    info = status_defs.get(status_id, {})
+    name = tf(info, "name", lang) or status_id
+    monster_name = tf(monster_dict, "name", lang) or t(lang, "status.target_enemy", "敵人")
+    if status_id in (monster_dict.get("immunity") or []):
+        return t(lang, "status.monster_immune", "🛡️ {monster} 完全免疫【{name}】！", monster=monster_name, name=name)
+    if status_id in (monster_dict.get("resistance") or []) and random.random() < 0.5:
+        return t(lang, "status.monster_resisted", "🛡️ {monster} 抵抗了【{name}】！", monster=monster_name, name=name)
+    return ""
+
+
+def apply_status_to_monster(monster_status_dict: dict, status_id: str, turns: int, status_defs: dict, source: str = "", lang: str = "zh", monster: dict = None) -> str:
+    """對敵人施加異常狀態。傳入 monster（怪物定義 dict）才能結算狀態免疫/抵抗；
+    不傳則維持舊行為（無條件施加）。"""
+    shrug = _monster_status_shrug(monster, status_id, status_defs, lang)
+    if shrug:
+        return shrug
     return _set_status_entry(monster_status_dict, status_id, turns, status_defs, source, is_player=False, lang=lang)
 
 
 def apply_status(combatant, status_id: str, turns: int, status_defs: dict, source: str = "") -> str:
-    """通用版本：傳入 PlayerCombatant 或 MonsterCombatant，自動決定要不要檢查小丑面具免疫。"""
+    """通用版本：傳入 PlayerCombatant 或 MonsterCombatant，自動決定要不要檢查小丑面具免疫
+    （玩家）或狀態免疫/抵抗清單（怪物）。"""
     player = getattr(combatant, "player", None)
     if player is not None:
         return try_apply_status(player, status_id, turns, status_defs, source)
-    return apply_status_to_monster(combatant.status_effects, status_id, turns, status_defs, source, lang=combatant.lang)
+    return apply_status_to_monster(
+        combatant.status_effects, status_id, turns, status_defs, source,
+        lang=combatant.lang, monster=combatant.monster_dict,
+    )
 
 
 def _status_resist_factor(res: int) -> float:

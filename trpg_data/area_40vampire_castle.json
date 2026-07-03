@@ -18,7 +18,8 @@
             ],
             "resistance": [
                 "dark",
-                "earth"
+                "earth",
+                "sleep"
             ],
             "drops": {
                 "bat_wing": 1,
@@ -47,8 +48,7 @@
             ],
             "resistance": [
                 "physical",
-                "fire",
-                "poison"
+                "fire"
             ],
             "drops": {
                 "gargoyle_stone": 1,
@@ -60,6 +60,10 @@
             "name_en": "Guardian Gargoyle",
             "traits": [
                 "fortify"
+            ],
+            "immunity": [
+                "poison",
+                "sleep"
             ]
         },
         "vampire_servant": {
@@ -77,7 +81,8 @@
             ],
             "resistance": [
                 "dark",
-                "poison"
+                "poison",
+                "sleep"
             ],
             "drops": {
                 "tainted_blood": 1,
@@ -109,7 +114,8 @@
             ],
             "resistance": [
                 "dark",
-                "physical"
+                "physical",
+                "sleep"
             ],
             "drops": {
                 "tainted_blood": 0.5
@@ -232,6 +238,9 @@
         "name_en": "Vampire Progenitor",
         "traits": [
             "executioner"
+        ],
+        "immunity": [
+            "sleep"
         ]
     },
     "boss_minions": {
@@ -250,6 +259,9 @@
             "name_en": "Blood Ritual Acolyte",
             "traits": [
                 "bloodthirst"
+            ],
+            "resistance": [
+                "sleep"
             ]
         },
         "night_stalker": {
@@ -267,6 +279,9 @@
             "name_en": "Nightstalker",
             "traits": [
                 "bloodthirst"
+            ],
+            "resistance": [
+                "sleep"
             ]
         }
     },

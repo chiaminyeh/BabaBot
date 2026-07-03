@@ -19,7 +19,8 @@
             ],
             "resistance": [
                 "dark",
-                "physical"
+                "physical",
+                "burn"
             ],
             "drops": {
                 "tainted_blood": 1,
@@ -63,7 +64,9 @@
             ],
             "resistance": [
                 "dark",
-                "poison"
+                "poison",
+                "burn",
+                "sleep"
             ],
             "drops": {
                 "void_crystal": 0.5,
@@ -125,7 +128,8 @@
             ],
             "resistance": [
                 "dark",
-                "fire"
+                "fire",
+                "sleep"
             ],
             "drops": {
                 "dragon_plate": 0.4,
@@ -155,6 +159,9 @@
             "traits": [
                 "elemental_shifter",
                 "wrath_stacker"
+            ],
+            "immunity": [
+                "burn"
             ]
         },
         "hellhound": {
@@ -183,6 +190,9 @@
             "name_en": "Hellhound",
             "traits": [
                 "executioner"
+            ],
+            "immunity": [
+                "burn"
             ]
         },
         "fallen_seraph": {
@@ -199,7 +209,8 @@
             ],
             "resistance": [
                 "holy",
-                "physical"
+                "physical",
+                "sleep"
             ],
             "drops": {
                 "void_crystal": 0.15
@@ -217,7 +228,7 @@
         "max_hp": 28976,
         "atk": 750,
         "def": 100,
-        "spd": 1500,
+        "spd": 1200,
         "exp": 500000,
         "money_min": 5000,
         "money_max": 8000,
@@ -248,7 +259,7 @@
                 "name": "深淵召喚",
                 "trigger": {
                     "type": "interval",
-                    "value": 2
+                    "value": 5
                 },
                 "effect": {
                     "type": "summon_minion",
@@ -263,11 +274,11 @@
                 "name": "虛空爆發",
                 "trigger": {
                     "type": "chance",
-                    "value": 0.2
+                    "value": 0.15
                 },
                 "effect": {
                     "type": "heavy_attack",
-                    "mult": 5.5
+                    "mult": 4.5
                 },
                 "name_en": "Void Burst"
             },
@@ -280,8 +291,8 @@
                 },
                 "effect": {
                     "type": "debuff_spd",
-                    "mult": 0.5,
-                    "turns": 3
+                    "mult": 0.75,
+                    "turns": 2
                 },
                 "name_en": "Holy Thunder"
             },
@@ -308,19 +319,74 @@
                 },
                 "effect": {
                     "type": "heavy_attack",
-                    "mult": 5.0
+                    "mult": 4.0
                 },
                 "name_en": "Chaos Storm"
             }
         ],
-        "name_en": "Demon Lord Sargeras"
+        "name_en": "Demon Lord Sargeras",
+        "immunity": [
+            "sleep"
+        ],
+        "phase2": {
+            "hp_below": 0.35,
+            "heal_pct": 0.12,
+            "name_suffix": "・混沌化身",
+            "name_suffix_en": " (Chaos Incarnate)",
+            "transform_text": "薩格拉斯仰天長嘯，混沌之力撕裂了他的軀殼——魔王的真正面目顯現了！",
+            "transform_text_en": "Sargeras roars to the heavens as the power of chaos tears his shell apart — the Demon Lord's true form is revealed!",
+            "active_skills": [
+                {
+                    "id": "summon_imp_p2",
+                    "name": "深淵召喚",
+                    "name_en": "Abyssal Summon",
+                    "trigger": {
+                        "type": "interval",
+                        "value": 4
+                    },
+                    "effect": {
+                        "type": "summon_minion",
+                        "summon_ids": [
+                            "sargeras_imp"
+                        ]
+                    }
+                },
+                {
+                    "id": "chaos_annihilation",
+                    "name": "混沌湮滅",
+                    "name_en": "Chaos Annihilation",
+                    "trigger": {
+                        "type": "chance",
+                        "value": 0.2
+                    },
+                    "effect": {
+                        "type": "heavy_attack",
+                        "mult": 4.5
+                    }
+                },
+                {
+                    "id": "chaos_storm_p2",
+                    "name": "混沌風暴",
+                    "name_en": "Chaos Storm",
+                    "trigger": {
+                        "type": "chance",
+                        "value": 0.25
+                    },
+                    "effect": {
+                        "type": "heavy_attack",
+                        "mult": 4.0
+                    }
+                }
+            ]
+        },
+        "mdef": 750
     },
     "boss_minions": {
         "sargeras_imp": {
             "id": "sargeras_imp",
             "name": "薩格拉斯的小鬼",
-            "base_hp": 2741,
-            "base_atk": 200,
+            "base_hp": 420,
+            "base_atk": 130,
             "base_def": 0,
             "base_spd": 60,
             "ai": "none",

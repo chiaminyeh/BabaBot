@@ -932,6 +932,11 @@ def _execute_summon_minion(combat, slot: dict, skill: dict, log: str) -> str:
     if source == "pool":
         floor_hint = max(1, monster.get("level", combat.player.level))
         minion = instantiate_monster(minion_def, floor_hint, is_boss=False, floor_scale=0.3)
+        # 情境旗標跟著召喚者走：魔塔/地下城/鬥技場的戰鬥裡召喚出來的援軍也屬於
+        # 同一個情境，勝利結算（樓層推進、地下城封印、輪次推進）依賴這些旗標。
+        for ctx_flag in ("is_tower", "is_dungeon", "is_colosseum"):
+            if monster.get(ctx_flag):
+                minion[ctx_flag] = True
     else:
         minion = dict(minion_def)
         # Apply scaling based on Boss level for area minions
