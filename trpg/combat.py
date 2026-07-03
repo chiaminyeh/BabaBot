@@ -295,7 +295,7 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
             block += f"\n{wake_log}"
 
         apply_status_id = skill.get("apply_status")
-        if apply_status_id:
+        if apply_status_id and random.random() < skill.get("apply_status_chance", 1.0):
             skill_name = tf(skill, "name", target.lang)
             s_log = apply_status(target, apply_status_id, skill.get("status_turns", 2), status_defs, f"【{skill_name}】")
             if s_log:

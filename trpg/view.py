@@ -5,7 +5,7 @@ import random
 from datetime import datetime
 
 from trpg.i18n import t, tf
-from trpg.combat import TRPGCombat, exp_to_next_level, get_player_atk, get_player_def, get_player_magic
+from trpg.combat import TRPGCombat, exp_to_next_level, get_player_atk, get_player_def, get_player_magic, get_player_spd
 from trpg.status import format_status_list, clear_all_status, get_daily_jester_immunity
 from trpg.monster_pool import pick_random_monster
 from trpg.quest_popup import process_quest_popups
@@ -368,6 +368,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
 
         lang = self.player.language
         if self.cog.areas.get(self.player.current_area, {}).get("is_village"):
+            self.add_action_button(label=t(lang, "menu.btn_outskirts", "郊外"), style=discord.ButtonStyle.primary, custom_id="move_to_area_01grassland", row=0, emoji="🌾")
             self.add_action_button(label=t(lang, "menu.btn_move", "移動"), style=discord.ButtonStyle.secondary, custom_id="btn_move_menu", row=0, emoji="🗺️")
             self.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.success, custom_id="btn_status", row=0, emoji="📜")
             self.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.secondary, custom_id="btn_equip_menu", row=0, emoji="🛡️")
@@ -394,6 +395,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 self.add_action_button(label=t(lang, "menu.btn_area_boss_done", "✅ 已討伐"), style=discord.ButtonStyle.secondary, custom_id="btn_boss_explore", row=1, emoji="👹", disabled=True)
             else:
                 self.add_action_button(label=t(lang, "menu.btn_area_boss", "區域BOSS"), style=discord.ButtonStyle.danger, custom_id="btn_boss_explore", row=1, emoji="👹")
+            # 👇 郊外是新手村的直接鄰接區域，給一顆直達按鈕互通，不用繞去移動選單裡找。
+            if self.player.current_area == "area_01grassland":
+                self.add_action_button(label=t(lang, "menu.btn_back_village", "返回新手村"), style=discord.ButtonStyle.secondary, custom_id="move_to_area_00village", row=2, emoji="🏠")
 
     def build_artisan_menu(self):
         self.clear_items()
@@ -938,7 +942,10 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         if weapon.get("anti_boss_id") and weapon["anti_boss_id"] == boss_instance.get("id"):
             boss_instance["atk"] = max(1, int(boss_instance["atk"] * weapon.get("anti_boss_atk_mult", 1.0)))
             boss_instance["def"] = max(0, int(boss_instance["def"] * weapon.get("anti_boss_def_mult", 1.0)))
-            boss_instance["spd"] = max(5, int(boss_instance["spd"] * weapon.get("anti_boss_spd_mult", 1.0)))
+            if "anti_boss_spd_set" in weapon:
+                boss_instance["spd"] = weapon["anti_boss_spd_set"]
+            else:
+                boss_instance["spd"] = max(5, int(boss_instance["spd"] * weapon.get("anti_boss_spd_mult", 1.0)))
             anti_boss_text = "\n" + t(lang, "menu.anti_boss_weapon_glow", "✨ 【{weapon_name}】散發出聖潔的光輝，魔王的力量被大幅削弱了！", weapon_name=tf(weapon, "name", lang) if weapon else "")
 
         self.start_combat(self._build_boss_encounter(boss_instance, area_data))
@@ -1267,7 +1274,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         p_atk = get_player_atk(p, self.cog.items, self.cog.status_effects)
         p_def = get_player_def(p, self.cog.items)
         p_magic = get_player_magic(p, self.cog.items, self.cog.status_effects)
-        p_spd = getattr(p, "base_spd", 0)
+        p_spd = get_player_spd(p)
         p_res = getattr(p, "base_res", 0)
         unspent = get_unspent_points(p)
 

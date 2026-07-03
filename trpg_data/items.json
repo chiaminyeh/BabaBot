@@ -297,7 +297,7 @@
         "anti_boss_id": "sargeras",
         "anti_boss_atk_mult": 0.5,
         "anti_boss_def_mult": 0.5,
-        "anti_boss_spd_mult": 0.02,
+        "anti_boss_spd_set": 200,
         "desc": "傳說洞窟深處的石墩上插著的聖劍，纏繞著令魔王忌憚的聖光。對戰魔王薩格拉斯時，能大幅削弱他的力量。",
         "name_en": "Hero's Sword",
         "desc_en": "A legendary holy sword said to be lodged in a stone pedestal deep within a cave, wreathed in holy light that the Demon Lord fears. Greatly weakens Demon Lord Sargeras when used against him."

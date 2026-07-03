@@ -199,6 +199,5 @@
         },
         "name_en": "Goblin Chief"
     },
-    "area_name_en": "Village Outskirts",
-    "requires_boss": "area_00village"
+    "area_name_en": "Village Outskirts"
 }

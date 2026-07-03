@@ -46,3 +46,13 @@ Traceback (most recent call last):
   File "C:\Users\manza\AppData\Local\hermes\hermes-agent\venv\Lib\site-packages\discord\ext\commands\bot.py", line 965, in _load_from_module_spec
     raise errors.ExtensionFailed(key, e) from e
 discord.ext.commands.errors.ExtensionFailed: Extension 'response_cog' raised an error: ModuleNotFoundError: No module named 'pydantic_core._pydantic_core'
+[2026-07-03 04:43:26] [ERROR   ] discord.app_commands.tree: Ignoring exception in command tree
+Traceback (most recent call last):
+  File "C:\Users\manza\AppData\Local\hermes\hermes-agent\venv\Lib\site-packages\discord\app_commands\tree.py", line 1138, in wrapper
+    await self._call(interaction)
+  File "C:\Users\manza\AppData\Local\hermes\hermes-agent\venv\Lib\site-packages\discord\app_commands\tree.py", line 1270, in _call
+    command, options = self._get_app_command_options(data)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\manza\AppData\Local\hermes\hermes-agent\venv\Lib\site-packages\discord\app_commands\tree.py", line 1174, in _get_app_command_options
+    raise CommandNotFound(name, parents)
+discord.app_commands.errors.CommandNotFound: Application command 'trpg' not found

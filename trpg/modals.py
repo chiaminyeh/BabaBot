@@ -97,9 +97,9 @@ class StatPointModal(discord.ui.Modal, title="投入屬性點"):
 
         await self.game_view.handle_stat_add(self.stat_key, amount=amount)
         try:
-            await interaction.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
-        except Exception:
-            pass
+            await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
+        except Exception as e:
+            print(f"屬性點面板更新失敗: {e}")
 
 
 class BuyItemModal(discord.ui.Modal, title="批量購買"):
@@ -127,9 +127,9 @@ class BuyItemModal(discord.ui.Modal, title="批量購買"):
 
         await self.game_view.execute_buy(self.item_id, amount)
         try:
-            await interaction.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
-        except Exception:
-            pass
+            await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
+        except Exception as e:
+            print(f"購買面板更新失敗: {e}")
 
 class SellItemModal(discord.ui.Modal, title="批量出售"):
     def __init__(self, game_view, item_id: str):
@@ -156,6 +156,6 @@ class SellItemModal(discord.ui.Modal, title="批量出售"):
 
         await self.game_view.execute_sell(self.item_id, amount)
         try:
-            await interaction.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
-        except Exception:
-            pass
+            await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
+        except Exception as e:
+            print(f"出售面板更新失敗: {e}")
