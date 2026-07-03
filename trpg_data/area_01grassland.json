@@ -16,7 +16,10 @@
                 "slime_jelly": 1
             },
             "ai": "none",
-            "name_en": "Grassland Slime"
+            "name_en": "Grassland Slime",
+            "traits": [
+                "splitter"
+            ]
         },
         "goblin": {
             "id": "goblin",
@@ -34,8 +37,11 @@
                 "health_potion": 0.2,
                 "leather_armor": 0.4
             },
-            "ai": "none",
-            "name_en": "Lone Goblin"
+            "ai": "bomber",
+            "name_en": "Lone Goblin",
+            "traits": [
+                "pack_hunter"
+            ]
         },
         "wild_boar": {
             "id": "wild_boar",
@@ -53,7 +59,10 @@
                 "raw_meat": 0.7
             },
             "ai": "none",
-            "name_en": "Wild Boar"
+            "name_en": "Wild Boar",
+            "traits": [
+                "avenger"
+            ]
         },
         "rabid_rat": {
             "id": "rabid_rat",
@@ -70,7 +79,10 @@
                 "raw_meat": 0.4
             },
             "ai": "kamikaze",
-            "name_en": "Rabid Rat"
+            "name_en": "Rabid Rat",
+            "traits": [
+                "desperado"
+            ]
         },
         "bandit": {
             "id": "bandit",
@@ -87,7 +99,7 @@
                 "stolen_gem": 0.2,
                 "health_potion": 0.2
             },
-            "ai": "debuffer",
+            "ai": "thief",
             "name_en": "Roadside Thug"
         },
         "ironshell_tortoise": {
@@ -104,7 +116,7 @@
             "drops": {
                 "health_potion": 0.15
             },
-            "ai": "none",
+            "ai": "counter_stance",
             "name_en": "Ironshell Tortoise"
         }
     },
@@ -121,7 +133,10 @@
             "money_max": 0,
             "drops": {},
             "ai": "support_healer",
-            "name_en": "Goblin Apothecary"
+            "name_en": "Goblin Apothecary",
+            "traits": [
+                "pack_hunter"
+            ]
         },
         "goblin_raider": {
             "id": "goblin_raider",
@@ -135,7 +150,10 @@
             "money_max": 0,
             "drops": {},
             "ai": "debuffer",
-            "name_en": "Goblin Raider"
+            "name_en": "Goblin Raider",
+            "traits": [
+                "pack_hunter"
+            ]
         }
     },
     "boss": {
@@ -197,7 +215,10 @@
             "name_suffix_en": "(Bloodthirsty Chieftain)",
             "transform_text_en": "The Goblin Chief's bloodshot eyes flare red as he raises his weapon and roars!"
         },
-        "name_en": "Goblin Chief"
+        "name_en": "Goblin Chief",
+        "traits": [
+            "pack_hunter"
+        ]
     },
     "area_name_en": "Village Outskirts"
 }

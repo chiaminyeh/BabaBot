@@ -49,7 +49,10 @@ def absorb_monster_damage(slot: dict, new_hp: int) -> int:
         if dmg > allowed:
             slot["last_absorb"] = "cap"
         dmg = min(dmg, allowed)
-        slot["dmg_taken_since_act"] = taken + dmg
+
+    # 「兩次行動之間的承傷」對所有怪物都要記（不只 damage_cap）：復仇（avenger）、
+    # 反擊架勢（counter_stance）等特性靠這個窗口判斷「你剛才打了我多少」。
+    slot["dmg_taken_since_act"] = slot.get("dmg_taken_since_act", 0) + dmg
 
     return old_hp - dmg
 

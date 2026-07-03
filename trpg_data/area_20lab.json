@@ -30,7 +30,10 @@
             "money_min": 50,
             "money_max": 85,
             "ai": "berserk_low_hp",
-            "name_en": "Failed Experiment"
+            "name_en": "Failed Experiment",
+            "traits": [
+                "regenerator"
+            ]
         },
         "mutant_slime": {
             "id": "mutant_slime",
@@ -61,7 +64,10 @@
             "money_min": 60,
             "money_max": 100,
             "ai": "self_heal",
-            "name_en": "Mutant Slime"
+            "name_en": "Mutant Slime",
+            "traits": [
+                "splitter"
+            ]
         },
         "clone_soldier": {
             "id": "clone_soldier",
@@ -83,8 +89,11 @@
             },
             "money_min": 55,
             "money_max": 90,
-            "ai": "buffer",
-            "name_en": "Clone Soldier"
+            "ai": "trickster",
+            "name_en": "Clone Soldier",
+            "traits": [
+                "splitter"
+            ]
         },
         "toxic_ooze": {
             "id": "toxic_ooze",
@@ -113,8 +122,12 @@
             "status_chance": 0.4,
             "money_min": 58,
             "money_max": 95,
-            "ai": "shield_ally",
-            "name_en": "Toxic Ooze"
+            "ai": "none",
+            "name_en": "Toxic Ooze",
+            "traits": [
+                "splitter",
+                "shield_breaker"
+            ]
         }
     },
     "boss": {
@@ -152,7 +165,7 @@
             "burn"
         ],
         "status_chance": 0.55,
-        "ai": "debuffer",
+        "ai": "random_caster",
         "active_skills": [
             {
                 "id": "deploy_clone",
@@ -196,7 +209,12 @@
             "name_suffix_en": "(Out of Control)",
             "transform_text_en": "The Mad Doctor slams down the last vial, and his muscles surge and swell in an instant!"
         },
-        "name_en": "Mad Doctor"
+        "name_en": "Mad Doctor",
+        "ai_spells": [
+            "fireball",
+            "thunder_strike",
+            "ice_spear"
+        ]
     },
     "boss_minions": {
         "lab_medic": {
@@ -225,7 +243,10 @@
             "money_max": 0,
             "drops": {},
             "ai": "debuffer",
-            "name_en": "Venom Replicant"
+            "name_en": "Venom Replicant",
+            "traits": [
+                "splitter"
+            ]
         }
     },
     "area_name_en": "Mad Doctor's Laboratory",

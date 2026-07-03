@@ -22,7 +22,10 @@
             ],
             "status_chance": 0.3,
             "ai": "multi_hit_flurry",
-            "name_en": "Frenzied Killer Bee"
+            "name_en": "Frenzied Killer Bee",
+            "traits": [
+                "avenger"
+            ]
         },
         "treant": {
             "id": "treant",
@@ -46,8 +49,11 @@
                 "ancient_wood": 1,
                 "iron_sword": 0.08
             },
-            "ai": "shield_ally",
-            "name_en": "Withered Treant"
+            "ai": "bodyguard",
+            "name_en": "Withered Treant",
+            "traits": [
+                "regenerator"
+            ]
         },
         "giant_spider": {
             "id": "giant_spider",
@@ -76,7 +82,10 @@
             ],
             "status_chance": 0.35,
             "ai": "debuffer",
-            "name_en": "Giant Spider"
+            "name_en": "Giant Spider",
+            "traits": [
+                "dot_leech"
+            ]
         },
         "will_o_wisp": {
             "id": "will_o_wisp",
@@ -101,7 +110,7 @@
                 "ectoplasm": 0.5,
                 "scroll_iron_skin": 0.1
             },
-            "ai": "magic_absorb",
+            "ai": "time_thief",
             "name_en": "Will-o'-the-Wisp"
         }
     },
@@ -135,7 +144,7 @@
             "paralysis"
         ],
         "status_chance": 0.45,
-        "ai": "self_heal",
+        "ai": "summoner",
         "active_skills": [
             {
                 "id": "summon_swarm",
@@ -179,7 +188,14 @@
             "name_suffix_en": "(Swarm Frenzy)",
             "transform_text_en": "The Venomous Bee Queen exudes a thick cloud of poisonous miasma, charging in a frenzied flurry of wings!"
         },
-        "name_en": "Venomous Bee Queen"
+        "name_en": "Venomous Bee Queen",
+        "summon_ids": [
+            "worker_bee",
+            "soldier_bee"
+        ],
+        "traits": [
+            "avenger"
+        ]
     },
     "boss_minions": {
         "worker_bee": {
@@ -194,7 +210,10 @@
             "money_max": 0,
             "drops": {},
             "ai": "support_healer",
-            "name_en": "Worker Bee"
+            "name_en": "Worker Bee",
+            "traits": [
+                "avenger"
+            ]
         },
         "soldier_bee": {
             "id": "soldier_bee",
@@ -208,7 +227,10 @@
             "money_max": 0,
             "drops": {},
             "ai": "debuffer",
-            "name_en": "Soldier Bee"
+            "name_en": "Soldier Bee",
+            "traits": [
+                "avenger"
+            ]
         }
     },
     "area_name_en": "Deep Forest",

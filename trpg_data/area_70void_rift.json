@@ -13,8 +13,12 @@
             "def": 0,
             "exp": 32000,
             "spd": 92,
-            "weakness": ["holy"],
-            "resistance": ["dark"],
+            "weakness": [
+                "holy"
+            ],
+            "resistance": [
+                "dark"
+            ],
             "drops": {
                 "void_shard": 0.45,
                 "high_health_potion": 0.25
@@ -22,7 +26,10 @@
             "money_min": 300,
             "money_max": 480,
             "ai": "charge_attack",
-            "name_en": "Void Stalker"
+            "name_en": "Void Stalker",
+            "traits": [
+                "executioner"
+            ]
         },
         "rift_horror": {
             "id": "rift_horror",
@@ -33,15 +40,24 @@
             "def": 0,
             "exp": 34000,
             "spd": 60,
-            "weakness": ["holy", "fire"],
-            "resistance": ["dark", "ice"],
+            "weakness": [
+                "holy",
+                "fire"
+            ],
+            "resistance": [
+                "dark",
+                "ice"
+            ],
             "drops": {
                 "void_shard": 0.55
             },
             "money_min": 320,
             "money_max": 500,
             "ai": "lifesteal",
-            "name_en": "Rift Horror"
+            "name_en": "Rift Horror",
+            "traits": [
+                "avenger"
+            ]
         },
         "void_mage_adept": {
             "id": "void_mage_adept",
@@ -52,8 +68,13 @@
             "def": 0,
             "exp": 33000,
             "spd": 72,
-            "weakness": ["holy", "thunder"],
-            "resistance": ["dark"],
+            "weakness": [
+                "holy",
+                "thunder"
+            ],
+            "resistance": [
+                "dark"
+            ],
             "drops": {
                 "void_shard": 0.4,
                 "echo_herb": 0.5,
@@ -61,10 +82,19 @@
             },
             "money_min": 330,
             "money_max": 520,
-            "ai": "debuffer",
-            "status_on_hit": ["silence"],
+            "ai": "random_caster",
+            "status_on_hit": [
+                "silence"
+            ],
             "status_chance": 0.3,
-            "name_en": "Void Adept"
+            "name_en": "Void Adept",
+            "ai_spells": [
+                "dark_orb",
+                "hypnotic_gaze"
+            ],
+            "traits": [
+                "mana_burn"
+            ]
         },
         "crystal_sentinel": {
             "id": "crystal_sentinel",
@@ -75,8 +105,13 @@
             "def": 280,
             "exp": 38000,
             "spd": 25,
-            "weakness": ["earth"],
-            "resistance": ["thunder", "physical"],
+            "weakness": [
+                "earth"
+            ],
+            "resistance": [
+                "thunder",
+                "physical"
+            ],
             "drops": {
                 "void_shard": 0.6,
                 "stolen_gem": 0.4
@@ -84,7 +119,10 @@
             "money_min": 380,
             "money_max": 600,
             "ai": "heavy_tank",
-            "name_en": "Crystal Sentinel"
+            "name_en": "Crystal Sentinel",
+            "traits": [
+                "fortify"
+            ]
         },
         "phase_wraith": {
             "id": "phase_wraith",
@@ -95,22 +133,34 @@
             "def": 0,
             "exp": 40000,
             "spd": 82,
-            "weakness": ["holy"],
-            "resistance": ["dark", "physical"],
+            "weakness": [
+                "holy"
+            ],
+            "resistance": [
+                "dark",
+                "physical"
+            ],
             "drops": {
                 "void_shard": 0.5,
                 "ectoplasm": 0.6
             },
             "money_min": 350,
             "money_max": 560,
-            "ai": "magic_absorb",
+            "ai": "phase_shifter",
             "active_skills": [
                 {
                     "id": "phase_out",
                     "name": "相位偏移",
                     "name_en": "Phase Shift",
-                    "trigger": {"type": "interval", "value": 4},
-                    "effect": {"type": "self_status", "status_id": "intangible", "turns": 1}
+                    "trigger": {
+                        "type": "interval",
+                        "value": 4
+                    },
+                    "effect": {
+                        "type": "self_status",
+                        "status_id": "intangible",
+                        "turns": 1
+                    }
                 }
             ],
             "name_en": "Phase Wraith"
@@ -126,8 +176,14 @@
         "def": 0,
         "exp": 600000,
         "spd": 96,
-        "weakness": ["holy"],
-        "resistance": ["dark", "poison", "ice"],
+        "weakness": [
+            "holy"
+        ],
+        "resistance": [
+            "dark",
+            "poison",
+            "ice"
+        ],
         "money_min": 4200,
         "money_max": 6800,
         "drops": {
@@ -137,32 +193,55 @@
             "voidwalker_glaive": 0.08,
             "mystery_lucky_coin": 0.05
         },
-        "status_on_hit": ["freeze", "paralysis"],
+        "status_on_hit": [
+            "freeze",
+            "paralysis"
+        ],
         "status_chance": 0.4,
-        "ai": "debuffer",
+        "ai": "curse_weaver",
         "active_skills": [
             {
                 "id": "reality_severance",
                 "name": "現實切斷",
                 "name_en": "Reality Severance",
-                "trigger": {"type": "interval", "value": 3},
-                "effect": {"type": "inflict_status", "status_id": "silence", "turns": 2}
+                "trigger": {
+                    "type": "interval",
+                    "value": 3
+                },
+                "effect": {
+                    "type": "inflict_status",
+                    "status_id": "silence",
+                    "turns": 2
+                }
             },
             {
                 "id": "void_phase",
                 "name": "虛空相位",
                 "name_en": "Void Phase",
-                "trigger": {"type": "interval", "value": 5},
-                "effect": {"type": "self_status", "status_id": "intangible", "turns": 1}
+                "trigger": {
+                    "type": "interval",
+                    "value": 5
+                },
+                "effect": {
+                    "type": "self_status",
+                    "status_id": "intangible",
+                    "turns": 1
+                }
             },
             {
                 "id": "rift_spawn",
                 "name": "裂隙增殖",
                 "name_en": "Rift Spawning",
-                "trigger": {"type": "interval", "value": 4},
+                "trigger": {
+                    "type": "interval",
+                    "value": 4
+                },
                 "effect": {
                     "type": "summon_minion",
-                    "summon_ids": ["void_spawnling", "null_priest"]
+                    "summon_ids": [
+                        "void_spawnling",
+                        "null_priest"
+                    ]
                 }
             }
         ],
@@ -179,18 +258,34 @@
                     "id": "reality_severance",
                     "name": "現實切斷",
                     "name_en": "Reality Severance",
-                    "trigger": {"type": "interval", "value": 3},
-                    "effect": {"type": "inflict_status", "status_id": "silence", "turns": 2}
+                    "trigger": {
+                        "type": "interval",
+                        "value": 3
+                    },
+                    "effect": {
+                        "type": "inflict_status",
+                        "status_id": "silence",
+                        "turns": 2
+                    }
                 },
                 {
                     "id": "annihilation_ray",
                     "name": "湮滅射線",
                     "name_en": "Annihilation Ray",
-                    "trigger": {"type": "hp_below", "value": 0.25},
-                    "effect": {"type": "heavy_attack", "mult": 2.6}
+                    "trigger": {
+                        "type": "hp_below",
+                        "value": 0.25
+                    },
+                    "effect": {
+                        "type": "heavy_attack",
+                        "mult": 2.6
+                    }
                 }
             ]
-        }
+        },
+        "traits": [
+            "mana_burn"
+        ]
     },
     "boss_minions": {
         "void_spawnling": {
@@ -205,7 +300,10 @@
             "money_max": 0,
             "drops": {},
             "ai": "none",
-            "name_en": "Void Spawnling"
+            "name_en": "Void Spawnling",
+            "traits": [
+                "pack_hunter"
+            ]
         },
         "null_priest": {
             "id": "null_priest",
@@ -218,8 +316,11 @@
             "money_min": 0,
             "money_max": 0,
             "drops": {},
-            "ai": "support_healer",
-            "name_en": "Null Priest"
+            "ai": "mass_healer",
+            "name_en": "Null Priest",
+            "traits": [
+                "mana_burn"
+            ]
         }
     }
 }

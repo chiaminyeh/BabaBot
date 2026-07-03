@@ -43,7 +43,10 @@
                     "name_en": "Abyssal Slam"
                 }
             ],
-            "name_en": "Abyss Guard"
+            "name_en": "Abyss Guard",
+            "traits": [
+                "shield_breaker"
+            ]
         },
         "demon_warlock": {
             "id": "demon_warlock",
@@ -68,7 +71,7 @@
             },
             "money_min": 380,
             "money_max": 580,
-            "ai": "none",
+            "ai": "random_caster",
             "active_skills": [
                 {
                     "id": "warlock_dark_orb",
@@ -97,7 +100,14 @@
                     "name_en": "Charming Eye"
                 }
             ],
-            "name_en": "Demon Warlock"
+            "name_en": "Demon Warlock",
+            "ai_spells": [
+                "dark_orb",
+                "inferno"
+            ],
+            "traits": [
+                "mana_burn"
+            ]
         },
         "corrupted_dragon": {
             "id": "corrupted_dragon",
@@ -141,7 +151,11 @@
                     "name_en": "Fallen Dragon's Breath"
                 }
             ],
-            "name_en": "Fallen Dragon"
+            "name_en": "Fallen Dragon",
+            "traits": [
+                "elemental_shifter",
+                "wrath_stacker"
+            ]
         },
         "hellhound": {
             "id": "hellhound",
@@ -166,7 +180,10 @@
             "money_min": 350,
             "money_max": 500,
             "ai": "kamikaze",
-            "name_en": "Hellhound"
+            "name_en": "Hellhound",
+            "traits": [
+                "executioner"
+            ]
         },
         "fallen_seraph": {
             "id": "fallen_seraph",
@@ -189,7 +206,7 @@
             },
             "money_min": 380,
             "money_max": 550,
-            "ai": "support_healer",
+            "ai": "mass_healer",
             "name_en": "Fallen Seraph"
         }
     },
@@ -308,7 +325,10 @@
             "base_spd": 60,
             "ai": "none",
             "drops": {},
-            "name_en": "Sargeras's Imp"
+            "name_en": "Sargeras's Imp",
+            "traits": [
+                "pack_hunter"
+            ]
         }
     },
     "drops": {

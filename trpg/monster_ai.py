@@ -9,6 +9,13 @@ monster dict 可選欄位：
 - "phase2": {"hp_below":0.5,"ai":"...","name_suffix":"...","heal_pct":0.1,"transform_text":"...","active_skills":[...]}
   ——HP 低於門檻時觸發一次性轉變（變更 ai/active_skills/名稱並回一點血），等同 BOSS 二階段。
 - "revive_once": {"turns":3,"hp_pct":0.3} —— 死亡後倒數幾個時間刻度，自動以該比例HP復活一次（僅一次）。
+- "traits": ["pack_hunter", ...] —— 被動特性，可疊加多個並與任何 ai 組合（見 TRAIT_REGISTRY）。
+  設計目標：同一族的怪物共用一個「族群招牌特性」（哥布林=群體狩獵、吸血鬼=嗜血、石像=強固...），
+  再各自搭配不同的主動 ai，讓每隻怪物打起來都不一樣、但同族之間有明顯的呼應。
+  特性有三個掛勾點：turn_start（行動前，可劫持整回合，例如裝死/分裂）、
+  atk_mult（普攻傷害倍率修正）、after_attack（普攻命中後的附帶效果，例如吸血/破甲/汲魔）。
+- "ai_spells": ["fireball", ...] —— 給 random_caster 用的施法清單（skills.json 的技能 id）。
+- "summon_ids": ["worker_bee", ...] —— 給 summoner ai 用的召喚清單。
 """
 
 import random
@@ -24,6 +31,18 @@ def _plain_attack(combat, slot: dict, log: str, atk_mult: float = 1.0) -> str:
     lang = combat.player.language
     monster = slot["monster"]
     m_atk = int(monster["atk"] * atk_mult)
+
+    # 被動特性：普攻傷害倍率修正（群體狩獵/處刑/復仇...），提示訊息集中收集，命中後才顯示
+    trait_notes = []
+    for tname in monster.get("traits", ()):
+        hook = TRAIT_REGISTRY.get(tname, {}).get("atk_mult")
+        if hook:
+            mult, note = hook(combat, slot)
+            if mult != 1.0:
+                m_atk = max(1, int(m_atk * mult))
+                if note:
+                    trait_notes.append(note)
+
     if slot["status"].get("paralysis"):
         m_atk = int(m_atk * combat.cog.status_effects.get("paralysis", {}).get("atk_mult", 0.70))
     m_dmg = calc_monster_damage(m_atk, get_player_def(combat.player, combat.cog.items))
@@ -44,6 +63,8 @@ def _plain_attack(combat, slot: dict, log: str, atk_mult: float = 1.0) -> str:
         log += t(lang, "monster_ai.defend_block", "\n🛡️ 防禦姿態擋下了大量傷害！")
 
     combat.player.current_hp -= m_dmg
+    for note in trait_notes:
+        log += f"\n{note}"
     log += t(lang, "monster_ai.attack_hit", "\n🥊 {name} 行動！使你受到了 {dmg} 點傷害。", name=tf(monster, "name", lang), dmg=m_dmg)
 
     from trpg.status import break_sleep_on_damage
@@ -54,6 +75,13 @@ def _plain_attack(combat, slot: dict, log: str, atk_mult: float = 1.0) -> str:
     status_log = try_monster_apply_status(combat.player, monster, combat.cog.status_effects)
     if status_log:
         log += f"\n{status_log}"
+
+    # 被動特性：命中後的附帶效果（嗜血回血/破甲/魔力汲取...）——玩家死亡時跳過
+    if combat.player.current_hp > 0 and m_dmg > 0:
+        for tname in monster.get("traits", ()):
+            hook = TRAIT_REGISTRY.get(tname, {}).get("after_attack")
+            if hook:
+                log = hook(combat, slot, m_dmg, log)
 
     if combat.player.current_hp <= 0:
         return combat.view.process_death(log, t(lang, "monster_ai.death_attack", "💀 承受不住 {name} 的攻擊，你倒下了...", name=tf(monster, "name", lang)))
@@ -314,6 +342,196 @@ def ai_sargeras(combat, slot, log):
     return _plain_attack(combat, slot, log, atk_mult=1.1)
 
 
+def ai_counter_stance(combat, slot, log):
+    """反擊架勢：擺出架勢的那回合不攻擊；若玩家在牠下次行動前打了牠，
+    下次行動變成 1.8 倍的猛烈反擊——玩家要學會「看到架勢就換目標或防禦」。"""
+    lang = combat.player.language
+    monster = slot["monster"]
+    if slot.pop("counter_stance", False):
+        if slot.get("dmg_last_window", 0) > 0:
+            log += t(lang, "monster_ai.counter_stance_hit", "\n🥋💥 你上當了！{name} 抓住你出手的破綻，發動了致命反擊！", name=tf(monster, "name", lang))
+            return _plain_attack(combat, slot, log, atk_mult=1.8)
+        log += t(lang, "monster_ai.counter_stance_idle", "\n🥋 {name} 見你沒有上當，悻悻地收起了架勢。", name=tf(monster, "name", lang))
+        return _plain_attack(combat, slot, log)
+    if random.random() < 0.3:
+        slot["counter_stance"] = True
+        return log + t(lang, "monster_ai.counter_stance_enter", "\n🥋 {name} 收起攻勢，擺出了反擊的架勢……（此時攻擊牠將遭到猛烈反擊！）", name=tf(monster, "name", lang))
+    return _plain_attack(combat, slot, log)
+
+
+def ai_bomber(combat, slot, log):
+    """炸彈客：點燃引信警告一回合，下回合引爆 2.2 倍傷害並高機率附加燃燒。
+    與 charge_attack 的差異：倍率較低但帶 DOT，且引信點燃後無法被打斷（只能殺掉牠或防禦）。"""
+    from trpg.status import try_apply_status
+    lang = combat.player.language
+    monster = slot["monster"]
+    if slot.pop("bomb_fuse", False):
+        log += t(lang, "monster_ai.bomber_boom", "\n💣💥 炸彈在你面前炸開了！", name=tf(monster, "name", lang))
+        log = _plain_attack(combat, slot, log, atk_mult=2.2)
+        if combat.player.current_hp > 0 and random.random() < 0.7:
+            s_log = try_apply_status(combat.player, "burn", 2, combat.cog.status_effects, tf(monster, "name", lang) or "")
+            if s_log:
+                log += f"\n{s_log}"
+        return log
+    if random.random() < 0.3:
+        slot["bomb_fuse"] = True
+        return log + t(lang, "monster_ai.bomber_fuse", "\n💣 {name} 掏出一顆冒著火花的炸彈，點燃了引信！（下回合爆炸，做好防禦準備！）", name=tf(monster, "name", lang))
+    return _plain_attack(combat, slot, log)
+
+
+def ai_thief(combat, slot, log):
+    """盜賊：有機率偷走玩家金幣（贓款計入牠的掉落金額，殺掉就能拿回來）；
+    重傷時會警告一回合後帶著贓款逃跑——玩家得在「追殺回本」與「見好就收」間抉擇。"""
+    lang = combat.player.language
+    monster = slot["monster"]
+    if slot.get("telegraph_flee"):
+        slot["telegraph_flee"] = False
+        slot["hp"] = 0
+        slot["fled"] = True
+        stolen = slot.get("stolen_gold", 0)
+        if stolen > 0:
+            return log + t(lang, "monster_ai.thief_flee_gone", "\n💰🏃 {name} 帶著你的 {amount} 枚金幣逃之夭夭了……", name=tf(monster, "name", lang), amount=stolen)
+        return log + t(lang, "monster_ai.flee", "\n🏃 {name} 趁機逃離了戰場！", name=tf(monster, "name", lang))
+
+    hp_pct = slot["hp"] / monster["max_hp"] if monster.get("max_hp") else 1
+    if 0 < hp_pct < 0.25 and random.random() < 0.6:
+        slot["telegraph_flee"] = True
+        return log + t(lang, "monster_ai.thief_flee_warn", "\n💰😰 {name} 抱著贓款想要開溜！（下回合就會帶著你的錢逃走，盡快解決牠！）", name=tf(monster, "name", lang))
+
+    if random.random() < 0.3:
+        amount = min(combat.cog.get_bank_balance(combat.view.user_id), 15 + monster.get("level", combat.player.level) * 3)
+        if amount > 0 and combat.cog.try_spend(combat.view.user_id, combat.player, amount):
+            slot["stolen_gold"] = slot.get("stolen_gold", 0) + amount
+            monster["money_min"] = monster.get("money_min", 0) + amount
+            monster["money_max"] = monster.get("money_max", 0) + amount
+            return log + t(lang, "monster_ai.thief_steal", "\n💰 {name} 身手矯健地摸走了你 {amount} 枚金幣！（擊敗牠就能拿回來）", name=tf(monster, "name", lang), amount=amount)
+    return _plain_attack(combat, slot, log)
+
+
+def ai_time_thief(combat, slot, log):
+    """時間竊賊：偷走玩家的行動值，讓玩家的下次行動大幅延後（整場戰鬥最多 3 次，避免無限鎖回合）。"""
+    lang = combat.player.language
+    if slot.get("time_steals", 0) < 3 and combat.player_av > 40 and random.random() < 0.35:
+        slot["time_steals"] = slot.get("time_steals", 0) + 1
+        combat.player_av = max(0, combat.player_av - 30)
+        return log + t(lang, "monster_ai.time_thief", "\n⏳ {name} 扭曲了你周圍的時間，你的行動被大幅延後了！", name=tf(slot["monster"], "name", lang))
+    return _plain_attack(combat, slot, log)
+
+
+def ai_trickster(combat, slot, log):
+    """幻術師：有機率跟另一隻同伴瞬間交換站位（打亂玩家的集火順序），換位時短暫無實體。"""
+    lang = combat.player.language
+    slots = combat.view.monster_slots
+    others = [s for s in slots if s is not slot and s["hp"] > 0]
+    if others and random.random() < 0.3:
+        other = random.choice(others)
+        i, j = slots.index(slot), slots.index(other)
+        slots[i], slots[j] = slots[j], slots[i]
+        slot.setdefault("status", {})["intangible"] = {"turns": 1, "tick": 1}
+        return log + t(lang, "monster_ai.trickster_swap", "\n🃏 {name} 施展幻術，跟【{other}】瞬間交換了位置！", name=tf(slot["monster"], "name", lang), other=tf(other["monster"], "name", lang))
+    return _plain_attack(combat, slot, log)
+
+
+def ai_glass_cannon(combat, slot, log):
+    """玻璃大炮：每次都不顧一切地猛攻（1.4 倍），但有 15% 機率用力過猛跌倒空過一回合。"""
+    lang = combat.player.language
+    if random.random() < 0.15:
+        return log + t(lang, "monster_ai.glass_cannon_stumble", "\n💫 {name} 用力過猛，一頭栽在地上，這回合什麼也沒做！", name=tf(slot["monster"], "name", lang))
+    log += t(lang, "monster_ai.glass_cannon_smash", "\n⚡ {name} 不顧防禦地全力猛攻！", name=tf(slot["monster"], "name", lang))
+    return _plain_attack(combat, slot, log, atk_mult=1.4)
+
+
+def ai_phase_shifter(combat, slot, log):
+    """相位穿梭：固定節奏交替——潛入相位（該回合不攻擊、近乎免傷）→ 暴起重擊（1.5 倍）。
+    節奏完全可預測，獎勵讀懂節奏的玩家（防禦重擊那一拍、免傷拍全力輸出無效要忍住）。"""
+    lang = combat.player.language
+    if slot.get("turns_acted", 1) % 2 == 1:
+        slot.setdefault("status", {})["intangible"] = {"turns": 1, "tick": 1}
+        return log + t(lang, "monster_ai.phase_shifter_out", "\n🌫️ {name} 的身體潛入了相位夾縫……（本回合牠不會攻擊，且幾乎免疫傷害）", name=tf(slot["monster"], "name", lang))
+    log += t(lang, "monster_ai.phase_shifter_strike", "\n🌫️⚔️ {name} 從相位夾縫中暴起突襲！", name=tf(slot["monster"], "name", lang))
+    return _plain_attack(combat, slot, log, atk_mult=1.5)
+
+
+def ai_mass_healer(combat, slot, log):
+    """群體治療：有機率一口氣治療全場所有受傷的敵人（含自己）各 10% 最大HP。
+    跟單體治療師的差異：多怪戰時必須優先處理，否則清場速度會被整隊回血抵銷。"""
+    lang = combat.player.language
+    wounded = [s for s in combat.view.monster_slots if s["hp"] > 0 and s["hp"] < s["monster"]["max_hp"]]
+    if wounded and random.random() < 0.45:
+        for s in wounded:
+            heal = max(1, int(s["monster"]["max_hp"] * 0.10))
+            s["hp"] = min(s["monster"]["max_hp"], s["hp"] + heal)
+        return log + t(lang, "monster_ai.mass_heal", "\n💞 {name} 詠唱了群體治療術，全場敵人的傷勢都恢復了！", name=tf(slot["monster"], "name", lang))
+    return _plain_attack(combat, slot, log)
+
+
+def ai_bodyguard(combat, slot, log):
+    """捨身護衛：見到前排同伴重傷（<40%HP）就挺身而出換到前排頂替，並提升自身防禦。"""
+    lang = combat.player.language
+    slots = combat.view.monster_slots
+    front = next((s for s in slots if s["hp"] > 0), None)
+    if front is not None and front is not slot and front["hp"] < front["monster"]["max_hp"] * 0.4:
+        slots.remove(slot)
+        slots.insert(0, slot)
+        _apply_monster_stat_mod(slot, "def", 1.5, 2)
+        return log + t(lang, "monster_ai.bodyguard_swap", "\n🛡️ {name} 挺身而出，擋在了重傷的同伴身前！（防禦力提升）", name=tf(slot["monster"], "name", lang))
+    return _plain_attack(combat, slot, log)
+
+
+def ai_tempo_howler(combat, slot, log):
+    """戰場嚎叫：每第 3 次行動（含第 1 次）發出嚎叫——全體同伴加速、玩家減速，掌控戰場節奏。"""
+    lang = combat.player.language
+    if slot.get("turns_acted", 1) % 3 == 1:
+        for s in combat.view.monster_slots:
+            if s["hp"] > 0:
+                _apply_monster_stat_mod(s, "spd", 1.15, 3)
+        combat.player.combat_debuffs["spd_mult"] = 0.85
+        combat.player.combat_debuffs["turns"] = max(combat.player.combat_debuffs.get("turns", 0), 3)
+        return log + t(lang, "monster_ai.tempo_howl", "\n🐺 {name} 發出震天的嚎叫！同伴的速度提升了，你的速度下降了！（3回合）", name=tf(slot["monster"], "name", lang))
+    return _plain_attack(combat, slot, log)
+
+
+def ai_curse_weaver(combat, slot, log):
+    """詛咒編織：依序輪流削弱玩家的攻擊→防禦→速度（各 -15%，3回合）——
+    跟 debuffer（隨機挑一項砍 25%）不同，這是穩定全面地把玩家越纏越弱。"""
+    lang = combat.player.language
+    if random.random() < 0.4:
+        cycle = [
+            ("atk_mult", "monster_ai.stat_atk", "攻擊力"),
+            ("def_mult", "monster_ai.stat_def", "防禦力"),
+            ("spd_mult", "monster_ai.stat_spd", "速度"),
+        ]
+        idx = slot.get("curse_idx", 0) % 3
+        slot["curse_idx"] = idx + 1
+        stat_key, stat_name_key, stat_name_zh = cycle[idx]
+        stat_name = t(lang, stat_name_key, stat_name_zh)
+        combat.player.combat_debuffs[stat_key] = min(combat.player.combat_debuffs.get(stat_key, 1.0), 0.85)
+        combat.player.combat_debuffs["turns"] = max(combat.player.combat_debuffs.get("turns", 0), 3)
+        return log + t(lang, "monster_ai.curse_weave", "\n🕯️ {name} 編織詛咒纏上你的四肢，{stat}下降了！（3回合）", name=tf(slot["monster"], "name", lang), stat=stat_name)
+    return _plain_attack(combat, slot, log)
+
+
+def ai_random_caster(combat, slot, log):
+    """混沌詠唱：有機率從 ai_spells 清單（沒設定就用預設三系初階法術）隨機施放一發法術，
+    走玩家同一套 execute_skill 傷害/異常公式——會施法的怪物不用再另寫傷害公式。"""
+    spells = slot["monster"].get("ai_spells") or ["fireball", "ice_spear", "thunder_strike"]
+    if random.random() < 0.35:
+        return _execute_cast_skill(combat, slot, {"skill_id": random.choice(spells)}, log)
+    return _plain_attack(combat, slot, log)
+
+
+def ai_summoner(combat, slot, log):
+    """召喚師：戰場未滿時有機率呼叫 summon_ids 裡的援軍——把原本只有 BOSS 主動技能
+    才能用的召喚引擎開放給一般怪物當作基礎 ai。"""
+    monster = slot["monster"]
+    summon_ids = monster.get("summon_ids") or []
+    alive_count = sum(1 for s in combat.view.monster_slots if s["hp"] > 0)
+    if summon_ids and alive_count < 3 and random.random() < 0.3:
+        ritual = {"name": "召喚儀式", "name_en": "Summoning Ritual", "effect": {"summon_ids": summon_ids}}
+        return _execute_summon_minion(combat, slot, ritual, log)
+    return _plain_attack(combat, slot, log)
+
+
 AI_REGISTRY = {
     "none": ai_none,
     "lifesteal": ai_lifesteal,
@@ -334,6 +552,257 @@ AI_REGISTRY = {
     "void_mage": ai_void_mage,
     "assassin": ai_charge_attack,  # 資料裡沿用已久的別名：刺客 = 蓄力重擊型
     "sargeras_ai": ai_sargeras,
+    "counter_stance": ai_counter_stance,
+    "bomber": ai_bomber,
+    "thief": ai_thief,
+    "time_thief": ai_time_thief,
+    "trickster": ai_trickster,
+    "glass_cannon": ai_glass_cannon,
+    "phase_shifter": ai_phase_shifter,
+    "mass_healer": ai_mass_healer,
+    "bodyguard": ai_bodyguard,
+    "tempo_howler": ai_tempo_howler,
+    "curse_weaver": ai_curse_weaver,
+    "random_caster": ai_random_caster,
+    "summoner": ai_summoner,
+}
+
+
+# ---------------------------------------------------------------------------
+# 被動特性（traits）：與任何 ai 疊加組合的族群機制
+#   turn_start(combat, slot, log) -> (log, proceed)  proceed=False 表示劫持了這回合
+#   atk_mult(combat, slot) -> (mult, note)           普攻傷害倍率與提示訊息
+#   after_attack(combat, slot, dmg, log) -> log      普攻命中後的附帶效果
+# ---------------------------------------------------------------------------
+
+def _trait_pack_hunter(combat, slot):
+    allies = sum(1 for s in combat.view.monster_slots if s is not slot and s["hp"] > 0)
+    if allies <= 0:
+        return 1.0, ""
+    lang = combat.player.language
+    return 1.0 + 0.25 * allies, t(lang, "monster_ai.trait_pack_hunter", "🐺 【群體狩獵】同伴環伺，{name} 的攻勢更加兇猛！", name=tf(slot["monster"], "name", lang))
+
+
+def _trait_executioner(combat, slot):
+    if combat.player.current_hp >= combat.player.max_hp * 0.35:
+        return 1.0, ""
+    lang = combat.player.language
+    return 1.5, t(lang, "monster_ai.trait_executioner", "🩸 【處刑本能】{name} 嗅到了你瀕死的氣息，出手狠辣無比！", name=tf(slot["monster"], "name", lang))
+
+
+def _trait_opportunist(combat, slot):
+    if not combat.player.status_effects:
+        return 1.0, ""
+    lang = combat.player.language
+    return 1.4, t(lang, "monster_ai.trait_opportunist", "😈 【趁虛而入】{name} 盯上了你的異常狀態，攻擊又快又重！", name=tf(slot["monster"], "name", lang))
+
+
+def _trait_desperado(combat, slot):
+    max_hp = slot["monster"].get("max_hp") or 1
+    hp_pct = slot["hp"] / max_hp
+    if hp_pct >= 0.8:
+        return 1.0, ""
+    mult = 1.0 + min(0.8, (1.0 - hp_pct) * 0.8)
+    lang = combat.player.language
+    note = t(lang, "monster_ai.trait_desperado", "🔥 【背水一戰】{name} 傷得越重，打得越狠！", name=tf(slot["monster"], "name", lang)) if hp_pct < 0.4 else ""
+    return mult, note
+
+
+def _trait_avenger(combat, slot):
+    taken = slot.get("dmg_last_window", 0)
+    max_hp = slot["monster"].get("max_hp") or 1
+    ratio = taken / max_hp
+    if ratio < 0.05:
+        return 1.0, ""
+    lang = combat.player.language
+    return 1.0 + min(1.0, ratio * 1.5), t(lang, "monster_ai.trait_avenger", "💢 【復仇怒火】{name} 記住了你剛才造成的傷害，加倍奉還！", name=tf(slot["monster"], "name", lang))
+
+
+def _trait_bloodthirst(combat, slot, dmg, log):
+    if slot["hp"] <= 0:
+        return log
+    monster = slot["monster"]
+    heal = max(1, int(dmg * 0.3))
+    before = slot["hp"]
+    slot["hp"] = min(monster["max_hp"], slot["hp"] + heal)
+    actual = slot["hp"] - before
+    if actual > 0:
+        lang = combat.player.language
+        log += t(lang, "monster_ai.trait_bloodthirst", "\n🩸 【嗜血】{name} 舔舐著你的鮮血，回復了 {heal} HP！", name=tf(monster, "name", lang), heal=actual)
+    return log
+
+
+def _trait_shield_breaker(combat, slot, dmg, log):
+    lang = combat.player.language
+    cur = combat.player.combat_debuffs.get("def_mult", 1.0)
+    if cur <= 0.6:
+        return log
+    combat.player.combat_debuffs["def_mult"] = max(0.6, cur * 0.9)
+    combat.player.combat_debuffs["turns"] = max(combat.player.combat_debuffs.get("turns", 0), 3)
+    return log + t(lang, "monster_ai.trait_shield_breaker", "\n🔨 【破甲】你的護甲被鑿出了裂痕，防禦力下降了！", name=tf(slot["monster"], "name", lang))
+
+
+def _trait_mana_burn(combat, slot, dmg, log):
+    drain = min(combat.player.current_mp, max(1, int(combat.player.max_mp * 0.06)))
+    if drain <= 0:
+        return log
+    combat.player.current_mp -= drain
+    monster = slot["monster"]
+    if slot["hp"] > 0:
+        slot["hp"] = min(monster["max_hp"], slot["hp"] + drain)
+    lang = combat.player.language
+    return log + t(lang, "monster_ai.trait_mana_burn", "\n🔮 【魔力汲取】{name} 抽走了你 {mp} 點 MP，化為自己的生命力！", name=tf(monster, "name", lang), mp=drain)
+
+
+def _trait_dot_leech(combat, slot, log):
+    p_status = combat.player.status_effects or {}
+    if slot["hp"] > 0 and ("poison" in p_status or "burn" in p_status):
+        monster = slot["monster"]
+        heal = max(1, int(monster["max_hp"] * 0.06))
+        before = slot["hp"]
+        slot["hp"] = min(monster["max_hp"], slot["hp"] + heal)
+        if slot["hp"] - before > 0:
+            lang = combat.player.language
+            log += t(lang, "monster_ai.trait_dot_leech", "\n🕸️ 【毒液盛宴】{name} 汲取你體內侵蝕的毒素，回復了 {heal} HP！", name=tf(monster, "name", lang), heal=slot["hp"] - before)
+    return log, True
+
+
+def _trait_regenerator(combat, slot, log):
+    monster = slot["monster"]
+    if slot["hp"] <= 0 or slot["hp"] >= monster["max_hp"]:
+        return log, True
+    lang = combat.player.language
+    if "burn" in (slot.get("status") or {}):
+        return log + t(lang, "monster_ai.trait_regen_burned", "\n🔥 傷口被烈焰灼燒，{name} 的超再生失效了！", name=tf(monster, "name", lang)), True
+    heal = max(1, int(monster["max_hp"] * 0.08))
+    before = slot["hp"]
+    slot["hp"] = min(monster["max_hp"], slot["hp"] + heal)
+    if slot["hp"] - before > 0:
+        log += t(lang, "monster_ai.trait_regenerator", "\n💚 【超再生】{name} 的傷口以肉眼可見的速度癒合，回復了 {heal} HP！", name=tf(monster, "name", lang), heal=slot["hp"] - before)
+    return log, True
+
+
+def _trait_wrath_stacker(combat, slot, log):
+    stacks = slot.get("rage_stacks", 0)
+    if stacks >= 5:
+        return log, True
+    monster = slot["monster"]
+    if "rage_base_atk" not in slot:
+        slot["rage_base_atk"] = monster.get("atk", 1)
+    stacks += 1
+    slot["rage_stacks"] = stacks
+    monster["atk"] = max(1, int(slot["rage_base_atk"] * (1.0 + 0.15 * stacks)))
+    lang = combat.player.language
+    return log + t(lang, "monster_ai.trait_wrath_stack", "\n😤 【怒意滋長】{name} 的怒火節節攀升，攻擊力提升至 +{pct}%！", name=tf(monster, "name", lang), pct=15 * stacks), True
+
+
+def _trait_fortify(combat, slot, log):
+    stacks = slot.get("fortify_stacks", 0)
+    if stacks >= 5:
+        return log, True
+    monster = slot["monster"]
+    if "fortify_base_def" not in slot:
+        slot["fortify_base_def"] = monster.get("def", 0)
+    stacks += 1
+    slot["fortify_stacks"] = stacks
+    monster["def"] = max(0, int(slot["fortify_base_def"] * (1.0 + 0.10 * stacks)) + stacks)
+    lang = combat.player.language
+    return log + t(lang, "monster_ai.trait_fortify", "\n🪨 【石化強固】{name} 的軀殼越戰越硬，防禦力提升至 +{pct}%！", name=tf(monster, "name", lang), pct=10 * stacks), True
+
+
+_ELEM_CYCLE = ("fire", "ice", "thunder")
+_ELEM_DISPLAY = {
+    "fire": ("🔥", "monster_ai.elem_fire", "火"),
+    "ice": ("❄️", "monster_ai.elem_ice", "冰"),
+    "thunder": ("⚡", "monster_ai.elem_thunder", "雷"),
+}
+
+
+def _trait_elemental_shifter(combat, slot, log):
+    monster = slot["monster"]
+    idx = slot.get("elem_cycle_idx", random.randrange(len(_ELEM_CYCLE)))
+    slot["elem_cycle_idx"] = (idx + 1) % len(_ELEM_CYCLE)
+    attuned = _ELEM_CYCLE[idx]
+    weak = _ELEM_CYCLE[(idx + 1) % len(_ELEM_CYCLE)]
+    # 一律用「賦值」而非就地修改：monster dict 是 start_combat 的淺拷貝，
+    # weakness/resistance list 仍與 JSON 原始資料共用參照，append 會污染區域資料。
+    monster["weakness"] = [weak]
+    monster["resistance"] = [attuned]
+    lang = combat.player.language
+    emoji, elem_key, elem_zh = _ELEM_DISPLAY[weak]
+    elem_name = f"{emoji}{t(lang, elem_key, elem_zh)}"
+    return log + t(lang, "monster_ai.trait_elemental_shift", "\n🌈 【元素變換】{name} 的能量核心轉換了相位——現在的弱點是{elem}！", name=tf(monster, "name", lang), elem=elem_name), True
+
+
+def _trait_splitter(combat, slot, log):
+    """首次跌破 50% HP 時分裂出一隻縮小版的自己（佔用當回合行動，僅一次，分裂體不會再分裂）。"""
+    monster = slot["monster"]
+    max_hp = monster.get("max_hp") or 1
+    if slot.get("has_split") or slot["hp"] <= 0 or slot["hp"] >= max_hp * 0.5:
+        return log, True
+    slots = combat.view.monster_slots
+    if sum(1 for s in slots if s["hp"] > 0) >= 3:
+        return log, True
+    slot["has_split"] = True
+    child = dict(monster)
+    child["max_hp"] = max(1, int(max_hp * 0.4))
+    child["atk"] = max(1, int(monster.get("atk", 1) * 0.8))
+    child["exp"] = int(monster.get("exp", 0) * 0.3)
+    child["money_min"] = int(monster.get("money_min", 0) * 0.3)
+    child["money_max"] = int(monster.get("money_max", 0) * 0.3)
+    child["traits"] = [tr for tr in monster.get("traits", ()) if tr != "splitter"]
+    child.pop("active_skills", None)
+    child.pop("phase2", None)
+    child.pop("revive_once", None)
+    slots.insert(0, {"monster": child, "hp": child["max_hp"], "av": 0, "status": {}, "has_split": True})
+    lang = combat.player.language
+    return log + t(lang, "monster_ai.trait_split", "\n🫧 【分裂】{name} 猛地一顫，分裂出了另一隻【{child}】！", name=tf(monster, "name", lang), child=tf(child, "name", lang)), False
+
+
+def _trait_play_dead(combat, slot, log):
+    """首次跌破 30% HP 時倒地裝死：接下來 2 次行動一動不動（近乎免傷），
+    第 3 次行動暴起 2 倍偷襲並回復 20% HP（僅一次）。玩家該學會：別浪費輸出在「屍體」上。"""
+    lang = combat.player.language
+    monster = slot["monster"]
+    if slot.get("playing_dead"):
+        slot["playing_dead"] -= 1
+        if slot["playing_dead"] > 0:
+            slot.setdefault("status", {})["intangible"] = {"turns": 1, "tick": 1}
+            return log + t(lang, "monster_ai.trait_play_dead_still", "\n🎭 {name} 依然癱在地上毫無動靜……", name=tf(monster, "name", lang)), False
+        slot.pop("playing_dead", None)
+        slot["hp"] = min(monster["max_hp"], slot["hp"] + int(monster["max_hp"] * 0.2))
+        log += t(lang, "monster_ai.trait_play_dead_burst", "\n🎭💥 {name} 突然暴起偷襲！原來牠一直在裝死！", name=tf(monster, "name", lang))
+        return _plain_attack(combat, slot, log, atk_mult=2.0), False
+
+    max_hp = monster.get("max_hp") or 1
+    if not slot.get("played_dead") and 0 < slot["hp"] < max_hp * 0.3:
+        slot["played_dead"] = True
+        slot["playing_dead"] = 2
+        slot.setdefault("status", {})["intangible"] = {"turns": 1, "tick": 1}
+        return log + t(lang, "monster_ai.trait_play_dead_start", "\n🎭 {name} 轟然倒地，一動也不動……牠真的死了嗎？", name=tf(monster, "name", lang)), False
+    return log, True
+
+
+TRAIT_REGISTRY = {
+    # 傷害倍率型（族群招牌：哥布林/狼群/鷹身女妖/龍族/蜂群）
+    "pack_hunter": {"atk_mult": _trait_pack_hunter},
+    "executioner": {"atk_mult": _trait_executioner},
+    "opportunist": {"atk_mult": _trait_opportunist},
+    "desperado": {"atk_mult": _trait_desperado},
+    "avenger": {"atk_mult": _trait_avenger},
+    # 命中後附帶型（吸血鬼/惡魔/虛空系）
+    "bloodthirst": {"after_attack": _trait_bloodthirst},
+    "shield_breaker": {"after_attack": _trait_shield_breaker},
+    "mana_burn": {"after_attack": _trait_mana_burn},
+    # 行動前結算型（蜘蛛/再生系/獸人/魔像/元素系）
+    "dot_leech": {"turn_start": _trait_dot_leech},
+    "regenerator": {"turn_start": _trait_regenerator},
+    "wrath_stacker": {"turn_start": _trait_wrath_stacker},
+    "fortify": {"turn_start": _trait_fortify},
+    "elemental_shifter": {"turn_start": _trait_elemental_shifter},
+    # 劫持整回合型（史萊姆/骷髏系的一次性大招）
+    "splitter": {"turn_start": _trait_splitter},
+    "play_dead": {"turn_start": _trait_play_dead},
 }
 
 
@@ -606,10 +1075,22 @@ def tick_revive(slot: dict, lang: str = "zh") -> str:
 def run_monster_ai(combat, slot: dict, log: str) -> str:
     lang = combat.player.language
     slot["turns_acted"] = slot.get("turns_acted", 0) + 1
-    # 傷害上限（damage_cap）機制：額度是「兩次行動之間」的總承傷，牠一行動就重置
+    # 傷害上限（damage_cap）機制：額度是「兩次行動之間」的總承傷，牠一行動就重置。
+    # 重置前先把這個窗口的承傷快照下來，給復仇（avenger）/反擊架勢（counter_stance）
+    # 這類「記住你剛才打了我多少」的機制讀取。
+    slot["dmg_last_window"] = slot.get("dmg_taken_since_act", 0)
     slot["dmg_taken_since_act"] = 0
     _tick_stat_mods(slot)
     log = _maybe_transform_phase2(combat, slot, log)
+
+    # 被動特性：行動前結算（再生/怒意/強固/元素變換...）。分裂、裝死這類「劫持
+    # 整回合」的特性回傳 proceed=False，這回合就不再執行一般行動。
+    for tname in slot["monster"].get("traits", ()):
+        hook = TRAIT_REGISTRY.get(tname, {}).get("turn_start")
+        if hook:
+            log, proceed = hook(combat, slot, log)
+            if not proceed:
+                return log
 
     if slot.get("status", {}).get("berserk"):
         slot["telegraph"] = None

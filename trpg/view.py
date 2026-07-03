@@ -1362,6 +1362,10 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                         intent_lines.append(t(lang, "battle.intent_charging", "⚡ 正在聚集毀滅性的能量！"))
                     if slot.get("telegraph_flee"):
                         intent_lines.append(t(lang, "battle.intent_flee", "😰 準備逃跑！（下回合就會逃走）"))
+                    if slot.get("counter_stance"):
+                        intent_lines.append(t(lang, "battle.intent_counter_stance", "🥋 反擊架勢！此時攻擊牠會遭到猛烈反擊"))
+                    if slot.get("bomb_fuse"):
+                        intent_lines.append(t(lang, "battle.intent_bomb_fuse", "💣 引信已點燃，下回合就會爆炸！"))
                     badges = []
                     if slot.get("divine_shield"):
                         badges.append(t(lang, "battle.badge_divine_shield", "🛡️聖盾"))
@@ -1369,6 +1373,14 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                         badges.append(t(lang, "battle.badge_magic_absorb", "🌀魔法吸收"))
                     if m.get("damage_cap"):
                         badges.append(t(lang, "battle.badge_damage_cap", "🧱承傷上限{cap}/回合", cap=m["damage_cap"]))
+                    if slot.get("playing_dead"):
+                        badges.append(t(lang, "battle.badge_playing_dead", "🎭倒地不起"))
+                    if slot.get("rage_stacks"):
+                        badges.append(t(lang, "battle.badge_rage", "😤怒氣x{n}", n=slot["rage_stacks"]))
+                    if slot.get("fortify_stacks"):
+                        badges.append(t(lang, "battle.badge_fortify", "🪨強固x{n}", n=slot["fortify_stacks"]))
+                    if slot.get("stolen_gold"):
+                        badges.append(t(lang, "battle.badge_stolen_gold", "💰贓款{g}", g=slot["stolen_gold"]))
                     if slot.get("status"):
                         badges.append(format_status_list(slot["status"], self.cog.status_effects, lang))
                     if badges:

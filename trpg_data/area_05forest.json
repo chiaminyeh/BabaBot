@@ -25,7 +25,10 @@
                 "bronze_sword": 0.3
             },
             "ai": "multi_hit_flurry",
-            "name_en": "Feral Black Wolf"
+            "name_en": "Feral Black Wolf",
+            "traits": [
+                "executioner"
+            ]
         },
         "orc": {
             "id": "orc",
@@ -50,7 +53,10 @@
                 "health_potion": 0.4
             },
             "ai": "berserk_low_hp",
-            "name_en": "Orc Raider"
+            "name_en": "Orc Raider",
+            "traits": [
+                "shield_breaker"
+            ]
         },
         "harpy": {
             "id": "harpy",
@@ -75,7 +81,10 @@
                 "scroll_shadow_step": 0.1
             },
             "ai": "flee_low_hp",
-            "name_en": "Harpy"
+            "name_en": "Harpy",
+            "traits": [
+                "opportunist"
+            ]
         },
         "mushroom_sprite": {
             "id": "mushroom_sprite",
@@ -100,7 +109,10 @@
                 "antidote_herb": 0.3
             },
             "ai": "self_heal",
-            "name_en": "Mushroom Sprite"
+            "name_en": "Mushroom Sprite",
+            "traits": [
+                "splitter"
+            ]
         }
     },
     "boss_minions": {
@@ -116,7 +128,10 @@
             "money_max": 0,
             "drops": {},
             "ai": "support_healer",
-            "name_en": "Forest Sprite"
+            "name_en": "Forest Sprite",
+            "traits": [
+                "regenerator"
+            ]
         },
         "thorn_vine": {
             "id": "thorn_vine",
@@ -129,7 +144,7 @@
             "money_min": 0,
             "money_max": 0,
             "drops": {},
-            "ai": "debuffer",
+            "ai": "curse_weaver",
             "name_en": "Thorned Vines"
         }
     },
@@ -201,7 +216,10 @@
             "name_suffix_en": "(Wrath of the Forest)",
             "transform_text_en": "The vines covering the Mistwood King surge and swell, twisting him into a beastlike form!"
         },
-        "name_en": "Mistwood King"
+        "name_en": "Mistwood King",
+        "traits": [
+            "regenerator"
+        ]
     },
     "area_name_en": "Misty Forest",
     "requires_boss": "area_01grassland"

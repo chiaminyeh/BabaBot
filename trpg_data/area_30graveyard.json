@@ -24,7 +24,10 @@
             "money_min": 80,
             "money_max": 130,
             "ai": "none",
-            "name_en": "Awakened Skeleton Soldier"
+            "name_en": "Awakened Skeleton Soldier",
+            "traits": [
+                "play_dead"
+            ]
         },
         "grave_goblin": {
             "id": "grave_goblin",
@@ -42,8 +45,11 @@
                 "stolen_gem": 0.5,
                 "high_health_potion": 0.25
             },
-            "ai": "flee_low_hp",
-            "name_en": "Tomb-Raiding Goblin"
+            "ai": "thief",
+            "name_en": "Tomb-Raiding Goblin",
+            "traits": [
+                "pack_hunter"
+            ]
         },
         "ghost": {
             "id": "ghost",
@@ -95,7 +101,7 @@
             },
             "money_min": 95,
             "money_max": 160,
-            "ai": "debuffer",
+            "ai": "curse_weaver",
             "name_en": "Wailing Banshee"
         },
         "grave_hound": {
@@ -119,8 +125,12 @@
             },
             "money_min": 85,
             "money_max": 140,
-            "ai": "multi_hit_flurry",
-            "name_en": "Grave Hound"
+            "ai": "none",
+            "name_en": "Grave Hound",
+            "traits": [
+                "executioner",
+                "play_dead"
+            ]
         }
     },
     "boss": {
@@ -157,7 +167,7 @@
             "poison"
         ],
         "status_chance": 0.5,
-        "ai": "debuffer",
+        "ai": "random_caster",
         "revive_once": {
             "turns": 3,
             "hp_pct": 0.3
@@ -205,7 +215,11 @@
             "name_suffix_en": "(Undead Awakening)",
             "transform_text_en": "The Undead Lich's robes billow into a skeletal wind, and the dead across the graveyard stir and rise in resonance!"
         },
-        "name_en": "Undead Lich"
+        "name_en": "Undead Lich",
+        "ai_spells": [
+            "dark_orb",
+            "ice_spear"
+        ]
     },
     "boss_minions": {
         "bone_priest": {
@@ -219,8 +233,11 @@
             "money_min": 0,
             "money_max": 0,
             "drops": {},
-            "ai": "support_healer",
-            "name_en": "Graveyard Priest"
+            "ai": "mass_healer",
+            "name_en": "Graveyard Priest",
+            "traits": [
+                "play_dead"
+            ]
         },
         "grave_wraith": {
             "id": "grave_wraith",
@@ -233,7 +250,7 @@
             "money_min": 0,
             "money_max": 0,
             "drops": {},
-            "ai": "debuffer",
+            "ai": "trickster",
             "name_en": "Crypt Wraith"
         }
     },

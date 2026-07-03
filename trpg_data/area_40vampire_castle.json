@@ -26,8 +26,11 @@
             },
             "money_min": 120,
             "money_max": 200,
-            "ai": "lifesteal",
-            "name_en": "Giant Vampire Bat"
+            "ai": "none",
+            "name_en": "Giant Vampire Bat",
+            "traits": [
+                "bloodthirst"
+            ]
         },
         "gargoyle": {
             "id": "gargoyle",
@@ -53,8 +56,11 @@
             },
             "money_min": 130,
             "money_max": 220,
-            "ai": "shield_ally",
-            "name_en": "Guardian Gargoyle"
+            "ai": "counter_stance",
+            "name_en": "Guardian Gargoyle",
+            "traits": [
+                "fortify"
+            ]
         },
         "vampire_servant": {
             "id": "vampire_servant",
@@ -84,7 +90,10 @@
             "money_min": 150,
             "money_max": 250,
             "ai": "multi_hit_flurry",
-            "name_en": "Bloodkin Servant"
+            "name_en": "Bloodkin Servant",
+            "traits": [
+                "bloodthirst"
+            ]
         },
         "blood_knight": {
             "id": "blood_knight",
@@ -108,7 +117,10 @@
             "money_min": 140,
             "money_max": 230,
             "ai": "heavy_tank",
-            "name_en": "Blood Knight"
+            "name_en": "Blood Knight",
+            "traits": [
+                "bloodthirst"
+            ]
         },
         "shadow_assassin": {
             "id": "shadow_assassin",
@@ -132,7 +144,10 @@
             "money_min": 135,
             "money_max": 220,
             "ai": "charge_attack",
-            "name_en": "Shadow Assassin"
+            "name_en": "Shadow Assassin",
+            "traits": [
+                "executioner"
+            ]
         }
     },
     "boss": {
@@ -214,7 +229,10 @@
             "name_suffix_en": "(Progenitor's Awakening - Bloodthirsty Rage)",
             "transform_text_en": "The Vampire Progenitor casts aside its human disguise, transforming into a creature of pure bloodlust!"
         },
-        "name_en": "Vampire Progenitor"
+        "name_en": "Vampire Progenitor",
+        "traits": [
+            "executioner"
+        ]
     },
     "boss_minions": {
         "blood_acolyte": {
@@ -229,7 +247,10 @@
             "money_max": 0,
             "drops": {},
             "ai": "support_healer",
-            "name_en": "Blood Ritual Acolyte"
+            "name_en": "Blood Ritual Acolyte",
+            "traits": [
+                "bloodthirst"
+            ]
         },
         "night_stalker": {
             "id": "night_stalker",
@@ -242,8 +263,11 @@
             "money_min": 0,
             "money_max": 0,
             "drops": {},
-            "ai": "debuffer",
-            "name_en": "Nightstalker"
+            "ai": "time_thief",
+            "name_en": "Nightstalker",
+            "traits": [
+                "bloodthirst"
+            ]
         }
     },
     "area_name_en": "Vampire Castle",

@@ -13,8 +13,13 @@
             "def": 0,
             "exp": 16000,
             "spd": 55,
-            "weakness": ["ice", "water"],
-            "resistance": ["fire"],
+            "weakness": [
+                "ice",
+                "water"
+            ],
+            "resistance": [
+                "fire"
+            ],
             "drops": {
                 "dragon_scale_shard": 0.55,
                 "high_health_potion": 0.25
@@ -22,7 +27,10 @@
             "money_min": 200,
             "money_max": 330,
             "ai": "charge_attack",
-            "name_en": "Moltenmaw Drake"
+            "name_en": "Moltenmaw Drake",
+            "traits": [
+                "wrath_stacker"
+            ]
         },
         "dragonkin_warrior": {
             "id": "dragonkin_warrior",
@@ -33,16 +41,24 @@
             "def": 0,
             "exp": 18000,
             "spd": 50,
-            "weakness": ["ice"],
-            "resistance": ["fire", "earth"],
+            "weakness": [
+                "ice"
+            ],
+            "resistance": [
+                "fire",
+                "earth"
+            ],
             "drops": {
                 "drake_fang": 0.5,
                 "dragon_scale_shard": 0.35
             },
             "money_min": 220,
             "money_max": 360,
-            "ai": "buffer",
-            "name_en": "Dragonkin Warrior"
+            "ai": "tempo_howler",
+            "name_en": "Dragonkin Warrior",
+            "traits": [
+                "wrath_stacker"
+            ]
         },
         "wyvern": {
             "id": "wyvern",
@@ -53,16 +69,24 @@
             "def": 0,
             "exp": 17000,
             "spd": 88,
-            "weakness": ["thunder", "ice"],
-            "resistance": ["earth"],
+            "weakness": [
+                "thunder",
+                "ice"
+            ],
+            "resistance": [
+                "earth"
+            ],
             "drops": {
                 "drake_fang": 0.6,
                 "high_mana_potion": 0.2
             },
             "money_min": 210,
             "money_max": 340,
-            "ai": "multi_hit_flurry",
-            "name_en": "Gorge Wyvern"
+            "ai": "glass_cannon",
+            "name_en": "Gorge Wyvern",
+            "traits": [
+                "wrath_stacker"
+            ]
         },
         "lava_tortoise": {
             "id": "lava_tortoise",
@@ -73,8 +97,14 @@
             "def": 230,
             "exp": 20000,
             "spd": 18,
-            "weakness": ["water", "ice"],
-            "resistance": ["fire", "physical"],
+            "weakness": [
+                "water",
+                "ice"
+            ],
+            "resistance": [
+                "fire",
+                "physical"
+            ],
             "drops": {
                 "dragon_scale_shard": 0.7,
                 "burn_salve": 0.3
@@ -82,9 +112,14 @@
             "money_min": 260,
             "money_max": 420,
             "ai": "heavy_tank",
-            "status_on_hit": ["burn"],
+            "status_on_hit": [
+                "burn"
+            ],
             "status_chance": 0.3,
-            "name_en": "Lava Tortoise"
+            "name_en": "Lava Tortoise",
+            "traits": [
+                "fortify"
+            ]
         },
         "dragon_priest": {
             "id": "dragon_priest",
@@ -95,18 +130,28 @@
             "def": 0,
             "exp": 19000,
             "spd": 62,
-            "weakness": ["holy"],
-            "resistance": ["fire", "dark"],
+            "weakness": [
+                "holy"
+            ],
+            "resistance": [
+                "fire",
+                "dark"
+            ],
             "drops": {
                 "dragon_scale_shard": 0.3,
                 "scroll_inferno": 0.04
             },
             "money_min": 240,
             "money_max": 380,
-            "ai": "self_heal",
-            "status_on_hit": ["burn"],
+            "ai": "mass_healer",
+            "status_on_hit": [
+                "burn"
+            ],
             "status_chance": 0.35,
-            "name_en": "Dragontongue Priest"
+            "name_en": "Dragontongue Priest",
+            "traits": [
+                "wrath_stacker"
+            ]
         }
     },
     "boss": {
@@ -119,8 +164,13 @@
         "def": 120,
         "exp": 300000,
         "spd": 78,
-        "weakness": ["ice"],
-        "resistance": ["fire", "earth"],
+        "weakness": [
+            "ice"
+        ],
+        "resistance": [
+            "fire",
+            "earth"
+        ],
         "money_min": 2600,
         "money_max": 4200,
         "drops": {
@@ -130,7 +180,9 @@
             "dragon_plate": 0.2,
             "mystery_phoenix_feather": 0.06
         },
-        "status_on_hit": ["burn"],
+        "status_on_hit": [
+            "burn"
+        ],
         "status_chance": 0.5,
         "ai": "berserk_low_hp",
         "active_skills": [
@@ -138,17 +190,29 @@
                 "id": "dragon_breath",
                 "name": "龍炎吐息",
                 "name_en": "Dragonfire Breath",
-                "trigger": {"type": "interval", "value": 3},
-                "effect": {"type": "heavy_attack", "mult": 2.4}
+                "trigger": {
+                    "type": "interval",
+                    "value": 3
+                },
+                "effect": {
+                    "type": "heavy_attack",
+                    "mult": 2.4
+                }
             },
             {
                 "id": "call_broodlings",
                 "name": "召喚龍崽",
                 "name_en": "Call Broodlings",
-                "trigger": {"type": "interval", "value": 5},
+                "trigger": {
+                    "type": "interval",
+                    "value": 5
+                },
                 "effect": {
                     "type": "summon_minion",
-                    "summon_ids": ["drake_whelp", "dragonkin_guard"]
+                    "summon_ids": [
+                        "drake_whelp",
+                        "dragonkin_guard"
+                    ]
                 }
             }
         ],
@@ -165,11 +229,20 @@
                     "id": "cataclysm_breath",
                     "name": "毀滅吐息",
                     "name_en": "Cataclysm Breath",
-                    "trigger": {"type": "hp_below", "value": 0.2},
-                    "effect": {"type": "heavy_attack", "mult": 2.8}
+                    "trigger": {
+                        "type": "hp_below",
+                        "value": 0.2
+                    },
+                    "effect": {
+                        "type": "heavy_attack",
+                        "mult": 2.8
+                    }
                 }
             ]
-        }
+        },
+        "traits": [
+            "wrath_stacker"
+        ]
     },
     "boss_minions": {
         "drake_whelp": {
@@ -184,7 +257,11 @@
             "money_max": 0,
             "drops": {},
             "ai": "none",
-            "name_en": "Moltenmaw Whelp"
+            "name_en": "Moltenmaw Whelp",
+            "traits": [
+                "wrath_stacker",
+                "pack_hunter"
+            ]
         },
         "dragonkin_guard": {
             "id": "dragonkin_guard",
@@ -197,8 +274,11 @@
             "money_min": 0,
             "money_max": 0,
             "drops": {},
-            "ai": "heavy_tank",
-            "name_en": "Dragonkin Guard"
+            "ai": "bodyguard",
+            "name_en": "Dragonkin Guard",
+            "traits": [
+                "wrath_stacker"
+            ]
         }
     }
 }

@@ -5,8 +5,14 @@
     "requires_boss_count": 6,
     "is_colosseum": true,
     "rounds": [
-        {"count": 2, "floor": 45},
-        {"count": 3, "floor": 52}
+        {
+            "count": 2,
+            "floor": 45
+        },
+        {
+            "count": 3,
+            "floor": 52
+        }
     ],
     "champion": {
         "id": "colosseum_champion",
@@ -21,14 +27,18 @@
         "damage_cap": 2200,
         "start_divine_shield": true,
         "weakness": [],
-        "resistance": ["physical"],
+        "resistance": [
+            "physical"
+        ],
         "money_min": 5000,
         "money_max": 8000,
         "drops": {
             "mystery_elixir": 0.3,
             "mystery_time_hourglass": 0.15
         },
-        "status_on_hit": ["paralysis"],
+        "status_on_hit": [
+            "paralysis"
+        ],
         "status_chance": 0.3,
         "ai": "multi_hit_flurry",
         "active_skills": [
@@ -36,23 +46,44 @@
                 "id": "champions_bulwark",
                 "name": "冠軍壁壘",
                 "name_en": "Champion's Bulwark",
-                "trigger": {"type": "interval", "value": 3},
-                "effect": {"type": "divine_shield"}
+                "trigger": {
+                    "type": "interval",
+                    "value": 3
+                },
+                "effect": {
+                    "type": "divine_shield"
+                }
             },
             {
                 "id": "arena_roar",
                 "name": "震場怒吼",
                 "name_en": "Arena Roar",
-                "trigger": {"type": "interval", "value": 4},
-                "effect": {"type": "inflict_status", "status_id": "silence", "turns": 1}
+                "trigger": {
+                    "type": "interval",
+                    "value": 4
+                },
+                "effect": {
+                    "type": "inflict_status",
+                    "status_id": "silence",
+                    "turns": 1
+                }
             },
             {
                 "id": "executioners_strike",
                 "name": "處刑一擊",
                 "name_en": "Executioner's Strike",
-                "trigger": {"type": "hp_below", "value": 0.3},
-                "effect": {"type": "heavy_attack", "mult": 2.5}
+                "trigger": {
+                    "type": "hp_below",
+                    "value": 0.3
+                },
+                "effect": {
+                    "type": "heavy_attack",
+                    "mult": 2.5
+                }
             }
+        ],
+        "traits": [
+            "wrath_stacker"
         ]
     },
     "first_clear_reward_item": "champions_belt",

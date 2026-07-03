@@ -78,8 +78,12 @@ def instantiate_monster(monster_def: dict, floor: int, is_boss: bool = False, fl
         "resistance": monster_def.get("resistance", []),
         "is_boss": is_boss,
     }
-    # 行為相關欄位原樣帶過，交給 trpg_monster_ai 在戰鬥中讀取（不需要依樓層縮放）
-    for behavior_key in ("status_on_hit", "status_chance", "active_skills", "phase2", "revive_once"):
+    # 行為相關欄位原樣帶過，交給 trpg_monster_ai 在戰鬥中讀取（不需要依樓層縮放）。
+    # immunity/damage_cap 以前漏帶了——怪物池的怪一被實例化就會失去屬性免疫與傷害上限。
+    for behavior_key in (
+        "status_on_hit", "status_chance", "active_skills", "phase2", "revive_once",
+        "traits", "ai_spells", "summon_ids", "immunity", "damage_cap", "magic", "mdef", "max_mp",
+    ):
         if behavior_key in monster_def:
             instance[behavior_key] = monster_def[behavior_key]
     return instance
