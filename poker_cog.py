@@ -88,6 +88,8 @@ class PokerCog(commands.Cog):
             bal = self.bank.get(user.id, (0,))[0]
             game = self.games[guild_id]
 
+            if not game['active']:
+                return await btn_inter.response.send_message("This lobby has expired.", ephemeral=True)
             if bal < self.minimum_bet:
                 return await btn_inter.response.send_message(
                     f"You need at least {self.minimum_bet} {self.money_name} to join.", ephemeral=True
@@ -116,8 +118,11 @@ class PokerCog(commands.Cog):
 
         # timeout: not enough players
         self.games[guild_id]['active'] = False
-        await interaction.followup.send(
-            f"Timed out after 60s — only {len(self.games[guild_id]['players'])}/{min_players} joined."
+        btn.disabled = True
+        await msg.edit(
+            content=f"Timed out after 60s — only {len(self.games[guild_id]['players'])}/{min_players} joined.",
+            view=view,
+            embed=None
         )
 
     async def _begin_game(self, guild_id: int):
@@ -573,7 +578,8 @@ class PokerGame:
             await self.channel.send("No winner could be determined.")
 
         # 4) Clean up for next game
-        self.cog.games[self.cog.bot.guild_id]['active'] = False
+        guild_id = self.channel.guild.id
+        self.cog.games[guild_id]['active'] = False
 
     
     def rank_hand(self, cards: list[str]) -> tuple[int, list[int]]:

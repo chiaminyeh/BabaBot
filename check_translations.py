@@ -8,7 +8,16 @@ Checks:
      non-empty "_en" sibling.
   2. Every t(lang, "key", ...) call site in the .py files has a matching entry
      in trpg_data/locale_en.json.
+  3. discord.ui.Label(text=...)/Modal(title=...) strings stay under Discord's
+     hard component-length limits (45 chars) in BOTH zh and en — translated
+     strings routinely run 2-3x longer than the Chinese original, and a call
+     that only checks the zh fallback (which is what code review sees) can
+     look perfectly safe while the en catalog entry silently exceeds the
+     limit. Discord doesn't truncate: it rejects the entire modal (400
+     Invalid Form Body), so the button just does nothing for English players.
+     See git history: modal.stat_point_qty_label was exactly this bug.
 """
+import ast
 import json
 import os
 import re
@@ -93,7 +102,79 @@ def check_py_keys():
             print(f"    ... and {len(keys) - 10} more")
 
 
+def _t_call_key_and_fallback(node):
+    """If node is a call to t(lang, "key", "zh fallback", ...), return (key, fallback)."""
+    if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "t"):
+        return None
+    if len(node.args) < 3:
+        return None
+    key_node, fallback_node = node.args[1], node.args[2]
+    if isinstance(key_node, ast.Constant) and isinstance(key_node.value, str) and \
+       isinstance(fallback_node, ast.Constant) and isinstance(fallback_node.value, str):
+        return key_node.value, fallback_node.value
+    return None
+
+
+def check_component_limits():
+    catalog = json.load(open(os.path.join(DATA_DIR, "locale_en.json"), encoding="utf-8"))
+    # (field label, Discord's hard limit)
+    LABEL_FIELDS = {"text": 45, "description": 100}
+    problems = []
+
+    for root, dirs, files in os.walk("."):
+        dirs[:] = [d for d in dirs if d not in (".git", "__pycache__", "scripts")]
+        for fname in files:
+            if not fname.endswith(".py"):
+                continue
+            path = os.path.join(root, fname)
+            try:
+                tree = ast.parse(open(path, encoding="utf-8").read(), filename=path)
+            except SyntaxError:
+                continue
+
+            for node in ast.walk(tree):
+                # discord.ui.Label(text=..., description=...)
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "Label":
+                    for kw in node.keywords:
+                        if kw.arg not in LABEL_FIELDS:
+                            continue
+                        hit = _t_call_key_and_fallback(kw.value)
+                        if not hit:
+                            continue
+                        key, zh = hit
+                        limit = LABEL_FIELDS[kw.arg]
+                        en = catalog.get(key, zh)
+                        if len(zh) > limit or len(en) > limit:
+                            problems.append((path, node.lineno, f"Label.{kw.arg}", key, limit, len(zh), len(en)))
+
+                # discord.ui.Modal subclass: super().__init__(title=t(...)) and class-level title="..."
+                if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "__init__":
+                    is_super_call = isinstance(node.func.value, ast.Call) and isinstance(node.func.value.func, ast.Name) and node.func.value.func.id == "super"
+                    if not is_super_call:
+                        continue
+                    for kw in node.keywords:
+                        if kw.arg != "title":
+                            continue
+                        hit = _t_call_key_and_fallback(kw.value)
+                        if not hit:
+                            continue
+                        key, zh = hit
+                        en = catalog.get(key, zh)
+                        if len(zh) > 45 or len(en) > 45:
+                            problems.append((path, node.lineno, "Modal.title", key, 45, len(zh), len(en)))
+
+    if not problems:
+        print("[Component limits] All Modal titles / Label text-description stay within Discord's length limits.")
+        return
+
+    print(f"[Component limits] {len(problems)} string(s) risk exceeding Discord's hard limit (raw template, before placeholder substitution — actual runtime length can only be longer):")
+    for path, lineno, field, key, limit, zh_len, en_len in problems:
+        print(f"  {path}:{lineno}  {field} (limit {limit})  key={key}  zh={zh_len} chars, en={en_len} chars")
+
+
 if __name__ == "__main__":
     check_json()
     print()
     check_py_keys()
+    print()
+    check_component_limits()

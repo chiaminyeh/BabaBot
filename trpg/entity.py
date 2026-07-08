@@ -18,11 +18,6 @@ def absorb_monster_damage(slot: dict, new_hp: int) -> int:
 
     - divine_shield（聖盾，靈感來自爐石）：完全抵銷下一次受到的傷害，然後破裂。
       slot["divine_shield"] = True 開啟。
-    - intangible（無實體，靈感來自殺戮尖塔）：狀態存在期間，任何一次傷害最多 1 點。
-      掛在 slot["status"]["intangible"] 上，回合數照一般狀態倒數。
-    - damage_cap（傷害上限，靈感來自 FF 系列的傷害閾值戰）：monster["damage_cap"]
-      設定牠「兩次行動之間」最多能承受的總傷害，超過的部分直接無效；每次牠行動時
-      重置額度（見 monster_ai.run_monster_ai）。
 
     被吸收/削減時會把原因寫進 slot["last_absorb"]，呼叫端（player_attack /
     execute_skill）可以取走並顯示給玩家，不然玩家只會看到「造成 500 傷害」但

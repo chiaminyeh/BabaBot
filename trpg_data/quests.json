@@ -193,7 +193,7 @@
     "quest_h01": {
         "title": "（隱藏）夜半的低語",
         "req_level": 1,
-        "npc_name": "???",
+        "npc_name": "黑暗中的低語聲",
         "target_monster": "vampire_bat",
         "quest_type": "kill",
         "target_count": 1,
@@ -204,14 +204,14 @@
         "accept_prompt": "",
         "turn_in_prompt": "你是某種若有似無、躲在黑暗中的低語聲。玩家剛擊殺了一隻吸血蝙蝠，意外觸發了你的關注。請用一句話、陰森神祕地給予獎勵與一句意味深長的提示。",
         "title_en": "(Hidden) Midnight Whispers",
-        "npc_name_en": "???",
+        "npc_name_en": "Whispering Voice",
         "accept_prompt_en": "",
         "turn_in_prompt_en": "You are a faint, barely-there whispering voice hiding in the darkness. The player just killed a vampire bat, and this has drawn your attention. In one sentence, in an eerie and mysterious tone, grant a reward along with a cryptic, meaningful hint. Respond in English, staying in character as the whispering voice."
     },
     "quest_h02": {
         "title": "（隱藏）鼠王的詛咒",
         "req_level": 10,
-        "npc_name": "???",
+        "npc_name": "魔塔深處的古老聲音",
         "target_monster": "rat_king",
         "quest_type": "kill",
         "target_count": 1,
@@ -222,7 +222,7 @@
         "accept_prompt": "",
         "turn_in_prompt": "你是封印在魔塔深處的古老聲音。玩家剛剛擊殺了巨鼠之王，解開了你的一部分封印。請用一句話、莊嚴而神祕地給予獎勵，並暗示魔塔深處還有更強大的存在。",
         "title_en": "(Hidden) The Rat King's Curse",
-        "npc_name_en": "???",
+        "npc_name_en": "Ancient Tower Voice",
         "accept_prompt_en": "",
         "turn_in_prompt_en": "You are an ancient voice sealed deep within the Magic Tower. The player just killed the King Rat, breaking part of your seal. In one sentence, in a solemn and mysterious tone, grant a reward and hint that something far more powerful lurks deeper within the Magic Tower. Respond in English, staying in character as the ancient voice."
     },
@@ -567,5 +567,39 @@
         "turn_in_prompt": "你是駐守新手村的民兵隊長萊恩。玩家完成了委託。請用一句話、不超過 30 個字，開心地道謝並把獎勵交給他。",
         "accept_prompt_en": "You are Militia Captain Ryan of the village. In one sentence, no more than 30 words, reveal the Goblin Chief was behind it all and send the player to defeat it. Respond in English, staying in character.",
         "turn_in_prompt_en": "You are Militia Captain Ryan of the village. The player completed the quest. In one sentence, no more than 30 words, thank them warmly and hand over the reward. Respond in English, staying in character."
+    },
+    "quest_find_cat": {
+        "title": "尋找走失的貓",
+        "req_level": 1,
+        "npc_name": "村口老人",
+        "target_item": "lost_cat",
+        "quest_type": "collect",
+        "target_count": 1,
+        "reward_exp": 120,
+        "reward_money": 60,
+        "quest_line": "side",
+        "accept_prompt": "你是新手村村口的老人。請用一句話拜託玩家去森林幫你找回走失的貓，語氣焦急但和善，使用繁體中文。",
+        "turn_in_prompt": "你是新手村村口的老人。玩家已經把走失的貓帶回來。請用一句話感動地道謝並交出報酬，使用繁體中文。",
+        "title_en": "Find the Lost Cat",
+        "npc_name_en": "Old Man at the Village Gate",
+        "accept_prompt_en": "In one sentence, ask the player to find your missing cat in the forest.",
+        "turn_in_prompt_en": "In one sentence, thank the player for bringing the cat back and hand over the reward."
+    },
+    "quest_forest_cleanup": {
+        "title": "清理深森林",
+        "req_level": 10,
+        "npc_name": "森林精靈",
+        "target_monster": "giant_spider",
+        "quest_type": "kill",
+        "target_count": 6,
+        "reward_exp": 900,
+        "reward_money": 420,
+        "quest_line": "side",
+        "accept_prompt": "你是深森林的精靈。請用一句話請求玩家幫忙清理深森林中的怪物，語氣優雅而誠懇，使用繁體中文。",
+        "turn_in_prompt": "你是深森林的精靈。玩家已經清理完深森林的怪物。請用一句話向玩家致謝並交出報酬，使用繁體中文。",
+        "title_en": "Clear the Deep Forest",
+        "npc_name_en": "Forest Elf",
+        "accept_prompt_en": "In one sentence, ask the player to clear out monsters in the deep forest.",
+        "turn_in_prompt_en": "In one sentence, thank the player for clearing the deep forest monsters."
     }
 }

@@ -330,7 +330,7 @@ async def _try_pop_completed_active_quest(view, interaction) -> bool:
         await _send_reward_popup(
             view, interaction,
             title=tf(quest_info, "title", lang), quest_line=quest_info.get("quest_line", "side"),
-            npc_name=tf(quest_info, "npc_name", lang) or "???",
+            npc_name=tf(quest_info, "npc_name", lang) or t(lang, "quest.default_npc_name", "神秘聲音"),
             raw_prompt=tf(quest_info, "turn_in_prompt", lang) or t(lang, "quest.default_turn_in_prompt", "請用一句話稱讚玩家完成了委託。"),
             target_name=target_name, target_count=quest_info.get("target_count", 1),
             reward_exp=quest_info.get("reward_exp", 0), reward_money=quest_info.get("reward_money", 0),
@@ -362,7 +362,7 @@ async def _try_pop_completed_hidden_quest(view, interaction) -> bool:
         await _send_reward_popup(
             view, interaction,
             title=tf(quest_info, "title", lang), quest_line=quest_info.get("quest_line", "side"),
-            npc_name=tf(quest_info, "npc_name", lang) or "???",
+            npc_name=tf(quest_info, "npc_name", lang) or t(lang, "quest.default_npc_name", "神秘聲音"),
             raw_prompt=tf(quest_info, "turn_in_prompt", lang) or t(lang, "quest.default_turn_in_prompt_hidden", "請用一句話神祕地給予玩家獎勵。"),
             target_name=target_name, target_count=quest_info.get("target_count", 1),
             reward_exp=quest_info.get("reward_exp", 0), reward_money=quest_info.get("reward_money", 0),
@@ -409,7 +409,7 @@ async def _maybe_send_offer_popup(view, interaction):
     tag = (t(lang, "quest.main_line_tag", "📖 主線任務") if quest_line == "main"
            else t(lang, "quest.side_line_tag", "📌 支線任務"))
     title = tf(quest_info, "title", lang)
-    npc_name = tf(quest_info, "npc_name", lang) or "???"
+    npc_name = tf(quest_info, "npc_name", lang) or t(lang, "quest.default_npc_name", "神秘聲音")
     content = t(
         lang, "quest.offer_popup",
         "❗ **突發委託出現！** {tag}\n**{title}**\n💬 {npc_name}：「{ai_text}」\n\n"

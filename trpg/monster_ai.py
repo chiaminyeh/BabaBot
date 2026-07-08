@@ -46,7 +46,6 @@ def _plain_attack(combat, slot: dict, log: str, atk_mult: float = 1.0) -> str:
     if slot["status"].get("paralysis"):
         m_atk = int(m_atk * combat.cog.status_effects.get("paralysis", {}).get("atk_mult", 0.70))
     m_dmg = calc_monster_damage(m_atk, get_player_def(combat.player, combat.cog.items))
-
     # 閃避判定
     if combat.is_dodging:
         p_spd = get_player_spd(combat.player)
@@ -211,9 +210,12 @@ def ai_buffer(combat, slot, log):
 
 
 def ai_debuffer(combat, slot, log):
-    """支援型衍生怪：有機率對玩家施加攻擊力/防禦力/速度其中一項減益，而非直接攻擊。"""
+    """支援型衍生怪：攻擊的同時有機率附加減益——原本是「35% 純減益不攻擊、65% 純攻擊
+    不減益」，兩者互斥導致純減益的那 35% 回合完全沒有傷害輸出，比同代價的其他 ai 弱一截。
+    改成每次都攻擊（倍率略降到 0.85 反映雙重效果），減益機率獨立判定疊加在攻擊上。"""
     lang = combat.player.language
-    if random.random() < 0.35:
+    log = _plain_attack(combat, slot, log, atk_mult=0.85)
+    if combat.player.current_hp > 0 and random.random() < 0.35:
         stat_key, stat_name_key, stat_name_zh = random.choice([
             ("atk_mult", "monster_ai.stat_atk", "攻擊力"),
             ("def_mult", "monster_ai.stat_def", "防禦力"),
@@ -222,8 +224,8 @@ def ai_debuffer(combat, slot, log):
         stat_name = t(lang, stat_name_key, stat_name_zh)
         combat.player.combat_debuffs[stat_key] = 0.75
         combat.player.combat_debuffs["turns"] = max(combat.player.combat_debuffs.get("turns", 0), 3)
-        return log + t(lang, "monster_ai.debuffer", "\n🌀 {name} 對你施加了詛咒，{stat}下降了！（3回合）", name=tf(slot["monster"], "name", lang), stat=stat_name)
-    return _plain_attack(combat, slot, log)
+        log += t(lang, "monster_ai.debuffer", "\n🌀 {name} 順勢對你施加了詛咒，{stat}下降了！（3回合）", name=tf(slot["monster"], "name", lang), stat=stat_name)
+    return log
 
 
 

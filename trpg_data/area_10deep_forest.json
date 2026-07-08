@@ -1,241 +1,290 @@
 {
-    "area_name": "森林深處",
-    "req_level": 10,
-    "monsters": {
-        "killer_bee": {
-            "id": "killer_bee",
-            "name": "狂躁殺人蜂",
-            "spawn_rate": 0.6,
-            "max_hp": 373,
-            "atk": 75,
-            "def": 0,
-            "spd": 35,
-            "exp": 500,
-            "money_min": 25,
-            "money_max": 45,
-            "drops": {
-                "poison_stinger": 1,
-                "medium_health_potion": 0.2
-            },
-            "status_on_hit": [
-                "poison"
-            ],
-            "status_chance": 0.3,
-            "ai": "multi_hit_flurry",
-            "name_en": "Frenzied Killer Bee",
-            "traits": [
-                "avenger"
-            ]
-        },
-        "treant": {
-            "id": "treant",
-            "name": "枯萎樹精",
-            "spawn_rate": 0.4,
-            "max_hp": 487,
-            "atk": 65,
-            "def": 45,
-            "spd": 15,
-            "exp": 600,
-            "money_min": 30,
-            "money_max": 55,
-            "weakness": [
-                "fire"
-            ],
-            "resistance": [
-                "water",
-                "earth"
-            ],
-            "drops": {
-                "ancient_wood": 1,
-                "iron_sword": 0.08
-            },
-            "ai": "bodyguard",
-            "name_en": "Withered Treant",
-            "traits": [
-                "regenerator"
-            ],
-            "immunity": [
-                "sleep"
-            ]
-        },
-        "giant_spider": {
-            "id": "giant_spider",
-            "name": "巨蛛",
-            "spawn_rate": 0.4,
-            "max_hp": 408,
-            "atk": 80,
-            "def": 0,
-            "spd": 38,
-            "exp": 550,
-            "money_min": 28,
-            "money_max": 48,
-            "weakness": [
-                "fire"
-            ],
-            "resistance": [
-                "poison",
-                "earth"
-            ],
-            "drops": {
-                "poison_stinger": 0.6,
-                "medium_mana_potion": 0.2
-            },
-            "status_on_hit": [
-                "poison"
-            ],
-            "status_chance": 0.35,
-            "ai": "debuffer",
-            "name_en": "Giant Spider",
-            "traits": [
-                "dot_leech"
-            ]
-        },
-        "will_o_wisp": {
-            "id": "will_o_wisp",
-            "name": "鬼火",
-            "spawn_rate": 0.35,
-            "max_hp": 336,
-            "atk": 90,
-            "def": 0,
-            "spd": 42,
-            "exp": 580,
-            "money_min": 30,
-            "money_max": 50,
-            "weakness": [
-                "water",
-                "dark"
-            ],
-            "resistance": [
-                "fire",
-                "thunder"
-            ],
-            "drops": {
-                "ectoplasm": 0.5,
-                "scroll_iron_skin": 0.1
-            },
-            "ai": "time_thief",
-            "name_en": "Will-o'-the-Wisp"
-        }
-    },
-    "boss": {
-        "id": "bee_queen",
-        "name": "劇毒蜂后",
-        "is_boss": true,
-        "max_hp": 2808,
-        "atk": 95,
-        "def": 0,
-        "spd": 40,
-        "exp": 10000,
-        "money_min": 150,
-        "money_max": 250,
-        "weakness": [
-            "fire",
-            "wind"
-        ],
-        "resistance": [
-            "earth",
-            "poison"
-        ],
-        "drops": {
-            "royal_honey": 0.7,
-            "scroll_blood_strike": 0.2,
-            "mage_staff": 0.35,
-            "iron_armor": 0.3
-        },
-        "status_on_hit": [
-            "poison",
-            "paralysis"
-        ],
-        "status_chance": 0.45,
-        "ai": "summoner",
-        "active_skills": [
-            {
-                "id": "summon_swarm",
-                "name": "召喚蜂群",
-                "trigger": {
-                    "type": "interval",
-                    "value": 4
-                },
-                "effect": {
-                    "type": "summon_minion",
-                    "summon_ids": [
-                        "killer_bee",
-                        "worker_bee",
-                        "soldier_bee"
-                    ]
-                },
-                "name_en": "Summon Swarm"
-            }
-        ],
-        "phase2": {
-            "hp_below": 0.5,
-            "ai": "berserk_low_hp",
-            "name_suffix": "（蜂群暴走）",
-            "heal_pct": 0.45,
-            "transform_text": "劇毒蜂后散發出濃烈的毒霾，瘋狂地振翅衝來！",
-            "active_skills": [
-                {
-                    "id": "venom_dive",
-                    "name": "劇毒俯衝",
-                    "trigger": {
-                        "type": "hp_below",
-                        "value": 0.2
-                    },
-                    "effect": {
-                        "type": "heavy_attack",
-                        "mult": 2.3
-                    },
-                    "name_en": "Venomous Dive"
-                }
-            ],
-            "name_suffix_en": "(Swarm Frenzy)",
-            "transform_text_en": "The Venomous Bee Queen exudes a thick cloud of poisonous miasma, charging in a frenzied flurry of wings!"
-        },
-        "name_en": "Venomous Bee Queen",
-        "summon_ids": [
-            "worker_bee",
-            "soldier_bee"
-        ],
-        "traits": [
-            "avenger"
-        ]
-    },
-    "boss_minions": {
-        "worker_bee": {
-            "id": "worker_bee",
-            "name": "工蜂",
-            "max_hp": 208,
-            "atk": 40,
-            "def": 0,
-            "spd": 30,
-            "exp": 0,
-            "money_min": 0,
-            "money_max": 0,
-            "drops": {},
-            "ai": "support_healer",
-            "name_en": "Worker Bee",
-            "traits": [
-                "avenger"
-            ]
-        },
-        "soldier_bee": {
-            "id": "soldier_bee",
-            "name": "兵蜂",
-            "max_hp": 241,
-            "atk": 55,
-            "def": 0,
-            "spd": 26,
-            "exp": 0,
-            "money_min": 0,
-            "money_max": 0,
-            "drops": {},
-            "ai": "debuffer",
-            "name_en": "Soldier Bee",
-            "traits": [
-                "avenger"
-            ]
-        }
-    },
-    "area_name_en": "Deep Forest",
-    "requires_boss": "area_05forest"
+    "area_name":  "森林深處",
+    "req_level":  10,
+    "monsters":  {
+                     "killer_bee":  {
+                                        "id":  "killer_bee",
+                                        "name":  "狂躁殺人蜂",
+                                        "spawn_rate":  0.6,
+                                        "max_hp":  373,
+                                        "atk":  75,
+                                        "def":  0,
+                                        "spd":  35,
+                                        "exp":  500,
+                                        "money_min":  25,
+                                        "money_max":  45,
+                                        "drops":  {
+                                                      "poison_stinger":  1,
+                                                      "medium_health_potion":  0.2
+                                                  },
+                                        "status_on_hit":  [
+                                                              "poison"
+                                                          ],
+                                        "status_chance":  0.3,
+                                        "ai":  "multi_hit_flurry",
+                                        "name_en":  "Frenzied Killer Bee",
+                                        "traits":  [
+                                                       "avenger"
+                                                   ]
+                                    },
+                     "treant":  {
+                                    "id":  "treant",
+                                    "name":  "枯萎樹精",
+                                    "spawn_rate":  0.4,
+                                    "max_hp":  487,
+                                    "atk":  65,
+                                    "def":  45,
+                                    "spd":  15,
+                                    "exp":  600,
+                                    "money_min":  30,
+                                    "money_max":  55,
+                                    "weakness":  [
+                                                     "fire"
+                                                 ],
+                                    "resistance":  [
+                                                       "water",
+                                                       "earth"
+                                                   ],
+                                    "drops":  {
+                                                  "ancient_wood":  1,
+                                                  "iron_sword":  0.08
+                                              },
+                                    "ai":  "bodyguard",
+                                    "name_en":  "Withered Treant",
+                                    "traits":  [
+                                                   "regenerator"
+                                               ],
+                                    "immunity":  [
+                                                     "sleep"
+                                                 ]
+                                },
+                     "giant_spider":  {
+                                          "id":  "giant_spider",
+                                          "name":  "巨蛛",
+                                          "spawn_rate":  0.4,
+                                          "max_hp":  408,
+                                          "atk":  80,
+                                          "def":  0,
+                                          "spd":  38,
+                                          "exp":  550,
+                                          "money_min":  28,
+                                          "money_max":  48,
+                                          "weakness":  [
+                                                           "fire"
+                                                       ],
+                                          "resistance":  [
+                                                             "poison",
+                                                             "earth"
+                                                         ],
+                                          "drops":  {
+                                                        "poison_stinger":  0.6,
+                                                        "medium_mana_potion":  0.2
+                                                    },
+                                          "status_on_hit":  [
+                                                                "poison"
+                                                            ],
+                                          "status_chance":  0.35,
+                                          "ai":  "debuffer",
+                                          "name_en":  "Giant Spider",
+                                          "traits":  [
+                                                         "dot_leech"
+                                                     ]
+                                      },
+                     "will_o_wisp":  {
+                                         "id":  "will_o_wisp",
+                                         "name":  "鬼火",
+                                         "spawn_rate":  0.35,
+                                         "max_hp":  336,
+                                         "atk":  90,
+                                         "def":  0,
+                                         "spd":  42,
+                                         "exp":  580,
+                                         "money_min":  30,
+                                         "money_max":  50,
+                                         "weakness":  [
+                                                          "water",
+                                                          "dark"
+                                                      ],
+                                         "resistance":  [
+                                                            "fire",
+                                                            "thunder"
+                                                        ],
+                                         "drops":  {
+                                                       "ectoplasm":  0.5,
+                                                       "scroll_iron_skin":  0.1
+                                                   },
+                                         "ai":  "time_thief",
+                                         "name_en":  "Will-o\u0027-the-Wisp"
+                                     }
+                 },
+    "boss":  {
+                 "id":  "bee_queen",
+                 "name":  "劇毒蜂后",
+                 "is_boss":  true,
+                 "max_hp":  2808,
+                 "atk":  95,
+                 "def":  0,
+                 "spd":  40,
+                 "exp":  10000,
+                 "money_min":  150,
+                 "money_max":  250,
+                 "weakness":  [
+                                  "fire",
+                                  "wind"
+                              ],
+                 "resistance":  [
+                                    "earth",
+                                    "poison"
+                                ],
+                 "drops":  {
+                               "royal_honey":  0.7,
+                               "scroll_blood_strike":  0.2,
+                               "mage_staff":  0.35,
+                               "iron_armor":  0.3
+                           },
+                 "status_on_hit":  [
+                                       "poison",
+                                       "paralysis"
+                                   ],
+                 "status_chance":  0.45,
+                 "ai":  "summoner",
+                 "active_skills":  [
+                                       {
+                                           "id":  "summon_swarm",
+                                           "name":  "召喚蜂群",
+                                           "trigger":  {
+                                                           "type":  "interval",
+                                                           "value":  4
+                                                       },
+                                           "effect":  {
+                                                          "type":  "summon_minion",
+                                                          "summon_ids":  [
+                                                                             "killer_bee",
+                                                                             "worker_bee",
+                                                                             "soldier_bee"
+                                                                         ]
+                                                      },
+                                           "name_en":  "Summon Swarm"
+                                       }
+                                   ],
+                 "phase2":  {
+                                "hp_below":  0.5,
+                                "ai":  "berserk_low_hp",
+                                "name_suffix":  "（蜂群暴走）",
+                                "heal_pct":  0.45,
+                                "transform_text":  "劇毒蜂后散發出濃烈的毒霾，瘋狂地振翅衝來！",
+                                "active_skills":  [
+                                                      {
+                                                          "id":  "venom_dive",
+                                                          "name":  "劇毒俯衝",
+                                                          "trigger":  {
+                                                                          "type":  "hp_below",
+                                                                          "value":  0.2
+                                                                      },
+                                                          "effect":  {
+                                                                         "type":  "heavy_attack",
+                                                                         "mult":  2.3
+                                                                     },
+                                                          "name_en":  "Venomous Dive"
+                                                      }
+                                                  ],
+                                "name_suffix_en":  "(Swarm Frenzy)",
+                                "transform_text_en":  "The Venomous Bee Queen exudes a thick cloud of poisonous miasma, charging in a frenzied flurry of wings!"
+                            },
+                 "name_en":  "Venomous Bee Queen",
+                 "summon_ids":  [
+                                    "worker_bee",
+                                    "soldier_bee"
+                                ],
+                 "traits":  [
+                                "avenger"
+                            ]
+             },
+    "boss_minions":  {
+                         "worker_bee":  {
+                                            "id":  "worker_bee",
+                                            "name":  "工蜂",
+                                            "max_hp":  208,
+                                            "atk":  40,
+                                            "def":  0,
+                                            "spd":  30,
+                                            "exp":  0,
+                                            "money_min":  0,
+                                            "money_max":  0,
+                                            "drops":  {
+
+                                                      },
+                                            "ai":  "support_healer",
+                                            "name_en":  "Worker Bee",
+                                            "traits":  [
+                                                           "avenger"
+                                                       ]
+                                        },
+                         "soldier_bee":  {
+                                             "id":  "soldier_bee",
+                                             "name":  "兵蜂",
+                                             "max_hp":  241,
+                                             "atk":  55,
+                                             "def":  0,
+                                             "spd":  26,
+                                             "exp":  0,
+                                             "money_min":  0,
+                                             "money_max":  0,
+                                             "drops":  {
+
+                                                       },
+                                             "ai":  "debuffer",
+                                             "name_en":  "Soldier Bee",
+                                             "traits":  [
+                                                            "avenger"
+                                                        ]
+                                         }
+                     },
+    "area_name_en":  "Deep Forest",
+    "requires_boss":  "area_05forest",
+    "subareas":  [
+                     {
+                         "id":  "deep_forest_giant_tree",
+                         "name":  "巨木林",
+                         "name_en":  "Giant Tree Grove",
+                         "desc":  "樹幹像牆一樣厚，能藏很多東西。",
+                         "desc_en":  "The trunks are thick as walls, with plenty hidden between them.",
+                         "events":  [
+
+                                    ],
+                         "monsters":  [
+                                          "treant",
+                                          "giant_spider"
+                                      ]
+                     },
+                     {
+                         "id":  "deep_forest_fairy_ring",
+                         "name":  "妖精圓環",
+                         "name_en":  "Fairy Ring",
+                         "desc":  "看起來安靜，但常有奇怪的回應。",
+                         "desc_en":  "It looks quiet, but strange answers often come back from the dark.",
+                         "events":  [
+
+                                    ],
+                         "monsters":  [
+                                          "will_o_wisp"
+                                      ]
+                     },
+                     {
+                         "id":  "deep_forest_ritual_site",
+                         "name":  "儀式點",
+                         "name_en":  "Ritual Site",
+                         "desc":  "藏在更深處的隱藏子區域。",
+                         "desc_en":  "A hidden pocket deeper in the woods, revealed only once the ritual trail opens.",
+                         "events":  [
+                                        "deep_forest_elf_cleanup"
+                                    ],
+                         "monsters":  [
+                                          "will_o_wisp",
+                                          "treant"
+                                      ],
+                         "hidden":  true,
+                         "requires_quest":  "quest_forest_cleanup"
+                     }
+                 ]
 }

@@ -143,7 +143,7 @@ def _get_index(cog) -> list:
 def _world_overview(cog, lang: str) -> str:
     parts = []
     for area in cog.areas.values():
-        name = tf(area, "area_name", lang) or "???"
+        name = tf(area, "area_name", lang) or ("Unknown Area" if lang == "en" else "未知區域")
         req = area.get("req_level", 1)
         parts.append(f"{name}(Lv.{req})")
     sep = ", " if lang == "en" else "、"

@@ -134,5 +134,95 @@
         "threshold": 3,
         "name_en": "Trophy Collector",
         "desc_en": "Earn 3 Magic Tower milestone trophies"
+    },
+    "achv_boss_goblin_chief": {
+        "name": "郊外的秩序",
+        "desc": "擊敗新手村郊外的區域BOSS【哥布林首領】",
+        "type": "specific_boss",
+        "target_area": "area_01grassland",
+        "threshold": 1,
+        "name_en": "Order in the Outskirts",
+        "desc_en": "Defeat the area boss [Goblin Chief] in the Village Outskirts"
+    },
+    "achv_boss_forest_guardian": {
+        "name": "迷霧盡頭",
+        "desc": "擊敗迷霧森林的區域BOSS【迷霧林王】",
+        "type": "specific_boss",
+        "target_area": "area_05forest",
+        "threshold": 1,
+        "name_en": "End of the Mist",
+        "desc_en": "Defeat the area boss [Mistwood King] in the Misty Forest"
+    },
+    "achv_boss_bee_queen": {
+        "name": "蜂巢的黃昏",
+        "desc": "擊敗森林深處的區域BOSS【劇毒蜂后】",
+        "type": "specific_boss",
+        "target_area": "area_10deep_forest",
+        "threshold": 1,
+        "name_en": "Twilight of the Hive",
+        "desc_en": "Defeat the area boss [Venomous Bee Queen] in the Deep Forest"
+    },
+    "achv_boss_mad_doctor": {
+        "name": "終結實驗",
+        "desc": "擊敗瘋狂博士的實驗室的區域BOSS【瘋狂博士】",
+        "type": "specific_boss",
+        "target_area": "area_20lab",
+        "threshold": 1,
+        "name_en": "End of the Experiment",
+        "desc_en": "Defeat the area boss [Mad Doctor] in the Mad Doctor's Laboratory"
+    },
+    "achv_boss_lich": {
+        "name": "亡者的安息",
+        "desc": "擊敗遺忘墓地的區域BOSS【亡靈巫妖】",
+        "type": "specific_boss",
+        "target_area": "area_30graveyard",
+        "threshold": 1,
+        "name_en": "Rest for the Dead",
+        "desc_en": "Defeat the area boss [Undead Lich] in the Forgotten Graveyard"
+    },
+    "achv_boss_vampire_lord": {
+        "name": "血脈斷絕",
+        "desc": "擊敗吸血鬼城堡的區域BOSS【吸血鬼真祖】",
+        "type": "specific_boss",
+        "target_area": "area_40vampire_castle",
+        "threshold": 1,
+        "name_en": "End of the Bloodline",
+        "desc_en": "Defeat the area boss [Vampire Progenitor] in the Vampire Castle"
+    },
+    "achv_boss_ancient_dragon": {
+        "name": "屠龍者",
+        "desc": "擊敗龍臨峽谷的區域BOSS【遠古炎龍・瓦剌斯】",
+        "type": "specific_boss",
+        "target_area": "area_55dragon_valley",
+        "threshold": 1,
+        "name_en": "Dragonslayer",
+        "desc_en": "Defeat the area boss [Valdras, the Ancient Flame Dragon] in Dragonfall Gorge"
+    },
+    "achv_boss_colosseum_champion": {
+        "name": "新王加冕",
+        "desc": "擊敗修羅鬥技場的冠軍【不敗冠軍・剎羅】",
+        "type": "specific_boss",
+        "target_area": "area_60colosseum",
+        "threshold": 1,
+        "name_en": "Coronation of a New King",
+        "desc_en": "Defeat the champion [Shura, the Undefeated Champion] in the Asura Colosseum"
+    },
+    "achv_boss_void_sovereign": {
+        "name": "裂隙的終焉",
+        "desc": "擊敗虛空裂隙的區域BOSS【虛空主宰・涅赫爾】",
+        "type": "specific_boss",
+        "target_area": "area_70void_rift",
+        "threshold": 1,
+        "name_en": "End of the Rift",
+        "desc_en": "Defeat the area boss [Nehal, the Void Sovereign] in the Void Rift"
+    },
+    "achv_boss_sargeras": {
+        "name": "討伐魔王",
+        "desc": "擊敗魔王城的最終BOSS【魔王 薩格拉斯】",
+        "type": "specific_boss",
+        "target_area": "area_99demon_castle",
+        "threshold": 1,
+        "name_en": "The Demon Lord Falls",
+        "desc_en": "Defeat the final boss [Demon Lord Sargeras] in the Demon Lord's Castle"
     }
 }

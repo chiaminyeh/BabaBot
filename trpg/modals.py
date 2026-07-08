@@ -5,17 +5,18 @@ import discord
 from trpg.i18n import t
 
 
-class ElderChiefModal(discord.ui.Modal, title="請教老村長"):
+class ElderChiefModal(discord.ui.Modal):
     def __init__(self, game_view):
         lang = getattr(game_view.player, "language", "zh")
         super().__init__(title=t(lang, "modal.elder_chief_title", "請教老村長"))
         self.game_view = game_view
         self.question = discord.ui.TextInput(
+            label=t(lang, "modal.elder_chief_question_label", "你想問什麼？"),
             style=discord.TextStyle.paragraph,
             max_length=200,
             placeholder=t(lang, "modal.elder_chief_question_placeholder", "例如：這個世界有什麼怪物？技能要怎麼學？"),
         )
-        self.add_item(discord.ui.Label(text=t(lang, "modal.elder_chief_question_label", "你想問什麼？"), component=self.question))
+        self.add_item(self.question)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
@@ -61,7 +62,7 @@ class ElderChiefModal(discord.ui.Modal, title="請教老村長"):
         await interaction.followup.send(embed=embed, ephemeral=True)
 
 
-class StatPointModal(discord.ui.Modal, title="投入屬性點"):
+class StatPointModal(discord.ui.Modal):
     """單一屬性的手動輸入分配——取代舊版「一次跳出 5 個數字欄位、一口氣分配全部
     屬性」的批量彈窗。這裡改成每個屬性各自一顆按鈕、各開一個只有一個欄位的彈窗，
     輸入的數字如果超過剩餘點數會自動封頂到剩餘點數（等於當初「All-in」按鈕的
@@ -75,14 +76,12 @@ class StatPointModal(discord.ui.Modal, title="投入屬性點"):
         from trpg.stats import get_unspent_points
         unspent = get_unspent_points(game_view.player)
         self.amount = discord.ui.TextInput(
-            placeholder=t(lang, "modal.qty_placeholder", "例如：5"),
+            label=t(lang, "modal.stat_point_qty_label", "要投入幾點到 {stat}？", stat=stat_label),
+            placeholder=t(lang, "modal.stat_point_qty_desc", "剩餘 {unspent} 點，超出自動全押", unspent=unspent)[:100],
             default="1",
             max_length=4,
         )
-        self.add_item(discord.ui.Label(
-            text=t(lang, "modal.stat_point_qty_label", "要投入幾點到 {stat}？（剩餘 {unspent} 點，輸入超過剩餘的數字會自動全押）", stat=stat_label, unspent=unspent),
-            component=self.amount,
-        ))
+        self.add_item(self.amount)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
@@ -102,18 +101,89 @@ class StatPointModal(discord.ui.Modal, title="投入屬性點"):
             print(f"屬性點面板更新失敗: {e}")
 
 
-class BuyItemModal(discord.ui.Modal, title="批量購買"):
+class BulkStatAllocModal(discord.ui.Modal):
+    STAT_FIELDS = (
+        ("atk", "ATK 攻擊"),
+        ("vit", "VIT 體魄"),
+        ("int", "INT 智力"),
+        ("spd", "SPD 速度"),
+        ("luck", "LUCK 運氣"),
+    )
+
+    def __init__(self, game_view):
+        lang = getattr(game_view.player, "language", "zh")
+        super().__init__(title=t(lang, "modal.bulk_stat_title", "一次分配屬性點"))
+        self.game_view = game_view
+        self.inputs = {}
+        from trpg.stats import get_unspent_points
+        unspent = get_unspent_points(game_view.player)
+        for key, label in self.STAT_FIELDS:
+            box = discord.ui.TextInput(
+                label=f"{label} (剩餘 {unspent} 點)",
+                placeholder="0",
+                default="0",
+                max_length=4,
+            )
+            self.inputs[key] = box
+            self.add_item(box)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        lang = getattr(self.game_view.player, "language", "zh")
+        values = {}
+        try:
+            for key, box in self.inputs.items():
+                raw = str(box.value).strip() or "0"
+                amount = int(raw)
+                if amount < 0:
+                    raise ValueError
+                values[key] = amount
+        except ValueError:
+            await interaction.followup.send(t(lang, "modal.qty_invalid", "❌ 數量無效，請輸入正整數。"), ephemeral=True)
+            return
+
+        total = sum(values.values())
+        if total <= 0:
+            await interaction.followup.send(t(lang, "modal.bulk_stat_empty", "❌ 至少要分配 1 點。"), ephemeral=True)
+            return
+
+        from trpg.stats import get_unspent_points, recalc_player_stats, default_stat_alloc
+        unspent = get_unspent_points(self.game_view.player)
+        if total > unspent:
+            await interaction.followup.send(
+                t(lang, "modal.bulk_stat_over", "❌ 你只剩 {unspent} 點，這次輸入了 {total} 點。", unspent=unspent, total=total),
+                ephemeral=True,
+            )
+            return
+
+        if not getattr(self.game_view.player, "stat_alloc", None):
+            self.game_view.player.stat_alloc = default_stat_alloc()
+        for key, amount in values.items():
+            self.game_view.player.stat_alloc[key] = self.game_view.player.stat_alloc.get(key, 0) + amount
+        recalc_player_stats(self.game_view.player, self.game_view.cog.items, heal_full=False)
+        self.game_view.cog.save_players()
+        await self.game_view.handle_stat_alloc_menu(
+            t(lang, "modal.bulk_stat_done", "✅ 已分配 {total} 點屬性。", total=total)
+        )
+        try:
+            await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
+        except Exception as e:
+            print(f"批量屬性分配面板更新失敗: {e}")
+
+
+class BuyItemModal(discord.ui.Modal):
     def __init__(self, game_view, item_id: str):
         lang = getattr(game_view.player, "language", "zh")
         super().__init__(title=t(lang, "modal.buy_item_title", "批量購買"))
         self.game_view = game_view
         self.item_id = item_id
         self.qty = discord.ui.TextInput(
+            label=t(lang, "modal.buy_qty_label", "請輸入購買數量"),
             placeholder=t(lang, "modal.qty_placeholder", "例如：5"),
             default="1",
             max_length=3,
         )
-        self.add_item(discord.ui.Label(text=t(lang, "modal.buy_qty_label", "請輸入購買數量"), component=self.qty))
+        self.add_item(self.qty)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
@@ -131,18 +201,20 @@ class BuyItemModal(discord.ui.Modal, title="批量購買"):
         except Exception as e:
             print(f"購買面板更新失敗: {e}")
 
-class SellItemModal(discord.ui.Modal, title="批量出售"):
+
+class SellItemModal(discord.ui.Modal):
     def __init__(self, game_view, item_id: str):
         lang = getattr(game_view.player, "language", "zh")
         super().__init__(title=t(lang, "modal.sell_item_title", "批量出售"))
         self.game_view = game_view
         self.item_id = item_id
         self.qty = discord.ui.TextInput(
+            label=t(lang, "modal.sell_qty_label", "請輸入出售數量"),
             placeholder=t(lang, "modal.qty_placeholder", "例如：5"),
             default="1",
             max_length=3,
         )
-        self.add_item(discord.ui.Label(text=t(lang, "modal.sell_qty_label", "請輸入出售數量"), component=self.qty))
+        self.add_item(self.qty)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)

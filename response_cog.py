@@ -146,6 +146,28 @@ class response_cog(commands.Cog):
                         reply = await self._call_gemini_with_fallback(prompt, system_instruction=sys_prompt)
                         await message.channel.send(reply)
             return
+
+        # ==========================================
+        # Reactions System
+        # ==========================================
+        reactions = {
+            'lol' : '💀',
+            'nice' : '👍',
+            'baba' : '<:baba:1422080743886291025>'
+        }
+        for key, value in reactions.items():
+            if key in user_message.lower():
+                await message.add_reaction(value)
+        
+        # ? 前綴判斷 (自動轉私訊)
+        if user_message.startswith("?"):
+            if user_message == "?":
+                await self.send_message(message, user_message, is_private=False)
+            else:
+                user_message = user_message[1:]
+                await self.send_message(message, user_message, is_private=True)
+        else:
+            await self.send_message(message, user_message, is_private=False)
         
     async def _call_gemini_with_fallback(self, prompt: str, system_instruction: str = None) -> str:
         """核心優化：嘗試清單中的所有 Gemini 模型，直到成功為止"""
@@ -169,48 +191,18 @@ class response_cog(commands.Cog):
         
         return "(所有 Gemini 免費模型的額度都耗盡了 💀)"
 
-        # ==========================================
-        # Baba Hunger System
-        # ==========================================
-        if 'baba' in user_message and 'eat' not in user_message:
-            if hasattr(self.bot, 'baba') and self.bot.baba.hunger <= 50:
-                await message.channel.send(f"I'm hungry (Hunger meter: {self.bot.baba.hunger})")
-                return 
-
-        # ==========================================
-        # Reactions System
-        # ==========================================
-        reactions = {
-            'lol' : '💀',
-            'nice' : '👍',
-            'baba' : '<:baba:1422080743886291025>'
-        }
-        for key, value in reactions.items():
-            if key in user_message.lower():
-                await message.add_reaction(value)
-        
-        # ? 前綴判斷 (自動轉私訊)
-        if user_message.startswith("?"):
-            if user_message == "?":
-                await self.send_message(message, user_message, is_private=False)
-            else:
-                user_message = user_message[1:]
-                await self.send_message(message, user_message, is_private=True)
-        else:
-            await self.send_message(message, user_message, is_private=False)
-
-    @commands.command(name='eat', aliases=['drink'])
-    async def feed(self, ctx):
-        await ctx.send("yum yum")
-        if hasattr(self.bot, 'baba'):
-            self.bot.baba.hunger += 10
-
-    @commands.command(name='hunger', aliases=['hungry'])
-    async def hunger(self, ctx):
-        if hasattr(self.bot, 'baba'):
-            await ctx.send(f"Hunger meter: {self.bot.baba.hunger}")
-        else:
-            await ctx.send("Baba 系統未初始化飢餓值！")
+    # @commands.command(name='eat', aliases=['drink'])
+    # async def feed(self, ctx):
+    #     await ctx.send("yum yum")
+    #     if hasattr(self.bot, 'baba'):
+    #         self.bot.baba.hunger += 10
+    # 
+    # @commands.command(name='hunger', aliases=['hungry'])
+    # async def hunger(self, ctx):
+    #     if hasattr(self.bot, 'baba'):
+    #         await ctx.send(f"Hunger meter: {self.bot.baba.hunger}")
+    #     else:
+    #         await ctx.send("Baba 系統未初始化飢餓值！")
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, user):

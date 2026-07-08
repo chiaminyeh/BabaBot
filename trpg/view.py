@@ -8,7 +8,7 @@ from trpg.i18n import t, tf
 from trpg.combat import TRPGCombat, exp_to_next_level, get_player_atk, get_player_def, get_player_magic, get_player_spd
 from trpg.status import format_status_list, clear_all_status, get_daily_jester_immunity
 from trpg.monster_pool import pick_random_monster
-from trpg.quest_popup import process_quest_popups
+from trpg.quest_popup import process_quest_popups, accept_quest
 from trpg.stats import default_stat_alloc, recalc_player_stats, get_unspent_points, format_stat_alloc_summary, get_potion_heal_target, prestige_required_level
 from trpg.player import RoguePlayerWrapper
 from trpg.entity import absorb_monster_damage
@@ -27,6 +27,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.cog = cog
         self.user_id = str(user_id)
         self.player = RoguePlayerWrapper(cog.get_player(user_id))
+        if self._refresh_daily_stamina():
+            self.cog.save_players()
         self.message = None
 
         # 戰鬥暫存狀態：最多 3 格怪物欄位（前排為第一個還活著的格子）
@@ -73,6 +75,51 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
     def active_monster_id(self):
         front = self._front_slot()
         return front["monster"].get("id") if front else None
+
+    def _today_str(self) -> str:
+        return datetime.today().strftime("%Y-%m-%d")
+
+    def _refresh_daily_stamina(self) -> bool:
+        real = getattr(self.player, "real_player", self.player)
+        max_stamina = max(1, int(getattr(real, "max_stamina", 200) or 200))
+        changed = False
+        if not isinstance(getattr(real, "daily_boss_kills", None), dict):
+            real.daily_boss_kills = {}
+            changed = True
+        elif getattr(real, "daily_boss_kills", None):
+            real.daily_boss_kills = {}
+            changed = True
+        if getattr(real, "max_stamina", None) != max_stamina:
+            real.max_stamina = max_stamina
+            changed = True
+        if getattr(real, "last_stamina_refresh", "") != self._today_str():
+            real.stamina = max_stamina
+            real.last_stamina_refresh = self._today_str()
+            changed = True
+        elif getattr(real, "stamina", None) is None:
+            real.stamina = max_stamina
+            changed = True
+        return changed
+
+    def _spend_stamina(self, cost: int) -> bool:
+        self._refresh_daily_stamina()
+        real = getattr(self.player, "real_player", self.player)
+        current = max(0, int(getattr(real, "stamina", 0) or 0))
+        max_stamina = max(1, int(getattr(real, "max_stamina", 200) or 200))
+        if current < cost:
+            self.log_message = t(
+                self.player.language,
+                "stamina.not_enough",
+                "❌ Not enough stamina. You have {current}/{max_stamina}, but this action needs {cost}.",
+                current=current,
+                max_stamina=max_stamina,
+                cost=cost,
+            )
+            self.build_main_menu()
+            return False
+        real.stamina = current - cost
+        self.cog.save_players()
+        return True
 
     @property
     def monster_hp(self):
@@ -228,6 +275,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
     _PREFIX_ROUTES = [
         ("btn_lang_", {"m": "handle_lang_select", "arg": "suffix"}),
         ("move_to_", {"m": "handle_move_execute", "arg": "full"}),
+        ("subarea_", {"m": "handle_subarea_explore", "arg": "suffix"}),
         ("darch_", {"m": "handle_dung_archetype", "arg": "suffix"}),
         ("ddoor_", {"m": "handle_dung_door", "arg": "suffix"}),
         ("dpick_", {"m": "handle_dung_loot_pick", "arg": "suffix"}),
@@ -258,7 +306,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "cave_dir_forward", "cave_dir_left", "cave_dir_right", "cave_dir_back",
         "b_atk", "b_def", "b_dod", "b_fle",
     }
-    _WORLD_ACTION_PREFIXES = ("move_to_", "skill_", "use_item_")
+    _WORLD_ACTION_PREFIXES = ("move_to_", "subarea_", "skill_", "use_item_")
 
     async def _run_route(self, spec, interaction, custom_id, prefix=None) -> bool:
         """Execute a matched route spec. Returns False if a battle guard blocked it."""
@@ -381,6 +429,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.in_battle = False
         self.monster_slots = []
         self.viewing_leaderboard = False
+        if self._refresh_daily_stamina():
+            self.cog.save_players()
         
         # Route to dungeon if in dungeon
         if self.player.current_area == "area_dungeon":
@@ -435,6 +485,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
 
     def build_artisan_menu(self):
         self.clear_items()
+        self.current_menu_state = "artisan"
         lang = self.player.language
         self.log_message = t(lang, "menu.artisan_prompt", "⚒️ 【鐵匠之地】挑選你要去的地方：")
         self.add_action_button(label=t(lang, "menu.btn_blacksmith_shop", "鐵匠鋪"), style=discord.ButtonStyle.primary, custom_id="btn_blacksmith_menu", emoji="⚒️")
@@ -447,6 +498,64 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             return False
         today_str = datetime.today().strftime("%Y-%m-%d")
         return baba.daily_claims.get(int(self.user_id)) == today_str
+
+    def _visible_subareas(self, area_data: dict | None = None) -> list[dict]:
+        area_data = area_data or self.cog.areas.get(self.player.current_area, {})
+        real = getattr(self.player, "real_player", self.player)
+        active_quests = set(getattr(real, "active_quests", {}).keys())
+        completed_quests = set(getattr(real, "completed_quests", []))
+        visible = []
+        for sub in area_data.get("subareas", []):
+            requires_quest = sub.get("requires_quest")
+            if requires_quest and requires_quest not in active_quests and requires_quest not in completed_quests:
+                continue
+            requires_flag = sub.get("requires_flag")
+            if requires_flag and not getattr(real, requires_flag, False):
+                continue
+            if sub.get("hidden") and not requires_quest and not requires_flag:
+                continue
+            visible.append(sub)
+        return visible
+
+    def _current_subarea_data(self, area_data: dict | None = None) -> dict | None:
+        area_data = area_data or self.cog.areas.get(self.player.current_area, {})
+        current_subarea = getattr(getattr(self.player, "real_player", self.player), "current_subarea", None)
+        for sub in self._visible_subareas(area_data):
+            if sub.get("id") == current_subarea:
+                return sub
+        return None
+
+    def build_subarea_menu(self):
+        self.clear_items()
+        self.current_menu_state = "subarea"
+        lang = self.player.language
+        area_data = self.cog.areas.get(self.player.current_area, {})
+        area_name = tf(area_data, "area_name", lang) or t(lang, "explore.unknown_area", "Unknown Area")
+        visible = self._visible_subareas(area_data)
+        if not visible:
+            self.log_message = t(lang, "explore.area_peaceful", "📍 This area feels quiet. There is nowhere to explore here.")
+            self.build_main_menu()
+            return
+
+        current = self._current_subarea_data(area_data)
+        lines = [t(lang, "menu.subarea_prompt", "Choose where to explore in {area_name}.", area_name=area_name)]
+        if current:
+            current_name = tf(current, "name", lang) or current.get("id", "")
+            current_desc = tf(current, "desc", lang) or ""
+            lines.append("")
+            lines.append(t(lang, "menu.subarea_current", "Current subarea: {subarea_name}", subarea_name=current_name))
+            if current_desc:
+                lines.append(current_desc)
+        self.log_message = "\n".join(lines)
+
+        for sub in visible:
+            sub_name = tf(sub, "name", lang) or sub.get("id", "Subarea")
+            self.add_action_button(
+                label=sub_name[:80],
+                style=discord.ButtonStyle.primary,
+                custom_id=f"subarea_{sub['id']}",
+            )
+        self.add_action_button(label=t(lang, "menu.btn_back", "Back"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
     def build_guild_menu(self):
         self.clear_items()
@@ -1085,7 +1194,6 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         return encounter[:3]
 
     async def handle_boss_explore(self):
-        from datetime import datetime
         lang = self.player.language
         if self.player.current_hp <= 0:
             self.log_message = t(lang, "menu.near_death_rest", "❌ 你快死掉了，請先回村莊休息！")
@@ -1097,11 +1205,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         if not boss_data:
             self.log_message = t(lang, "menu.no_boss_here", "📍 這個區域似乎沒有盤踞任何 BOSS...")
             return
-
-        # 📆 檢查每日擊殺限制
-        today_str = datetime.today().strftime('%Y-%m-%d')
-        if self.player.daily_boss_kills.get(self.player.current_area) == today_str:
-            self.log_message = t(lang, "menu.boss_already_defeated_today", "❌ 這裡的 BOSS【{boss_name}】今天已經被你討伐了。明天刷新後再來吧！", boss_name=tf(boss_data, "name", lang))
+        if not self._spend_stamina(20):
             return
             
        # 遭遇 BOSS，複製數值進入戰鬥
@@ -1315,7 +1419,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         for item_id, count in self.player.inventory.items():
             if count > 0:
                 item = self.cog.items.get(item_id)
-                if item and item.get("type") in ("potion", "cure", "buff_item"):
+                if item and item.get("type") in ("potion", "cure", "buff_item", "stamina_potion"):
                     usable.append(item_id)
 
         total_items = len(usable)
@@ -1365,6 +1469,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 self.log_message = self.combat.use_buff_item(item_id)
             else:
                 self.log_message = t(lang, "battle.buff_item_battle_only", "❌ 這個道具只能在戰鬥中使用。")
+        elif item.get("type") == "stamina_potion":
+            self.log_message = self.use_stamina_potion(item_id)
         else:
             self.log_message = t(lang, "battle.cannot_use_item", "❌ 無法使用此物品。")
 
@@ -1373,6 +1479,31 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.build_battle_menu()
         else:
             self.build_main_menu()
+
+    def use_stamina_potion(self, item_id: str) -> str:
+        lang = self.player.language
+        if self.in_battle:
+            return t(lang, "stamina.battle_only_block", "❌ You can't restore stamina during battle.")
+        if self.player.inventory.get(item_id, 0) <= 0:
+            item_name = tf(self.cog.items.get(item_id, {}), "name", lang) or t(lang, "battle.potion_fallback_name", "potion")
+            return t(lang, "battle.no_item_left", "❌ You're out of {item_name}!", item_name=item_name)
+
+        self._refresh_daily_stamina()
+        real = getattr(self.player, "real_player", self.player)
+        current = max(0, int(getattr(real, "stamina", 0) or 0))
+        max_stamina = max(1, int(getattr(real, "max_stamina", 200) or 200))
+        if current >= max_stamina:
+            return t(lang, "stamina.already_full", "❌ Your stamina is already full.")
+
+        item_data = self.cog.items.get(item_id, {})
+        restore = max(0, int(item_data.get("stamina_restore", 0) or 0))
+        self.player.inventory[item_id] -= 1
+        if self.player.inventory[item_id] <= 0:
+            del self.player.inventory[item_id]
+
+        real.stamina = min(max_stamina, current + restore)
+        self.cog.save_players()
+        return t(lang, "stamina.potion_used", "⚡ You drink a stamina potion and restore {gain} stamina.", gain=real.stamina - current)
 
     def use_potion_out_of_battle(self, item_id: str):
         """戰鬥外的藥水邏輯"""
@@ -1500,6 +1631,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         p_magic = get_player_magic(p, self.cog.items, self.cog.status_effects)
         p_spd = get_player_spd(p)
         p_res = getattr(p, "base_res", 0)
+        self._refresh_daily_stamina()
+        current_stamina = max(0, int(getattr(getattr(p, "real_player", p), "stamina", 0) or 0))
+        max_stamina = max(1, int(getattr(getattr(p, "real_player", p), "max_stamina", 200) or 200))
         unspent = get_unspent_points(p)
 
         # 配合 trpg_combat.py 的設定，抓取 player_av
@@ -1515,7 +1649,12 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             immune_name = tf(self.cog.status_effects.get(immune_status_id, {}), "name", lang) or immune_status_id
             immune_str = "\n" + t(lang, "battle.jester_mask_immunity", "🎭 面具庇護：今日完全免疫【{immune_name}】", immune_name=immune_name)
 
-        embed.title = f"{state_text} | {area_name}"
+        current_subarea = self._current_subarea_data(area_data)
+        if current_subarea:
+            subarea_name = tf(current_subarea, "name", lang) or current_subarea.get("id", "")
+            embed.title = f"{state_text} | {area_name} | {subarea_name}"
+        else:
+            embed.title = f"{state_text} | {area_name}"
 
         # 玩家狀態區塊排版
         # 戰鬥中：不顯示金錢/未分配點數（用不到），改顯示增益/減益；探索中：顯示金錢與未分配點數
@@ -1527,6 +1666,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             f"{header_line}\n"
             f"❤️ HP: `{p.current_hp:03d}/{p.max_hp:03d}`\n"
             f"💧 MP: `{p.current_mp:03d}/{p.max_mp:03d}`\n"
+            f"{t(lang, 'stamina.line', '⚡ Stamina: `{current}/{max_stamina}`', current=current_stamina, max_stamina=max_stamina)}\n"
             f"⚔️ ATK: `{p_atk}` | 🛡️ DEF: `{p_def}` | 🚀 SPD: `{p_spd}`\n"
             f"✨ MAG: `{p_magic}` | 🔰 RES: `{p_res}`\n"
         )
@@ -2780,4 +2920,256 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         else:
             self.build_main_menu()
 
-    
+    def _begin_area_encounter(self, area_data: dict, monster_ids: list[str], area_name: str | None = None):
+        lang = self.player.language
+        if not area_data or not area_data.get("monsters"):
+            self.log_message = t(lang, "explore.area_peaceful", "📍 這個區域一片祥和，沒有任何怪物跡象。")
+            self.build_main_menu()
+            return
+
+        valid_ids = [m_id for m_id in monster_ids if m_id in area_data["monsters"]]
+        if not valid_ids:
+            self.log_message = t(lang, "explore.area_peaceful", "📍 這個區域一片祥和，沒有任何怪物跡象。")
+            self.build_main_menu()
+            return
+
+        if self.player.level < 3 and "slime" in valid_ids:
+            valid_ids = ["slime"]
+
+        weights = [area_data["monsters"][m_id].get("spawn_rate", 1) for m_id in valid_ids]
+        selected_id = random.choices(valid_ids, weights=weights)[0]
+        base_monster = area_data["monsters"][selected_id]
+
+        area_req_level = area_data.get("req_level", 1)
+        m_level = area_req_level + random.randint(0, 5)
+        scale = 1.0 + (m_level - area_req_level) * 0.15
+
+        monster_instance = dict(base_monster)
+        monster_instance["level"] = m_level
+        monster_instance["max_hp"] = int(base_monster["max_hp"] * scale)
+        monster_instance["atk"] = int(base_monster["atk"] * scale)
+        monster_instance["def"] = int(base_monster["def"] * scale)
+        monster_instance["exp"] = int(base_monster["exp"] * scale)
+        monster_instance["money_min"] = int(base_monster["money_min"] * scale)
+        monster_instance["money_max"] = int(base_monster["money_max"] * scale)
+
+        self.start_combat([monster_instance])
+        if area_name:
+            self.log_message = t(
+                lang,
+                "explore.monster_appeared_subarea",
+                "⚔️ In {area_name}, a {monster_name} appears!",
+                area_name=area_name,
+                monster_name=tf(monster_instance, "name", lang),
+            )
+        else:
+            self.log_message = t(lang, "explore.monster_appeared", "⚔️ 野外出現了【{monster_name}】！", monster_name=tf(monster_instance, "name", lang))
+        self.build_battle_menu()
+
+    async def handle_explore(self):
+        lang = self.player.language
+        if self.player.current_hp <= 0:
+            self.log_message = t(lang, "explore.already_fallen", "❌ 你已經倒下了，請先去旅館休息療傷！")
+            return
+
+        area_data = self.cog.areas.get(self.player.current_area, {})
+        if self.player.current_area == "area_tower":
+            await self.handle_tower_explore()
+            return
+        if self.player.current_area == "area_dungeon":
+            self.build_dungeon_menu()
+            return
+        if area_data.get("subareas"):
+            self.build_subarea_menu()
+            return
+        if not self._spend_stamina(4):
+            return
+
+        event_chance = area_data.get("event_chance", 0.2)
+        if random.random() < event_chance and self.cog.events:
+            await self.handle_random_event(area_data=area_data)
+            return
+
+        self._begin_area_encounter(area_data, list(area_data.get("monsters", {}).keys()))
+
+    async def handle_subarea_explore(self, subarea_id: str):
+        lang = self.player.language
+        area_data = self.cog.areas.get(self.player.current_area, {})
+        subarea = next((sub for sub in self._visible_subareas(area_data) if sub.get("id") == subarea_id), None)
+        if not subarea:
+            self.log_message = t(lang, "menu.subarea_missing", "❌ That subarea is not available right now.")
+            self.build_main_menu()
+            return
+        if self.player.current_hp <= 0:
+            self.log_message = t(lang, "explore.already_fallen", "❌ 你已經倒下了，請先去旅館休息療傷！")
+            return
+
+        getattr(self.player, "real_player", self.player).current_subarea = subarea_id
+        self.cog.save_players()
+        if not self._spend_stamina(4):
+            return
+
+        event_chance = subarea.get("event_chance", area_data.get("event_chance", 0.2))
+        if random.random() < event_chance and self.cog.events:
+            await self.handle_random_event(area_data=area_data, subarea_data=subarea)
+            return
+
+        subarea_name = tf(subarea, "name", lang) or subarea_id
+        self._begin_area_encounter(area_data, subarea.get("monsters", []), area_name=subarea_name)
+
+    async def handle_random_event(self, area_data=None, subarea_data=None):
+        lang = self.player.language
+        source = subarea_data or area_data or {}
+        if "events" in source:
+            event_pool = [e for e in source["events"] if e in self.cog.events]
+        elif area_data and "events" in area_data:
+            event_pool = [e for e in area_data["events"] if e in self.cog.events]
+        else:
+            event_pool = list(self.cog.events.keys())
+
+        if not event_pool:
+            self.log_message = t(lang, "explore.nothing_happened", "🌫️ 四周靜悄悄的，什麼也沒發生。")
+            self.build_main_menu()
+            return
+
+        weights = [self.cog.events[eid].get("weight", 1) for eid in event_pool]
+        status_embed.add_field(name=t(lang, "char.equipped_weapon", "Equipped Weapon"), value=weapon_name, inline=True)
+        status_embed.add_field(name=t(lang, "char.status_effects", "Status Effects"), value=format_status_list(p.status_effects, self.cog.status_effects, p.language), inline=True)
+        if p.accessory:
+            acc_item = self.cog.items.get(p.accessory, {})
+            acc_name = f"{item_emoji(acc_item)} {tf(acc_item, 'name', lang) or p.accessory}"
+            status_embed.add_field(name=t(lang, "char.accessory", "Accessory"), value=acc_name, inline=True)
+        skill_list = ", ".join([tf(self.cog.skills.get(s, {}), "name", lang) or s for s in p.skills]) or none_label
+        status_embed.add_field(name=t(lang, "char.learned_skills", "Learned Skills"), value=skill_list, inline=True)
+        status_embed.add_field(name=t(lang, "char.bag_contents", "Bag Contents"), value=inv_desc, inline=False)
+        quest_id = event.get("quest_id")
+        if quest_id and accept_quest(self, quest_id):
+            quest_info = self.cog.quests.get(quest_id, {})
+            quest_title = tf(quest_info, "title", lang) or quest_id
+            log += "\n" + t(lang, "quest_hall.accepted", "✅ 已接取委託：{title}", title=quest_title)
+
+        rewards = event.get("rewards", {})
+        if rewards.get("gold"):
+            self.cog.adjust_bank(self.user_id, rewards["gold"])
+            log += "\n" + t(lang, "explore.gained_gold", "💰 獲得了 {gold} {money_name}！", gold=rewards["gold"], money_name=self.cog.bot.baba.money_name)
+
+        for item_id, qty in rewards.get("items", {}).items():
+            self.player.inventory[item_id] = self.player.inventory.get(item_id, 0) + qty
+            item_name = tf(self.cog.items.get(item_id, {}), "name", lang) or item_id
+            log += "\n" + t(lang, "explore.gained_item", "✅ 獲得【{item_name}】x{qty}", item_name=item_name, qty=qty)
+
+        if event.get("hp_loss_percent"):
+            loss = max(1, int(self.player.max_hp * event["hp_loss_percent"]))
+            self.player.current_hp = max(0, self.player.current_hp - loss)
+            log += "\n" + t(lang, "explore.lost_hp", "❌ 失去了 {loss} HP", loss=loss)
+            if self.player.current_hp <= 0:
+                self.log_message = self.process_death(log, t(lang, "explore.fallen_from_event", "💀 你被事件害得倒下了……"))
+                return
+
+        if event.get("mp_loss_percent"):
+            loss_mp = max(1, int(self.player.max_mp * event["mp_loss_percent"]))
+            self.player.current_mp = max(0, self.player.current_mp - loss_mp)
+            log += "\n" + t(lang, "explore.lost_mp", "🔻 失去 {loss_mp} MP", loss_mp=loss_mp)
+
+        if event.get("gold_loss"):
+            bal = self.cog.get_bank_balance(self.user_id)
+            loss_g = min(bal, event["gold_loss"])
+            self.cog.adjust_bank(self.user_id, -loss_g)
+            log += "\n" + t(lang, "explore.lost_gold", "💸 失去 {loss_g} {money_name}", loss_g=loss_g, money_name=self.cog.bot.baba.money_name)
+
+        self.log_message = log
+        self.cog.save_players()
+        self.build_main_menu()
+
+    async def handle_move_execute(self, custom_id):
+        lang = self.player.language
+        target_area = custom_id.replace("move_to_", "")
+        area_data = self.cog.areas.get(target_area, {})
+        if not self._area_unlocked(area_data):
+            requires_boss = area_data.get("requires_boss")
+            if requires_boss:
+                boss_name = self._boss_name_for_area(requires_boss, lang)
+                self.log_message = t(lang, "menu.move_blocked_boss", "❌ 這條路還被封鎖著，得先擊敗【{boss_name}】才能通行。", boss_name=boss_name)
+            else:
+                self.log_message = t(lang, "menu.move_blocked_generic", "❌ 目前還無法前往這個區域。")
+            self.build_main_menu()
+            return
+
+        real = getattr(self.player, "real_player", self.player)
+        real.current_area = target_area
+        real.current_subarea = None
+        self.cog.save_players()
+        area_name = tf(self.cog.areas[target_area], "area_name", lang)
+        self.log_message = t(lang, "explore.arrived_at_area", "🗺️ 成功抵達了【{area_name}】。", area_name=area_name)
+        self.build_main_menu()
+
+    async def handle_status(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        p = self.player
+        lang = p.language
+        user_bal = self.cog.get_bank_balance(self.user_id)
+        self._refresh_daily_stamina()
+        real = getattr(p, "real_player", p)
+        current_stamina = max(0, int(getattr(real, "stamina", 0) or 0))
+        max_stamina = max(1, int(getattr(real, "max_stamina", 200) or 200))
+
+        status_embed = discord.Embed(title=t(lang, "char.status_title", "📜 {user} 的詳細冒險狀態", user=interaction.user.name), color=discord.Color.blue())
+        status_embed.add_field(name=t(lang, "char.level_exp", "等級與經驗"), value=f"Lv.{p.level} (EXP: {p.exp}/{exp_to_next_level(p.level)})", inline=True)
+        status_embed.add_field(name=t(lang, "char.wallet_balance", "錢包餘額"), value=f"{user_bal} {self.cog.bot.baba.money_name}", inline=True)
+
+        prestige = getattr(p, "prestige_count", 0)
+        status_embed.add_field(name=t(lang, "char.prestige", "轉生次數"), value=str(prestige), inline=True)
+
+        weapon_name = tf(self.cog.items.get(p.weapon, {}), "name", lang) if p.weapon else t(lang, "blacksmith.none", "None")
+        none_label = t(lang, "blacksmith.none", "None")
+        inv_desc = self._format_inventory_grouped(p, lang)
+        trophies = getattr(p, "trophies", [])
+        if trophies:
+            status_embed.add_field(name=t(lang, "char.trophies", "🏆 戰利品"), value=" ".join(trophies), inline=False)
+
+        alloc_text = format_stat_alloc_summary(p)
+        status_embed.add_field(
+            name=t(lang, "char.combat_core_stats", "Core Combat Stats"),
+            value=(
+                f"❤️ HP: {p.current_hp}/{p.max_hp}\n"
+                f"💧 MP: {p.current_mp}/{p.max_mp}\n"
+                f"⚡ Stamina: {current_stamina}/{max_stamina}\n"
+                f"⚔️ ATK: {get_player_atk(p, self.cog.items, self.cog.status_effects)} | 🛡️ DEF: {get_player_def(p, self.cog.items)}\n"
+                f"✨ MAG: {get_player_magic(p, self.cog.items, self.cog.status_effects)} | 🚀 SPD: {get_player_spd(p)}\n"
+                f"🍀 LUCK: {getattr(p, 'base_luck', 0)}\n"
+                f"{alloc_text}"
+            ),
+            inline=False,
+        )
+        status_embed.add_field(name=t(lang, "char.equipped_weapon", "Equipped Weapon"), value=weapon_name, inline=True)
+        status_embed.add_field(name=t(lang, "char.status_effects", "Status Effects"), value=format_status_list(p.status_effects, self.cog.status_effects, p.language), inline=True)
+        if p.accessory:
+            acc_item = self.cog.items.get(p.accessory, {})
+            acc_name = f"{item_emoji(acc_item)} {tf(acc_item, 'name', lang) or p.accessory}"
+            status_embed.add_field(name=t(lang, "char.accessory", "Accessory"), value=acc_name, inline=True)
+        skill_list = ", ".join([tf(self.cog.skills.get(s, {}), "name", lang) or s for s in p.skills]) or none_label
+        status_embed.add_field(name=t(lang, "char.learned_skills", "Learned Skills"), value=skill_list, inline=True)
+        status_embed.add_field(name=t(lang, "char.bag_contents", "Bag Contents"), value=inv_desc, inline=False)
+
+        await interaction.followup.send(embed=status_embed, ephemeral=True)
+
+    async def re_render_current_menu(self):
+        state = getattr(self, "current_menu_state", "main")
+        if state == "equip":
+            await self.handle_equip_menu(paging=True)
+        elif state == "sell":
+            await self.handle_sell_menu(paging=True)
+        elif state == "item":
+            await self.handle_item_menu(paging=True)
+        elif state == "skill_equip":
+            await self.handle_skill_equip_menu(paging=True)
+        elif state == "craft":
+            await self.handle_craft_menu(paging=True)
+        elif state == "blacksmith":
+            await self.handle_blacksmith_menu()
+        elif state == "artisan":
+            self.build_artisan_menu()
+        elif state == "subarea":
+            self.build_subarea_menu()
+        else:
+            self.build_main_menu()

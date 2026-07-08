@@ -24,8 +24,6 @@
         "def": 0,
         "exp": 250000,
         "spd": 88,
-        "damage_cap": 2200,
-        "start_divine_shield": true,
         "weakness": [],
         "resistance": [
             "physical",
@@ -46,15 +44,17 @@
         "ai": "multi_hit_flurry",
         "active_skills": [
             {
-                "id": "champions_bulwark",
-                "name": "冠軍壁壘",
-                "name_en": "Champion's Bulwark",
+                "id": "champions_pressure",
+                "name": "冠軍威壓",
+                "name_en": "Champion's Pressure",
                 "trigger": {
                     "type": "interval",
                     "value": 3
                 },
                 "effect": {
-                    "type": "divine_shield"
+                    "type": "buff_self_atk",
+                    "mult": 1.25,
+                    "turns": 2
                 }
             },
             {
@@ -85,6 +85,43 @@
                 }
             }
         ],
+        "phase2": {
+            "hp_below": 0.5,
+            "ai": "berserk_low_hp",
+            "name_suffix": "・修羅",
+            "name_suffix_en": " - Asura Form",
+            "transform_text": "剎羅捨棄防守架勢，場邊的戰鼓聲變得急促。真正的冠軍戰現在才開始。",
+            "transform_text_en": "Shura drops his guarded stance as the arena drums quicken. The real championship match begins now.",
+            "active_skills": [
+                {
+                    "id": "asura_combo",
+                    "name": "修羅連破",
+                    "name_en": "Asura Breaker",
+                    "trigger": {
+                        "type": "interval",
+                        "value": 2
+                    },
+                    "effect": {
+                        "type": "heavy_attack",
+                        "mult": 1.9
+                    }
+                },
+                {
+                    "id": "arena_roar",
+                    "name": "鬥場怒吼",
+                    "name_en": "Arena Roar",
+                    "trigger": {
+                        "type": "interval",
+                        "value": 4
+                    },
+                    "effect": {
+                        "type": "inflict_status",
+                        "status_id": "silence",
+                        "turns": 1
+                    }
+                }
+            ]
+        },
         "traits": [
             "wrath_stacker"
         ]

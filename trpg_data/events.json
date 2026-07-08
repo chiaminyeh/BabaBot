@@ -129,5 +129,69 @@
             }
         },
         "message_en": "You come across the corpse of an unfortunate merchant. You press your hands together in a brief prayer, then quietly take their backpack."
+    },
+    "village_old_man_cat": {
+        "category": "neutral",
+        "weight": 12,
+        "message": "村口的老人焦急地四處張望，拜託你幫忙找找他走失的貓。",
+        "quest_id": "quest_find_cat",
+        "message_en": "An old villager worries about a missing cat and asks for your help."
+    },
+    "forest_cat_found": {
+        "category": "good",
+        "weight": 12,
+        "message": "你在草叢裡找到那隻走失的貓，牠雖然餓壞了，但看起來還算平安。",
+        "rewards": {
+            "items": {
+                "lost_cat": 1
+            },
+            "gold": 20
+        },
+        "message_en": "You find the missing cat hiding in the bushes, hungry but safe."
+    },
+    "forest_herb_patch": {
+        "category": "good",
+        "weight": 10,
+        "message": "你在森林邊緣發現一片藥草叢，順手採下幾株有用的草藥。",
+        "rewards": {
+            "items": {
+                "antidote_herb": 2
+            }
+        },
+        "message_en": "You gather useful herbs along the forest edge."
+    },
+    "deep_forest_elf_cleanup": {
+        "category": "neutral",
+        "weight": 10,
+        "message": "深森林中的精靈現身，請你幫忙清理盤據在林中的怪物。",
+        "quest_id": "quest_forest_cleanup",
+        "message_en": "A forest elf asks you to thin out monsters deeper in the woods."
+    },
+    "graveyard_lantern": {
+        "category": "neutral",
+        "weight": 8,
+        "message": "墓園深處有一盞提燈幽幽亮著，彷彿才剛有人從這裡離開。",
+        "rewards": {
+            "gold": 35
+        },
+        "message_en": "A lantern still glows in the graveyard, as if someone just left."
+    },
+    "castle_corpse": {
+        "category": "bad",
+        "weight": 10,
+        "message": "你在吸血鬼城堡的走廊發現一具冒險者遺體，身旁還殘留著未被帶走的財物。",
+        "rewards": {
+            "gold": 120,
+            "items": {
+                "high_health_potion": 1
+            }
+        },
+        "message_en": "In the vampire castle, you find an adventurer corpse with a few valuables left behind."
+    },
+    "lab_warning_note": {
+        "category": "neutral",
+        "weight": 8,
+        "message": "實驗室牆上釘著一張警告紙條，上頭反覆寫著別去碰那些培養槽。",
+        "message_en": "A warning note on the lab wall tells you not to touch the incubation tanks."
     }
 }

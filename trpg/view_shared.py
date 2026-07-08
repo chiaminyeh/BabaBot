@@ -8,6 +8,7 @@ ITEM_TYPE_EMOJI = {
     "armor": "🛡️",
     "accessory": "💍",
     "potion": "🧪",
+    "stamina_potion": "🧪",
     "cure": "💊",
     "buff_item": "⏳",
     "skill_scroll": "📜",
@@ -28,7 +29,6 @@ EQUIP_STAT_DISPLAY = {
     "mdef_bonus": ("MDEF", "🔮"),
     "hp_bonus": ("HP", "❤️"),
     "magic_bonus": ("MAG", "✨"),
-    "res_bonus": ("RES", "🔰"),
     "spd_bonus": ("SPD", "🚀"),
     "mp_bonus": ("MP", "🔷"),
 }

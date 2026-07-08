@@ -1,5 +1,40 @@
 {
-    "area_name": "新手村",
-    "area_name_en": "Beginner's Village",
-    "is_village": true
+    "area_name":  "新手村",
+    "area_name_en":  "Beginner\u0027s Village",
+    "is_village":  true,
+    "events":  [
+                   "village_old_man_cat"
+               ],
+    "subareas":  [
+                     {
+                         "events":  [
+                                        "village_old_man_cat"
+                                    ],
+                         "name":  "村口廣場",
+                         "id":  "village_square",
+                         "desc":  "公告欄、馬車與旅人往來的中心。",
+                         "name_en":  "Village Gate Square",
+                         "desc_en":  "The village hub where notice boards, wagons, and travelers all converge."
+                     },
+                     {
+                         "events":  [
+
+                                    ],
+                         "name":  "村外田埂",
+                         "id":  "village_outskirts",
+                         "desc":  "農田、土路與通往森林的小徑。",
+                         "name_en":  "Farmland Path",
+                         "desc_en":  "Fields, dirt roads, and the small trail leading toward the forest."
+                     },
+                     {
+                         "events":  [
+
+                                    ],
+                         "name":  "後巷倉庫",
+                         "id":  "village_back_alley",
+                         "desc":  "雜物堆、木箱與不太起眼的角落。",
+                         "name_en":  "Back Alley Storehouse",
+                         "desc_en":  "Stacks of clutter, wooden crates, and the sort of corner people stop noticing."
+                     }
+                 ]
 }

@@ -15,7 +15,9 @@ from datetime import datetime
 
 from trpg.entity import PlayerCombatant, MonsterCombatant
 from trpg.i18n import t, tf
-from trpg.balance import CORROSION_TURNS, CORROSION_MAX_STACKS
+from trpg.balance import (
+    CORROSION_TURNS, CORROSION_MAX_STACKS,
+)
 
 
 def apply_corrosion(status_dict: dict, stacks_add: int, dmg_per_stack: int, turns: int = CORROSION_TURNS) -> int:
@@ -94,6 +96,8 @@ def try_apply_status(player, status_id: str, turns: int, status_defs: dict, sour
         return ""
 
     lang = getattr(player, "language", "zh")
+    info = status_defs[status_id]
+    name = tf(info, "name", lang) or status_id
 
     # 檢查今天是不是剛好免疫這個狀態
     immune_id = get_daily_jester_immunity(player, status_defs)
@@ -101,6 +105,8 @@ def try_apply_status(player, status_id: str, turns: int, status_defs: dict, sour
         name = tf(status_defs[status_id], "name", lang) or status_id
         return t(lang, "status.jester_immune", "🎭 小丑面具發出詭異笑聲，今日完全免疫了【{name}】！", name=name)
 
+    res = getattr(player, "base_res", 0)
+    turns = _status_turns_after_resistance(turns, res)
     return _set_status_entry(player.status_effects, status_id, turns, status_defs, source, is_player=True, lang=lang)
 
 
@@ -146,11 +152,19 @@ def apply_status(combatant, status_id: str, turns: int, status_defs: dict, sourc
 
 
 def _status_resist_factor(res: int) -> float:
-    return min(0.6, res * 0.02)
+    return 0.0
+
+
+def _status_turns_after_resistance(turns: int, res: int) -> int:
+    return turns
 
 
 def _dot_reduction_factor(res: int) -> float:
-    return min(0.5, res * 0.015)
+    return 0.0
+
+
+def damage_reduction_from_res(res: int) -> float:
+    return 0.0
 
 
 def try_monster_apply_status(player, monster: dict, status_defs: dict) -> str:
@@ -158,14 +172,15 @@ def try_monster_apply_status(player, monster: dict, status_defs: dict) -> str:
     chance = monster.get("status_chance", 0)
     if not pool or chance <= 0:
         return ""
-    res = getattr(player, "base_res", 0)
-    effective_chance = chance * (1 - _status_resist_factor(res))
-    if random.random() > effective_chance:
+    if random.random() > chance:
         return ""
 
     status_id = random.choice(pool)
     turns = 3 if monster.get("is_boss") else 2
-    return try_apply_status(player, status_id, turns, status_defs, tf(monster, "name", getattr(player, "language", "zh")) or "")
+    return try_apply_status(
+        player, status_id, turns, status_defs,
+        tf(monster, "name", getattr(player, "language", "zh")) or "",
+    )
 
 
 def _tick_status(combatant, status_defs: dict, is_player: bool, lang: str = "zh") -> tuple[str, bool]:

@@ -195,19 +195,20 @@ async def balance(ctx, user: discord.Member = None):
 
 
     
-@tasks.loop(minutes = 3)
-async def metabolism():
-    try:
-        print('looping metabolism')
-        baba.hunger-=1
-        baba.energy-=1
+# @tasks.loop(minutes = 3)
+# async def metabolism():
+#     try:
+#         print('looping metabolism')
+#         baba.hunger-=1
+#         baba.energy-=1
+# 
+#         if(baba.energy <=0):
+#             await DMChannel.send(295288056276189185, f"`I go to sleep`")
+#             await bot.close()
+# 
+#     except:
+#         print("there's something wrong with baba's metabolism")
 
-        if(baba.energy <=0):
-            await DMChannel.send(295288056276189185, f"`I go to sleep`")
-            await bot.close()
-
-    except:
-        print("there's something wrong with baba's metabolism")
     
 
 @bot.event
@@ -395,15 +396,23 @@ async def on_ready():
     print(f"{bot.user} is now running!")
     # metabolism.start()
     reset_daily.start()
-    await bot.load_extension('music_cog')
-    await bot.load_extension('schedule_cog')
-    await bot.load_extension('blackjack_cog')
-    await bot.load_extension("poker_cog")
-    await bot.load_extension('bomb_cog')
-    await bot.load_extension('response_cog')
-    await bot.load_extension("trpg_cog")
-    await bot.load_extension("wordle_cog")
-    await bot.load_extension("lottery_cog")
+    
+    extensions = [
+        'music_cog',
+        'schedule_cog',
+        'blackjack_cog',
+        'poker_cog',
+        'bomb_cog',
+        'response_cog',
+        'trpg_cog',
+        'wordle_cog',
+        'lottery_cog'
+    ]
+    for ext in extensions:
+        try:
+            await bot.load_extension(ext)
+        except Exception as e:
+            print(f"Failed to load extension {ext}: {e}")
 
     try:
         synced = await bot.tree.sync()

@@ -338,8 +338,7 @@ class wordle_cog(commands.Cog):
             prize = prize_table.get(attempts, 0)
 
             # credit the bank
-            bal, claimed = self.bank[interaction.user.id]
-            self.bank[interaction.user.id] = (bal + prize, claimed)
+            self.bot.baba.add_money(interaction.user.id, prize)
             self.bot.baba.refresh_bank_file()
 
             await interaction.followup.send(
@@ -386,8 +385,7 @@ class wordle_cog(commands.Cog):
             prize = prize_table.get(attempts, 0)
 
             # credit the bank  (FIXED: ctx.author.id, no ephemeral kwarg)
-            bal, claimed = self.bank[ctx.author.id]
-            self.bank[ctx.author.id] = (bal + prize, claimed)
+            self.bot.baba.add_money(ctx.author.id, prize)
             self.bot.baba.refresh_bank_file()
 
             await ctx.send(

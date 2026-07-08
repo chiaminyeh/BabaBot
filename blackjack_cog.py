@@ -374,9 +374,8 @@ class BlackjackCog(commands.Cog):
         async def start_callback(btn_inter: discord.Interaction):
             if btn_inter.user.id != interaction.user.id:
                 return await btn_inter.response.send_message("Only the host can start early.", ephemeral=True, delete_after=5)
-            view.stop()
             await btn_inter.response.defer()
-            await start_game_logic()
+            view.stop()
 
         start_btn.callback = start_callback
 
@@ -399,15 +398,13 @@ class BlackjackCog(commands.Cog):
             await game.start()
 
         # Wait for view to timeout or stop
-        if await view.wait():
-            # Timeout
-            if not lobby_players:
-                await msg.edit(content="Lobby timed out.", view=None)
-            else:
-                await start_game_logic()
+        timed_out = await view.wait()
+        if timed_out and not lobby_players:
+            if guild_id in self.games:
+                del self.games[guild_id]
+            await msg.edit(content="Lobby timed out.", view=None, embed=None)
         else:
-            # View stopped manually (Start Now)
-            pass
+            await start_game_logic()
 
 class BetModal(discord.ui.Modal, title="Place your Bet"):
     bet_amount = discord.ui.TextInput(label="Amount", placeholder="10", min_length=1, max_length=10)

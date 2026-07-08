@@ -21,6 +21,9 @@ _SCALAR_DEFAULTS = {
     "base_res": 0,
     "max_mp": 25,
     "current_mp": 25,
+    "max_stamina": 200,
+    "stamina": 200,
+    "last_stamina_refresh": "",
     "weapon": None,
     "armor": None,
     "accessory": None,
@@ -29,6 +32,7 @@ _SCALAR_DEFAULTS = {
     "weapon_upgrade": 0,
     "armor_upgrade": 0,
     "current_area": "area_00village",
+    "current_subarea": None,
     "last_shop_refresh": "",
     "jester_immunity_date": "",
     "mystery_merchant_date": "",
@@ -65,7 +69,6 @@ def _fresh_containers() -> dict:
         "completed_quests": [],      # 已完成任務 ID
         "skills": [],                # 已學技能 ID
         "equipped_skills": [],       # 裝備中的技能（上限 8）
-        "daily_boss_kills": {},      # {"area_grassland": "2026-06-01"}
         "killed_bosses": [],
         "tower_milestones": [],
         "trophies": [],

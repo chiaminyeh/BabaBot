@@ -13,7 +13,15 @@ STAT_POINTS_PER_LEVEL = 2
 
 # --- Stat allocation: 1 spent point -> this much of the stat ----------------
 # (vit also adds HP/DEF, int also adds MP — see stats.recalc_player_stats)
-ALLOC_BONUS = {"atk": 3, "vit": 1, "int": 1, "spd": 3, "res": 2, "luck": 1}
+ALLOC_BONUS = {"atk": 3, "vit": 1, "int": 1, "spd": 3, "luck": 1}
+
+# --- Stamina ---------------------------------------------------------------
+STAMINA_MAX = 200
+STAMINA_COST_EXPLORE = 4
+STAMINA_COST_BOSS = 20
+STAMINA_COST_TOWER = 20
+STAMINA_COST_DUNGEON = 20
+STAMINA_POTION_RESTORE = 50
 
 # --- Prestige / rebirth -----------------------------------------------------
 # Every prestige level multiplies all base stats by (1 + this).
@@ -51,7 +59,7 @@ SCHRODINGER_DOUBLE_CHANCE = 0.6
 SCHRODINGER_DOUBLE_MULT = 2
 SCHRODINGER_HALVE_MULT = 0.5
 
-# First-kill/daily boss scroll drop: guaranteed 100% on first kill, this% on repeat daily kills.
+# First-kill/repeat boss scroll drop: guaranteed 100% on first kill, this% on repeat clears.
 BOSS_DAILY_SCROLL_CHANCE = 0.30
 
 # Fallback scroll pool for area bosses whose "drops" table has no scroll entry.
@@ -208,7 +216,7 @@ DUNGEON_BOSS_DEF_BONUS = 0
 
 # Weights for the two non-guaranteed doors on each floor (the third door is
 # ALWAYS a mystery event — see dungeon.roll_doors).
-DUNGEON_ROOM_WEIGHTS = {"monster": 52, "elite": 24, "rest": 24}
+DUNGEON_ROOM_WEIGHTS = {"monster": 70, "elite": 20, "rest": 10}
 
 # Corrosion (dungeon-exclusive stacking DoT): each tick deals
 # stacks * dmg_per_stack flat damage. Stacks are CAPPED — pre-cap corrosion

@@ -92,28 +92,36 @@ class LotteryCog(commands.Cog):
         """Buy a lottery ticket with random numbers for 100 bababucks. If only 1 number added after random, buys that many random tickets."""
         user_id = ctx.author.id
         baba = self.bot.baba
+        
+        if count < 1:
+            await ctx.send("Please specify a positive number of tickets.")
+            return
+
+        total_cost = self.ticket_cost * count
+
+        # 1. Check/initialize user in bank
+        if user_id not in baba.bank:
+            baba.bank[user_id] = (0, False)
+        
+        current_money, claimed = baba.bank[user_id]
+        
+        # 2. Verify total funds
+        if current_money < total_cost:
+            await ctx.send(f"You don't have enough bababucks! Buying {count} ticket(s) costs {total_cost} {baba.money_name} (you have {current_money}).")
+            return
+
         tickets_bought = []
         for _ in range(count):
-            # 1. Check funds
-            if user_id not in baba.bank:
-                baba.bank[user_id] = (0, False)
-            
-            current_money, claimed = baba.bank[user_id]
-            
-            if current_money < self.ticket_cost:
-                await ctx.send(f"You don't have enough bababucks! A ticket costs {self.ticket_cost}.")
-                return
-
-            # 2. Generate random unique numbers
+            # Generate random unique numbers
             random_numbers = sorted(random.sample(range(1, 21), 6))
-
-            # 3. Process transaction
-            baba.bank[user_id] = (current_money - self.ticket_cost, claimed)
-            baba.refresh_bank_file()
-            
             self.save_ticket(user_id, random_numbers)
             tickets_bought.append(random_numbers)
-        await ctx.send(f"Tickets purchased! Good luck! You can check your tickets with `baba ticket`.\n")
+
+        # 3. Process transaction and write to disk once
+        baba.bank[user_id] = (current_money - total_cost, claimed)
+        baba.refresh_bank_file()
+        
+        await ctx.send(f"Successfully purchased {count} ticket(s) for {total_cost} {baba.money_name}! Good luck! You can check your tickets with `baba ticket`.\n")
 
 
     @tasks.loop(hours=24)

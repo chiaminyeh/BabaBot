@@ -629,7 +629,7 @@ class TRPGCombat:
 
         spd_scale = weapon.get("spd_scaling", 0.0)
         p_spd = get_player_spd(self.player)
-        multiplier = 1.0 + p_spd * spd_scale
+        multiplier = 1.0 + (p_spd * spd_scale / 100.0)
 
         lang = self.player.language
         eff = getattr(self.player, "dungeon_relic_effects", None) or {}
@@ -730,6 +730,7 @@ class TRPGCombat:
             self.player.dungeon_state["choices"] = []
             self.player.dungeon_state["floor"] = 1
             self.player.current_area = "area_00village"
+            self.player.current_subarea = None
             self.cog.save_players()
         self.view.build_main_menu()
         return is_dungeon_run
@@ -1042,7 +1043,6 @@ class TRPGCombat:
             return ""
 
         today_str = datetime.today().strftime("%Y-%m-%d")
-        self.player.daily_boss_kills[self.player.current_area] = today_str
         log = t(lang, "combat.boss_defeated", "👑 區域 BOSS 討伐成功！今日已無法再次挑戰。\n")
 
         # Guaranteed scroll drop logic (100% first kill, BOSS_DAILY_SCROLL_CHANCE daily)

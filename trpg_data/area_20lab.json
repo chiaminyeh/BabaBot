@@ -1,253 +1,292 @@
 {
-    "area_name": "瘋狂博士的實驗室",
-    "req_level": 20,
-    "monsters": {
-        "failed_experiment": {
-            "id": "failed_experiment",
-            "name": "失敗的實驗體",
-            "spawn_rate": 0.55,
-            "max_hp": 1363,
-            "atk": 119,
-            "def": 0,
-            "exp": 3500,
-            "spd": 20,
-            "weakness": [
-                "holy",
-                "fire"
-            ],
-            "resistance": [
-                "poison",
-                "dark"
-            ],
-            "drops": {
-                "medium_health_potion": 0.35,
-                "flame_sword": 0.05
-            },
-            "status_on_hit": [
-                "poison"
-            ],
-            "status_chance": 0.2,
-            "money_min": 50,
-            "money_max": 85,
-            "ai": "berserk_low_hp",
-            "name_en": "Failed Experiment",
-            "traits": [
-                "regenerator"
-            ]
-        },
-        "mutant_slime": {
-            "id": "mutant_slime",
-            "name": "變異史萊姆",
-            "spawn_rate": 0.45,
-            "max_hp": 1887,
-            "atk": 106,
-            "def": 0,
-            "exp": 4500,
-            "spd": 18,
-            "weakness": [
-                "ice",
-                "thunder"
-            ],
-            "resistance": [
-                "physical",
-                "poison"
-            ],
-            "drops": {
-                "burn_salve": 1,
-                "medium_mana_potion": 0.3
-            },
-            "status_on_hit": [
-                "burn",
-                "poison"
-            ],
-            "status_chance": 0.25,
-            "money_min": 60,
-            "money_max": 100,
-            "ai": "self_heal",
-            "name_en": "Mutant Slime",
-            "traits": [
-                "splitter"
-            ]
-        },
-        "clone_soldier": {
-            "id": "clone_soldier",
-            "name": "複製士兵",
-            "spawn_rate": 0.35,
-            "max_hp": 1495,
-            "atk": 125,
-            "def": 0,
-            "exp": 3800,
-            "spd": 22,
-            "weakness": [
-                "thunder"
-            ],
-            "resistance": [
-                "poison"
-            ],
-            "drops": {
-                "medium_mana_potion": 0.3
-            },
-            "money_min": 55,
-            "money_max": 90,
-            "ai": "trickster",
-            "name_en": "Clone Soldier",
-            "traits": [
-                "splitter"
-            ]
-        },
-        "toxic_ooze": {
-            "id": "toxic_ooze",
-            "name": "劇毒黏液怪",
-            "spawn_rate": 0.3,
-            "max_hp": 1747,
-            "atk": 100,
-            "def": 0,
-            "exp": 4200,
-            "spd": 15,
-            "weakness": [
-                "fire",
-                "holy"
-            ],
-            "resistance": [
-                "poison",
-                "dark"
-            ],
-            "drops": {
-                "burn_salve": 0.3,
-                "medium_health_potion": 0.3
-            },
-            "status_on_hit": [
-                "poison"
-            ],
-            "status_chance": 0.4,
-            "money_min": 58,
-            "money_max": 95,
-            "ai": "none",
-            "name_en": "Toxic Ooze",
-            "traits": [
-                "splitter",
-                "shield_breaker"
-            ]
-        }
-    },
-    "boss": {
-        "id": "mad_doctor",
-        "name": "瘋狂博士",
-        "is_boss": true,
-        "max_hp": 7263,
-        "atk": 153,
-        "def": 0,
-        "exp": 60000,
-        "spd": 35,
-        "weakness": [
-            "holy",
-            "physical"
-        ],
-        "resistance": [
-            "poison",
-            "dark",
-            "thunder"
-        ],
-        "money_min": 400,
-        "money_max": 700,
-        "drops": {
-            "holy_sword": 0.15,
-            "scroll_inferno": 0.2,
-            "scroll_divine_thunder": 0.15,
-            "medium_health_potion": 0.5,
-            "elixir_of_cleansing": 0.2
-        },
-        "status_on_hit": [
-            "poison",
-            "paralysis",
-            "freeze",
-            "burn"
-        ],
-        "status_chance": 0.55,
-        "ai": "random_caster",
-        "active_skills": [
-            {
-                "id": "deploy_clone",
-                "name": "投放實驗體",
-                "trigger": {
-                    "type": "interval",
-                    "value": 4
-                },
-                "effect": {
-                    "type": "summon_minion",
-                    "summon_ids": [
-                        "failed_experiment",
-                        "lab_medic",
-                        "toxic_clone"
-                    ]
-                },
-                "name_en": "Deploy Test Subject"
-            }
-        ],
-        "phase2": {
-            "hp_below": 0.5,
-            "ai": "berserk_low_hp",
-            "name_suffix": "（藥劇失控）",
-            "heal_pct": 0.5,
-            "transform_text": "瘋狂博士打下最後一管藥劇，全身肌肉瞬間暴漲！",
-            "active_skills": [
-                {
-                    "id": "overdose_strike",
-                    "name": "藥劇超載打擊",
-                    "trigger": {
-                        "type": "hp_below",
-                        "value": 0.2
-                    },
-                    "effect": {
-                        "type": "heavy_attack",
-                        "mult": 2.4
-                    },
-                    "name_en": "Overdose Strike"
-                }
-            ],
-            "name_suffix_en": "(Out of Control)",
-            "transform_text_en": "The Mad Doctor slams down the last vial, and his muscles surge and swell in an instant!"
-        },
-        "name_en": "Mad Doctor",
-        "ai_spells": [
-            "fireball",
-            "thunder_strike",
-            "ice_spear"
-        ]
-    },
-    "boss_minions": {
-        "lab_medic": {
-            "id": "lab_medic",
-            "name": "實驗室護理員",
-            "max_hp": 548,
-            "atk": 70,
-            "def": 0,
-            "spd": 22,
-            "exp": 0,
-            "money_min": 0,
-            "money_max": 0,
-            "drops": {},
-            "ai": "support_healer",
-            "name_en": "Lab Attendant"
-        },
-        "toxic_clone": {
-            "id": "toxic_clone",
-            "name": "毒液複製體",
-            "max_hp": 610,
-            "atk": 90,
-            "def": 0,
-            "spd": 18,
-            "exp": 0,
-            "money_min": 0,
-            "money_max": 0,
-            "drops": {},
-            "ai": "debuffer",
-            "name_en": "Venom Replicant",
-            "traits": [
-                "splitter"
-            ]
-        }
-    },
-    "area_name_en": "Mad Doctor's Laboratory",
-    "requires_boss": "area_10deep_forest"
+    "area_name":  "瘋狂博士的實驗室",
+    "req_level":  20,
+    "monsters":  {
+                     "failed_experiment":  {
+                                               "id":  "failed_experiment",
+                                               "name":  "失敗的實驗體",
+                                               "spawn_rate":  0.55,
+                                               "max_hp":  1363,
+                                               "atk":  119,
+                                               "def":  0,
+                                               "exp":  3500,
+                                               "spd":  20,
+                                               "weakness":  [
+                                                                "holy",
+                                                                "fire"
+                                                            ],
+                                               "resistance":  [
+                                                                  "poison",
+                                                                  "dark"
+                                                              ],
+                                               "drops":  {
+                                                             "medium_health_potion":  0.35,
+                                                             "flame_sword":  0.05
+                                                         },
+                                               "status_on_hit":  [
+                                                                     "poison"
+                                                                 ],
+                                               "status_chance":  0.2,
+                                               "money_min":  50,
+                                               "money_max":  85,
+                                               "ai":  "berserk_low_hp",
+                                               "name_en":  "Failed Experiment",
+                                               "traits":  [
+                                                              "regenerator"
+                                                          ]
+                                           },
+                     "mutant_slime":  {
+                                          "id":  "mutant_slime",
+                                          "name":  "變異史萊姆",
+                                          "spawn_rate":  0.45,
+                                          "max_hp":  1887,
+                                          "atk":  106,
+                                          "def":  0,
+                                          "exp":  4500,
+                                          "spd":  18,
+                                          "weakness":  [
+                                                           "ice",
+                                                           "thunder"
+                                                       ],
+                                          "resistance":  [
+                                                             "physical",
+                                                             "poison"
+                                                         ],
+                                          "drops":  {
+                                                        "burn_salve":  1,
+                                                        "medium_mana_potion":  0.3
+                                                    },
+                                          "status_on_hit":  [
+                                                                "burn",
+                                                                "poison"
+                                                            ],
+                                          "status_chance":  0.25,
+                                          "money_min":  60,
+                                          "money_max":  100,
+                                          "ai":  "self_heal",
+                                          "name_en":  "Mutant Slime",
+                                          "traits":  [
+                                                         "splitter"
+                                                     ]
+                                      },
+                     "clone_soldier":  {
+                                           "id":  "clone_soldier",
+                                           "name":  "複製士兵",
+                                           "spawn_rate":  0.35,
+                                           "max_hp":  1495,
+                                           "atk":  125,
+                                           "def":  0,
+                                           "exp":  3800,
+                                           "spd":  22,
+                                           "weakness":  [
+                                                            "thunder"
+                                                        ],
+                                           "resistance":  [
+                                                              "poison"
+                                                          ],
+                                           "drops":  {
+                                                         "medium_mana_potion":  0.3
+                                                     },
+                                           "money_min":  55,
+                                           "money_max":  90,
+                                           "ai":  "trickster",
+                                           "name_en":  "Clone Soldier",
+                                           "traits":  [
+                                                          "splitter"
+                                                      ]
+                                       },
+                     "toxic_ooze":  {
+                                        "id":  "toxic_ooze",
+                                        "name":  "劇毒黏液怪",
+                                        "spawn_rate":  0.3,
+                                        "max_hp":  1747,
+                                        "atk":  100,
+                                        "def":  0,
+                                        "exp":  4200,
+                                        "spd":  15,
+                                        "weakness":  [
+                                                         "fire",
+                                                         "holy"
+                                                     ],
+                                        "resistance":  [
+                                                           "poison",
+                                                           "dark"
+                                                       ],
+                                        "drops":  {
+                                                      "burn_salve":  0.3,
+                                                      "medium_health_potion":  0.3
+                                                  },
+                                        "status_on_hit":  [
+                                                              "poison"
+                                                          ],
+                                        "status_chance":  0.4,
+                                        "money_min":  58,
+                                        "money_max":  95,
+                                        "ai":  "none",
+                                        "name_en":  "Toxic Ooze",
+                                        "traits":  [
+                                                       "splitter",
+                                                       "shield_breaker"
+                                                   ]
+                                    }
+                 },
+    "boss":  {
+                 "id":  "mad_doctor",
+                 "name":  "瘋狂博士",
+                 "is_boss":  true,
+                 "max_hp":  7263,
+                 "atk":  153,
+                 "def":  0,
+                 "exp":  60000,
+                 "spd":  35,
+                 "weakness":  [
+                                  "holy",
+                                  "physical"
+                              ],
+                 "resistance":  [
+                                    "poison",
+                                    "dark",
+                                    "thunder"
+                                ],
+                 "money_min":  400,
+                 "money_max":  700,
+                 "drops":  {
+                               "holy_sword":  0.15,
+                               "scroll_inferno":  0.2,
+                               "scroll_divine_thunder":  0.15,
+                               "medium_health_potion":  0.5,
+                               "elixir_of_cleansing":  0.2
+                           },
+                 "status_on_hit":  [
+                                       "poison",
+                                       "paralysis",
+                                       "freeze",
+                                       "burn"
+                                   ],
+                 "status_chance":  0.55,
+                 "ai":  "random_caster",
+                 "active_skills":  [
+                                       {
+                                           "id":  "deploy_clone",
+                                           "name":  "投放實驗體",
+                                           "trigger":  {
+                                                           "type":  "interval",
+                                                           "value":  4
+                                                       },
+                                           "effect":  {
+                                                          "type":  "summon_minion",
+                                                          "summon_ids":  [
+                                                                             "failed_experiment",
+                                                                             "lab_medic",
+                                                                             "toxic_clone"
+                                                                         ]
+                                                      },
+                                           "name_en":  "Deploy Test Subject"
+                                       }
+                                   ],
+                 "phase2":  {
+                                "hp_below":  0.5,
+                                "ai":  "berserk_low_hp",
+                                "name_suffix":  "（藥劇失控）",
+                                "heal_pct":  0.5,
+                                "transform_text":  "瘋狂博士打下最後一管藥劇，全身肌肉瞬間暴漲！",
+                                "active_skills":  [
+                                                      {
+                                                          "id":  "overdose_strike",
+                                                          "name":  "藥劇超載打擊",
+                                                          "trigger":  {
+                                                                          "type":  "hp_below",
+                                                                          "value":  0.2
+                                                                      },
+                                                          "effect":  {
+                                                                         "type":  "heavy_attack",
+                                                                         "mult":  2.4
+                                                                     },
+                                                          "name_en":  "Overdose Strike"
+                                                      }
+                                                  ],
+                                "name_suffix_en":  "(Out of Control)",
+                                "transform_text_en":  "The Mad Doctor slams down the last vial, and his muscles surge and swell in an instant!"
+                            },
+                 "name_en":  "Mad Doctor",
+                 "ai_spells":  [
+                                   "fireball",
+                                   "thunder_strike",
+                                   "ice_spear"
+                               ]
+             },
+    "boss_minions":  {
+                         "lab_medic":  {
+                                           "id":  "lab_medic",
+                                           "name":  "實驗室護理員",
+                                           "max_hp":  548,
+                                           "atk":  70,
+                                           "def":  0,
+                                           "spd":  22,
+                                           "exp":  0,
+                                           "money_min":  0,
+                                           "money_max":  0,
+                                           "drops":  {
+
+                                                     },
+                                           "ai":  "support_healer",
+                                           "name_en":  "Lab Attendant"
+                                       },
+                         "toxic_clone":  {
+                                             "id":  "toxic_clone",
+                                             "name":  "毒液複製體",
+                                             "max_hp":  610,
+                                             "atk":  90,
+                                             "def":  0,
+                                             "spd":  18,
+                                             "exp":  0,
+                                             "money_min":  0,
+                                             "money_max":  0,
+                                             "drops":  {
+
+                                                       },
+                                             "ai":  "debuffer",
+                                             "name_en":  "Venom Replicant",
+                                             "traits":  [
+                                                            "splitter"
+                                                        ]
+                                         }
+                     },
+    "area_name_en":  "Mad Doctor\u0027s Laboratory",
+    "requires_boss":  "area_10deep_forest",
+    "events":  [
+                   "lab_warning_note"
+               ],
+    "subareas":  [
+                     {
+                         "id":  "lab_corridor",
+                         "name":  "實驗走廊",
+                         "desc":  "破碎的培養槽與散落器材隨處可見。",
+                         "events":  [
+                                        "lab_warning_note"
+                                    ],
+                         "name_en":  "Experiment Corridor",
+                         "desc_en":  "Broken incubation tanks and scattered equipment line the passage."
+                     },
+                     {
+                         "id":  "lab_specimen_room",
+                         "name":  "樣本室",
+                         "desc":  "標本瓶、殘骸與異常安靜的房間。",
+                         "events":  [
+
+                                    ],
+                         "name_en":  "Specimen Room",
+                         "desc_en":  "Sample jars, remains, and the wrong kind of silence fill this room."
+                     },
+                     {
+                         "id":  "lab_control_room",
+                         "name":  "控制室",
+                         "desc":  "操作台與監視器還亮著微弱的光。",
+                         "events":  [
+                                        "lab_warning_note"
+                                    ],
+                         "name_en":  "Control Room",
+                         "desc_en":  "Consoles and monitors still glow with a weak, stubborn light."
+                     }
+                 ]
 }
