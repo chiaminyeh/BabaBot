@@ -48,11 +48,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         real_player = getattr(self.player, "real_player", self.player)
         pending_battle = getattr(real_player, "active_battle", None)
         if pending_battle and pending_battle.get("monster_slots"):
-            self.monster_slots = pending_battle["monster_slots"]
-            self.combat.player_av = pending_battle.get("player_av", 100)
-            self.combat.skill_cds = pending_battle.get("skill_cds", {})
-            self.combat.is_defending = pending_battle.get("is_defending", False)
-            self.combat.is_dodging = pending_battle.get("is_dodging", False)
+            self._load_player_state()
             self.log_message = t(self.player.language, "menu.battle_restored", "⚔️ 你回到了先前未完成的戰鬥，敵人依然虎視眈眈！")
             self.build_battle_menu()
         elif not getattr(real_player, "onboarding_done", False):
@@ -60,6 +56,24 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.build_language_select_menu()
         else:
             self.build_main_menu()
+
+    def _load_player_state(self):
+        real_player = getattr(self.player, "real_player", self.player)
+        pending_battle = getattr(real_player, "active_battle", None)
+        if pending_battle and pending_battle.get("monster_slots"):
+            self.in_battle = True
+            self.monster_slots = pending_battle["monster_slots"]
+            self.combat.player_av = pending_battle.get("player_av", 100)
+            self.combat.skill_cds = pending_battle.get("skill_cds", {})
+            self.combat.is_defending = pending_battle.get("is_defending", False)
+            self.combat.is_dodging = pending_battle.get("is_dodging", False)
+        else:
+            self.in_battle = False
+            self.monster_slots = []
+            self.combat.player_av = 100
+            self.combat.skill_cds = {}
+            self.combat.is_defending = False
+            self.combat.is_dodging = False
 
     # --- 多怪物欄位（最多 3 格）：前排永遠是還活著的第一格 ---
 
@@ -265,6 +279,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "b_itm": {"m": "handle_item_menu"},
         "b_fle": {"m": "handle_battle_flee", "guard": True},
         "btn_back_battle": {"m": "build_battle_menu", "await": False},
+        "btn_char_menu": {"m": "build_char_menu", "await": False},
         "btn_tutorial_yes": {"m": "handle_tutorial_choice", "i": True, "k": {"want_tutorial": True}},
         "btn_tutorial_no": {"m": "handle_tutorial_choice", "i": True, "k": {"want_tutorial": False}},
     }
@@ -273,6 +288,10 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
     # gets passed: "suffix" = custom_id after the prefix, "full" = whole
     # custom_id, "int_tail" = int of the last underscore segment.
     _PREFIX_ROUTES = [
+        ("char_switch_", {"m": "handle_char_switch", "arg": "suffix"}),
+        ("char_create_", {"m": "handle_char_create", "arg": "suffix"}),
+        ("char_delete_ask_", {"m": "handle_char_delete_ask", "arg": "suffix"}),
+        ("char_delete_confirm_", {"m": "handle_char_delete_confirm", "arg": "suffix"}),
         ("btn_lang_", {"m": "handle_lang_select", "arg": "suffix"}),
         ("move_to_", {"m": "handle_move_execute", "arg": "full"}),
         ("subarea_", {"m": "handle_subarea_explore", "arg": "suffix"}),
@@ -431,7 +450,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.viewing_leaderboard = False
         if self._refresh_daily_stamina():
             self.cog.save_players()
-        
+
         # Route to dungeon if in dungeon
         if self.player.current_area == "area_dungeon":
             self.build_dungeon_menu()
@@ -448,20 +467,20 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         lang = self.player.language
         if self.cog.areas.get(self.player.current_area, {}).get("is_village"):
             self.add_action_button(label=t(lang, "menu.btn_outskirts", "郊外"), style=discord.ButtonStyle.primary, custom_id="move_to_area_01grassland", row=0, emoji="🌾")
-            self.add_action_button(label=t(lang, "menu.btn_move", "移動"), style=discord.ButtonStyle.secondary, custom_id="btn_move_menu", row=0, emoji="🗺️")
-            self.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.success, custom_id="btn_status", row=0, emoji="📜")
-            self.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.secondary, custom_id="btn_equip_menu", row=0, emoji="🛡️")
+            self.add_action_button(label=t(lang, "menu.btn_move", "移動"), style=discord.ButtonStyle.primary, custom_id="btn_move_menu", row=0, emoji="🗺️")
+            self.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.primary, custom_id="btn_status", row=0, emoji="📜")
+            self.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.primary, custom_id="btn_equip_menu", row=0, emoji="🛡️")
             self.add_action_button(label=t(lang, "shop.btn_shop", "商店"), style=discord.ButtonStyle.primary, custom_id="btn_shop_menu", row=0, emoji="🛒")
             self.add_action_button(label=t(lang, "menu.btn_inn", "旅館"), style=discord.ButtonStyle.secondary, custom_id="btn_rest", row=1, emoji="💤")
-            self.add_action_button(label=t(lang, "menu.btn_blacksmith", "鐵匠"), style=discord.ButtonStyle.primary, custom_id="btn_artisan_menu", row=1, emoji="⚒️")
-            self.add_action_button(label=t(lang, "menu.btn_guild", "公會"), style=discord.ButtonStyle.primary, custom_id="btn_guild_menu", row=1, emoji="🏛️")
-            self.add_action_button(label=t(lang, "menu.btn_village_chief", "村長"), style=discord.ButtonStyle.secondary, custom_id="btn_ask_chief", row=2, emoji="🧓")
-            self.add_action_button(label=t(lang, "menu.btn_church", "教堂"), style=discord.ButtonStyle.success, custom_id="btn_church_menu", row=2, emoji="⛪")
+            self.add_action_button(label=t(lang, "menu.btn_blacksmith", "鐵匠"), style=discord.ButtonStyle.secondary, custom_id="btn_artisan_menu", row=1, emoji="⚒️")
+            self.add_action_button(label=t(lang, "menu.btn_guild", "公會"), style=discord.ButtonStyle.secondary, custom_id="btn_guild_menu", row=1, emoji="🏛️")
+            self.add_action_button(label=t(lang, "menu.btn_village_chief", "村長"), style=discord.ButtonStyle.secondary, custom_id="btn_ask_chief", row=1, emoji="🧓")
+            self.add_action_button(label=t(lang, "menu.btn_church", "教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", row=1, emoji="⛪")
         else:
             # 🛠️ 新增：野外區域限定的每日 BOSS 按鈕
             self.add_action_button(label=t(lang, "menu.btn_explore", "探索"), style=discord.ButtonStyle.primary, custom_id="btn_explore", row=0, emoji="⚔️")
             self.add_action_button(label=t(lang, "menu.btn_move", "移動"), style=discord.ButtonStyle.secondary, custom_id="btn_move_menu", row=0, emoji="🗺️")
-            self.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.success, custom_id="btn_status", row=0, emoji="📜")
+            self.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.secondary, custom_id="btn_status", row=0, emoji="📜")
             self.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.secondary, custom_id="btn_equip_menu", row=0, emoji="🛡️")
             self.add_action_button(label=t(lang, "menu.btn_potions", "藥水"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=1, emoji="🎒")
             self.add_action_button(label=t(lang, "menu.btn_log", "記錄"), style=discord.ButtonStyle.secondary, custom_id="btn_combat_history", row=1, emoji="📝")
@@ -504,8 +523,12 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         real = getattr(self.player, "real_player", self.player)
         active_quests = set(getattr(real, "active_quests", {}).keys())
         completed_quests = set(getattr(real, "completed_quests", []))
+        player_level = getattr(real, "level", getattr(self.player, "level", 1))
         visible = []
         for sub in area_data.get("subareas", []):
+            requires_level = sub.get("requires_level", 0)
+            if requires_level and player_level < requires_level:
+                continue
             requires_quest = sub.get("requires_quest")
             if requires_quest and requires_quest not in active_quests and requires_quest not in completed_quests:
                 continue
@@ -824,6 +847,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.add_action_button(label=t(lang, "menu.btn_prestige_hall", "轉生殿堂"), style=discord.ButtonStyle.success, custom_id="btn_prestige_menu", emoji="🌟")
         self.add_action_button(label=t(lang, "menu.btn_skill_config", "技能配置"), style=discord.ButtonStyle.primary, custom_id="btn_skill_equip", emoji="🔧")
         self.add_action_button(label=t(lang, "menu.btn_learn_magic", "學習魔法"), style=discord.ButtonStyle.primary, custom_id="btn_skill_learn", emoji="📖")
+        self.add_action_button(label=t(lang, "menu.btn_char_menu", "角色管理"), style=discord.ButtonStyle.primary, custom_id="btn_char_menu", emoji="👥")
         self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
     def process_death(self, log: str, reason: str = None) -> str:
@@ -850,14 +874,14 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             final_log += self._handle_sargeras_defeat()
 
         self.record_combat_history(final_log)
-        
+
         self.cog.save_players()
-        
+
         # 清除戰鬥狀態
         self.in_battle = False
         self.monster_slots = []
         self.combat._clear_battle_state()
-        
+
         if getattr(self.player, "dungeon_state", {}).get("in_run"):
             self.player.dungeon_state["in_run"] = False
             self.player.dungeon_state["choices"] = []
@@ -939,7 +963,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             if current_val >= threshold:
                 self.player.achievements.append(achv_id)
                 unlocked_msgs.append(t(lang, "menu.achievement_unlocked", "🎉 【解鎖成就】{name} - {desc}", name=tf(info, "name", lang), desc=tf(info, "desc", lang)))
-                
+
         if unlocked_msgs:
             self.cog.save_players()
             return "\n" + "\n".join(unlocked_msgs)
@@ -1121,38 +1145,22 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
     async def handle_move_menu(self):
         self.clear_items()
         lang = self.player.language
-        self.log_message = t(lang, "menu.move_prompt", "挑選你打算移動前往的下一個區域：")
-        locked_hints = []
+        self.log_message = t(lang, "menu.move_prompt", "Choose your destination.")
         for area_id, area in self.cog.areas.items():
             if area_id == self.player.current_area:
                 continue
             if not self._area_unlocked(area):
-                area_name = tf(area, "area_name", lang) or area_id
-                requires_boss = area.get("requires_boss")
-                requires_count = area.get("requires_boss_count", 0)
-                if requires_boss:
-                    boss_name = self._boss_name_for_area(requires_boss, lang)
-                    locked_hints.append(t(
-                        lang, "menu.area_locked_hint", "🔒 {area_name}（需先擊敗【{boss_name}】）",
-                        area_name=area_name, boss_name=boss_name,
-                    ))
-                elif requires_count:
-                    # 隱藏區域的存在本身是彩蛋：戰功累積過半才開始聽到「傳聞」，
-                    # 之前完全不顯示，保留初次發現的驚喜感。
-                    have = len(getattr(self.player, "killed_bosses", []))
-                    if have * 2 >= requires_count:
-                        locked_hints.append(t(
-                            lang, "menu.area_locked_count_hint", "🔒 {area_name}（需累計首殺 {need} 個不同區域BOSS，目前 {have}）",
-                            area_name=area_name, need=requires_count, have=have,
-                        ))
                 continue
             req = area.get("req_level", 1)
-            area_name = tf(area, "area_name", lang) if area.get("area_name") else t(lang, "menu.unknown_area", "未知區域")
-            label = t(lang, "menu.move_to_label", "前往 {area_name} (Lv.{req})", area_name=area_name, req=req)
+            area_name = tf(area, "area_name", lang) if area.get("area_name") else t(lang, "menu.unknown_area", "Unknown Area")
+            label = t(
+                lang, "menu.move_to_label",
+                "Go to {area_name} (Recommended Lv.{req})",
+                area_name=area_name,
+                req=req,
+            )
             self.add_action_button(label=label, style=discord.ButtonStyle.primary, custom_id=f"move_to_{area_id}")
-        if locked_hints:
-            self.log_message += "\n\n" + "\n".join(locked_hints)
-        self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
+        self.add_action_button(label=t(lang, "menu.btn_back", "Back"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
     def _instantiate_boss_minion(self, minion_def: dict, boss_level: int, area_req_level: int) -> dict:
         """依 BOSS 等級放大區域 boss_minion 的數值（與召喚邏輯一致）。"""
@@ -1207,7 +1215,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             return
         if not self._spend_stamina(20):
             return
-            
+
        # 遭遇 BOSS，複製數值進入戰鬥
         boss_instance = dict(boss_data)
         boss_instance.setdefault("id", "boss")
@@ -1562,7 +1570,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.cog.save_players()
         item_name = tf(item, "name", lang)
         return t(lang, "battle.used_item_cured", "✨ 使用了【{item_name}】，解除了：{cured_list}", item_name=item_name, cured_list="、".join(cured))
-        
+
     def _generate_action_bar(self, current, maximum, length=10):
             """生成文字版行動條"""
             if maximum <= 0: return "▱" * length
@@ -1662,11 +1670,15 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             header_line = t(lang, "battle.header_line", "**Lv.{level} 冒險者**", level=p.level)
         else:
             header_line = t(lang, "battle.adventurer_status_line", "**Lv.{level} 冒險者** | 💰 {balance} {money_name}", level=p.level, balance=user_bal, money_name=self.cog.bot.baba.money_name)
+        stamina_line = ""
+        if not self.in_battle:
+            stamina_line = f"{t(lang, 'stamina.line', '⚡ 體力: `{current}/{max_stamina}`', current=current_stamina, max_stamina=max_stamina)}\n"
+
         player_desc = (
             f"{header_line}\n"
             f"❤️ HP: `{p.current_hp:03d}/{p.max_hp:03d}`\n"
             f"💧 MP: `{p.current_mp:03d}/{p.max_mp:03d}`\n"
-            f"{t(lang, 'stamina.line', '⚡ Stamina: `{current}/{max_stamina}`', current=current_stamina, max_stamina=max_stamina)}\n"
+            f"{stamina_line}"
             f"⚔️ ATK: `{p_atk}` | 🛡️ DEF: `{p_def}` | 🚀 SPD: `{p_spd}`\n"
             f"✨ MAG: `{p_magic}` | 🔰 RES: `{p_res}`\n"
         )
@@ -1682,6 +1694,22 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         else:
             unspent_line = t(lang, "battle.unspent_points_line", "📊 未分配點數: `{unspent}`", unspent=unspent)
             player_desc += f"{unspent_line}\n{status_line}{immune_str}"
+            real = getattr(p, "real_player", p)
+            active_quests = getattr(real, "active_quests", {})
+            if active_quests:
+                quest_names = []
+                for qid in active_quests:
+                    qinfo = self.cog.quests.get(qid)
+                    if qinfo:
+                        quest_names.append(f"【{tf(qinfo, 'title', lang)}】")
+                if quest_names:
+                    quests_str = "、".join(quest_names)
+                    quests_line = t(
+                        lang, "battle.active_quests_line",
+                        "📌 進行中的任務: {quests}",
+                        quests=quests_str
+                    )
+                    player_desc += f"\n{quests_line}"
         embed.add_field(name=t(lang, "battle.your_status_field", "👤 你的狀態"), value=player_desc, inline=False)
 
         # 戰鬥時顯示敵方狀態區塊（最多 3 格，前排優先顯示在最上面）
@@ -1769,133 +1797,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         embed.description = f"```\n{self.log_message}\n```"
         return embed
 
-    async def handle_explore(self):
-        lang = self.player.language
-        if self.player.current_hp <= 0:
-            self.log_message = t(lang, "explore.already_fallen", "❌ 你已經倒下了，請先去旅館休息療傷！")
-            return
 
-        area_data = self.cog.areas.get(self.player.current_area, {})
-
-        # 👇 1. 判斷是否在魔塔或地下城區域，如果是，直接轉交給專屬函數
-        if self.player.current_area == "area_tower":
-            await self.handle_tower_explore()
-            return
-        elif self.player.current_area == "area_dungeon":
-            self.build_dungeon_menu()
-            return
-
-        # 👇 2. 新版事件系統：讀取該區域的專屬事件機率（預設 0.2）
-        event_chance = area_data.get("event_chance", 0.2)
-        if random.random() < event_chance and self.cog.events:
-            await self.handle_random_event(area_data)
-            return
-
-        if not area_data or not area_data.get("monsters"):
-            self.log_message = t(lang, "explore.area_peaceful", "📍 這個區域一片祥和，沒有任何怪物跡象。")
-            return
-
-        monster_ids = list(area_data["monsters"].keys())
-        # 👇 新手保護：Lv.3 以下只會遇到史萊姆——新手村附近其他怪物（野豬/山賊等）
-        # 對剛開局、還沒武器沒技能的玩家來說殺傷力太不穩定，容易一上來就被血洗。
-        # 練到 Lv.3 之後才會恢復正常的野外怪物池。
-        if self.player.level < 3 and "slime" in area_data["monsters"]:
-            monster_ids = ["slime"]
-
-        weights = [area_data["monsters"][m_id]["spawn_rate"] for m_id in monster_ids]
-
-        selected_id = random.choices(monster_ids, weights=weights)[0]
-        base_monster = area_data["monsters"][selected_id]
-
-        # 👇 1. 動態等級浮動：區域等級 + (0 ~ 5) 級的隨機浮動
-        area_req_level = area_data.get("req_level", 1)
-        m_level = area_req_level + random.randint(0, 5)
-
-        # 👇 2. 數值膨脹倍率：每超過區域底線 1 級，全屬性提升 15%
-        scale = 1.0 + (m_level - area_req_level) * 0.15
-
-        monster_instance = dict(base_monster)
-        monster_instance.setdefault("id", selected_id)
-
-        # 👇 3. 套用名稱標籤與數值倍率
-        monster_instance["level"] = m_level
-        base_monster_name = tf(base_monster, "name", lang)
-        monster_instance["name"] = f"{base_monster_name} (Lv.{m_level})"
-        if base_monster.get("name_en"):
-            monster_instance["name_en"] = f"{base_monster['name_en']} (Lv.{m_level})"
-        monster_instance["max_hp"] = max(1, int(base_monster["max_hp"] * scale))
-        monster_instance["atk"] = max(1, int(base_monster["atk"] * scale))
-        monster_instance["def"] = max(0, int(base_monster.get("def", 0) * scale))
-        monster_instance["exp"] = max(1, int(base_monster.get("exp", 10) * scale))
-        if "magic" in base_monster:
-            monster_instance["magic"] = max(1, int(base_monster["magic"] * scale))
-
-        # 👇 4. 動態生成速度 (SPD)：如果有寫死就用，沒有就根據等級隨機生成
-        default_spd = int(10 + m_level * 1.5 + random.randint(-2, 2))
-        monster_instance["spd"] = base_monster.get("spd", default_spd)
-
-        self.start_combat([monster_instance])
-        self.cog.save_players()
-
-        encountered_name = tf(monster_instance, "name", lang)
-        self.log_message = t(lang, "explore.monster_encountered", "⚔️ 遭遇了【{monster_name}】！對方來勢洶洶！", monster_name=encountered_name)
-        self.build_battle_menu()
-
-    async def handle_random_event(self, area_data=None):
-        lang = self.player.language
-        # 👇 根據區域 JSON 抓取專屬事件池，若無則用全域事件
-        if area_data and "events" in area_data:
-            event_pool = [e for e in area_data["events"] if e in self.cog.events]
-        else:
-            event_pool = list(self.cog.events.keys())
-
-        if not event_pool:
-            self.log_message = t(lang, "explore.nothing_happened", "🌿 風吹草動，但什麼也沒發生。")
-            self.build_main_menu()
-            return
-
-        weights = [self.cog.events[eid].get("weight", 1) for eid in event_pool]
-        event_id = random.choices(event_pool, weights=weights)[0]
-        event = self.cog.events[event_id]
-
-        category = event.get("category", "neutral")
-        cat_emoji = {"good": "🎁", "neutral": "📖", "bad": "💢"}.get(category, "❓")
-        event_message = tf(event, "message", lang) if event.get("message") else t(lang, "explore.mysterious_event", "發生了神祕的事……")
-        event_label = t(lang, "explore.random_event_label", "【隨機事件】")
-        log = f"{cat_emoji} {event_label}\n{event_message}"
-
-        rewards = event.get("rewards", {})
-        if rewards.get("gold"):
-            self.cog.adjust_bank(self.user_id, rewards["gold"])
-            log += "\n" + t(lang, "explore.gained_gold", "💰 獲得 {gold} {money_name}！", gold=rewards["gold"], money_name=self.cog.bot.baba.money_name)
-
-        for item_id, qty in rewards.get("items", {}).items():
-            self.player.inventory[item_id] = self.player.inventory.get(item_id, 0) + qty
-            item_name = tf(self.cog.items.get(item_id, {}), "name", lang) or item_id
-            log += "\n" + t(lang, "explore.gained_item", "🎁 獲得【{item_name}】x{qty}", item_name=item_name, qty=qty)
-
-        if event.get("hp_loss_percent"):
-            loss = max(1, int(self.player.max_hp * event["hp_loss_percent"]))
-            self.player.current_hp = max(0, self.player.current_hp - loss)
-            log += "\n" + t(lang, "explore.lost_hp", "❤️ 損失 {loss} HP", loss=loss)
-            if self.player.current_hp <= 0:
-                self.log_message = self.process_death(log, t(lang, "explore.fallen_from_event", "💀 你因事件傷勢過重倒下了！"))
-                return
-
-        if event.get("mp_loss_percent"):
-            loss_mp = max(1, int(self.player.max_mp * event["mp_loss_percent"]))
-            self.player.current_mp = max(0, self.player.current_mp - loss_mp)
-            log += "\n" + t(lang, "explore.lost_mp", "💧 流失 {loss_mp} MP", loss_mp=loss_mp)
-
-        if event.get("gold_loss"):
-            bal = self.cog.get_bank_balance(self.user_id)
-            loss_g = min(bal, event["gold_loss"])
-            self.cog.adjust_bank(self.user_id, -loss_g)
-            log += "\n" + t(lang, "explore.lost_gold", "💸 損失 {loss_g} {money_name}", loss_g=loss_g, money_name=self.cog.bot.baba.money_name)
-
-        self.log_message = log
-        self.cog.save_players()
-        self.build_main_menu()
 
     async def handle_battle_attack(self):
         self.log_message = self.combat.player_attack()
@@ -1912,9 +1814,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             else:
                 self.build_main_menu()
             return
-            
+
         self.log_message = self.combat.use_skill(skill_id)
-        
+
         # 確保施放完技能後重繪戰鬥按鈕
         if self.in_battle:
             self.build_battle_menu()
@@ -2171,29 +2073,6 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         await self.handle_learn_skill_menu(learned_msg)
 
 
-    async def handle_move_execute(self, custom_id):
-        # 👇 等級只是「建議」不是硬性門檻——真正把關的是 requires_boss/requires_boss_count
-        # （能不能打贏上一個區域的 BOSS，或累積首殺過夠多區域 BOSS），能贏就代表有實力
-        # 進去了，不需要再疊加一層等級限制卡人。req_level 依然會顯示在移動選單的按鈕
-        # 標籤上，純粹給玩家參考「這裡建議幾級來」。
-        lang = self.player.language
-        target_area = custom_id.replace("move_to_", "")
-        area_data = self.cog.areas.get(target_area, {})
-        if not self._area_unlocked(area_data):
-            requires_boss = area_data.get("requires_boss")
-            if requires_boss:
-                boss_name = self._boss_name_for_area(requires_boss, lang)
-                self.log_message = t(lang, "menu.move_blocked_boss", "❌ 這條路還被封鎖著，得先擊敗【{boss_name}】才能通行。", boss_name=boss_name)
-            else:
-                self.log_message = t(lang, "menu.move_blocked_generic", "❌ 目前還無法前往這個區域。")
-            self.build_main_menu()
-            return
-        self.player.current_area = target_area
-        self.cog.save_players()
-        area_name = tf(self.cog.areas[target_area], "area_name", lang)
-        self.log_message = t(lang, "explore.arrived_at_area", "🗺️ 成功抵達了【{area_name}】。", area_name=area_name)
-        self.build_main_menu()
-
     def _format_inventory_grouped(self, p, lang) -> str:
         """把背包依分類（武器/防具/飾品/消耗品/卷軸/雜物）整理，每項前面加上分類 emoji。"""
         cats = {"weapon": [], "armor": [], "accessory": [], "consumable": [], "scroll": [], "misc": []}
@@ -2228,56 +2107,6 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         text = "\n".join(lines)
         return text[:1020] if text else t(lang, "char.bag_empty", "空空如也")
 
-    async def handle_status(self, interaction: discord.Interaction):
-        p = self.player
-        lang = p.language
-        none_label = t(lang, "char.none", "無")
-        if p.weapon:
-            witem = self.cog.items.get(p.weapon, {})
-            weapon_name = f"{item_emoji(witem)} {tf(witem, 'name', lang) or p.weapon}"
-        else:
-            weapon_name = none_label
-
-        inv_desc = self._format_inventory_grouped(p, lang)
-
-        user_bal = self.cog.get_bank_balance(self.user_id)
-
-        status_embed = discord.Embed(title=t(lang, "char.status_title", "📜 {user} 的詳細冒險狀態", user=interaction.user.name), color=discord.Color.blue())
-        status_embed.add_field(name=t(lang, "char.level_exp", "等級與經驗"), value=f"Lv.{p.level} (EXP: {p.exp}/{exp_to_next_level(p.level)})", inline=True)
-        status_embed.add_field(name=t(lang, "char.wallet_balance", "錢包餘額"), value=f"{user_bal} {self.cog.bot.baba.money_name}", inline=True)
-
-        prestige = getattr(p, "prestige_count", 0)
-        if prestige > 0:
-            status_embed.add_field(name=t(lang, "char.prestige_rank", "轉生階級"), value=t(lang, "char.prestige_rank_value", "🌟 {prestige} 轉 (全屬性 +{bonus}%)", prestige=prestige, bonus=prestige*10), inline=True)
-
-        trophies = getattr(p, "trophies", [])
-        if trophies:
-            status_embed.add_field(name=t(lang, "char.trophies", "🏆 榮譽勳章"), value=" ".join(trophies), inline=False)
-
-        alloc_text = format_stat_alloc_summary(p)
-        status_embed.add_field(
-            name=t(lang, "char.combat_core_stats", "戰鬥核心數值"),
-            value=(
-                f"❤️ HP: {p.current_hp}/{p.max_hp}\n"
-                f"💧 MP: {p.current_mp}/{p.max_mp}\n"
-                f"⚔️ ATK: {get_player_atk(p, self.cog.items, self.cog.status_effects)} | 🛡️ DEF: {get_player_def(p, self.cog.items)}\n"
-                f"✨ MAG: {get_player_magic(p, self.cog.items, self.cog.status_effects)} | 🔰 RES: {getattr(p, 'base_res', 0)}\n"
-                f"🍀 LUCK: {getattr(p, 'base_luck', 0)}\n"
-                f"{alloc_text}"
-            ),
-            inline=False,
-        )
-        status_embed.add_field(name=t(lang, "char.equipped_weapon", "配戴武器"), value=weapon_name, inline=True)
-        status_embed.add_field(name=t(lang, "char.status_effects", "異常狀態"), value=format_status_list(p.status_effects, self.cog.status_effects, p.language), inline=True)
-        if p.accessory:
-            acc_item = self.cog.items.get(p.accessory, {})
-            acc_name = f"{item_emoji(acc_item)} {tf(acc_item, 'name', lang) or p.accessory}"
-            status_embed.add_field(name=t(lang, "char.accessory", "飾品"), value=acc_name, inline=True)
-        skill_list = ", ".join([tf(self.cog.skills.get(s, {}), "name", lang) or s for s in p.skills]) or none_label
-        status_embed.add_field(name=t(lang, "char.learned_skills", "已習技能"), value=skill_list, inline=True)
-        status_embed.add_field(name=t(lang, "char.bag_contents", "行囊儲存物"), value=inv_desc, inline=False)
-
-        await interaction.followup.send(embed=status_embed, ephemeral=True)
 
     # (label, custom_id 用的 stat key, emoji) —— 6 個屬性，每組（+1／手動輸入）都要跨
     # 兩排才放得下（Discord 每排最多 5 顆按鈕），版面固定用 row 0/1（+1）與 2/3（手動輸入）。
@@ -2831,21 +2660,36 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         players = list(self.cog.players.values())
         no_data = t(lang, "leaderboard.no_data", "無資料")
 
-        # 1. 等級排行
-        lvl_rank = sorted(players, key=lambda x: x.level, reverse=True)[:5]
+        # 1. 等級排行 (Deduplicated by player.id)
+        lvl_by_id = {}
+        for p in players:
+            if p.id not in lvl_by_id or p.level > lvl_by_id[p.id].level:
+                lvl_by_id[p.id] = p
+        lvl_rank = sorted(lvl_by_id.values(), key=lambda x: x.level, reverse=True)[:5]
         lvl_desc = "\n".join([f"🏆 **Rank {i+1}** | Lv.{p.level} - <@{p.id}>" for i, p in enumerate(lvl_rank)])
         if not lvl_desc: lvl_desc = no_data
 
-        # 2. 魔塔排行
-        tower_rank = sorted(players, key=lambda x: getattr(x, "tower_floor", 1), reverse=True)[:5]
+        # 2. 魔塔排行 (Deduplicated by player.id)
+        tower_by_id = {}
+        for p in players:
+            floor = getattr(p, "tower_floor", 1)
+            if p.id not in tower_by_id or floor > getattr(tower_by_id[p.id], "tower_floor", 1):
+                tower_by_id[p.id] = p
+        tower_rank = sorted(tower_by_id.values(), key=lambda x: getattr(x, "tower_floor", 1), reverse=True)[:5]
         tower_desc = "\n".join([
             t(lang, "leaderboard.tower_rank_line", "🏆 **Rank {rank}** | {floor}層 - <@{uid}>", rank=i + 1, floor=getattr(p, 'tower_floor', 1), uid=p.id)
             for i, p in enumerate(tower_rank)
         ])
         if not tower_desc: tower_desc = no_data
 
-        # 3. 擊殺排行
-        kill_rank = sorted(players, key=lambda x: x.stats.get("monsters_killed", 0) if getattr(x, "stats", None) else 0, reverse=True)[:5]
+        # 3. 擊殺排行 (Deduplicated by player.id)
+        kill_by_id = {}
+        for p in players:
+            kills = p.stats.get("monsters_killed", 0) if getattr(p, "stats", None) else 0
+            prev_kills = kill_by_id[p.id].stats.get("monsters_killed", 0) if (p.id in kill_by_id and getattr(kill_by_id[p.id], "stats", None)) else 0
+            if p.id not in kill_by_id or kills > prev_kills:
+                kill_by_id[p.id] = p
+        kill_rank = sorted(kill_by_id.values(), key=lambda x: x.stats.get("monsters_killed", 0) if getattr(x, "stats", None) else 0, reverse=True)[:5]
         kill_desc = "\n".join([
             t(
                 lang,
@@ -2859,11 +2703,12 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         ])
         if not kill_desc: kill_desc = no_data
 
-        # 4. 金幣排行
+        # 4. 金幣排行 (Deduplicated by player.id, as bank is shared per Discord ID)
+        unique_uids = list(set(p.id for p in players))
         bank_rank = []
-        for p in players:
-            bal = self.cog.get_bank_balance(p.id)
-            bank_rank.append((p.id, bal))
+        for uid in unique_uids:
+            bal = self.cog.get_bank_balance(uid)
+            bank_rank.append((uid, bal))
         bank_rank = sorted(bank_rank, key=lambda x: x[1], reverse=True)[:5]
         bank_desc = "\n".join([f"🏆 **Rank {i+1}** | {bal}$ - <@{uid}>" for i, (uid, bal) in enumerate(bank_rank)])
         if not bank_desc: bank_desc = no_data
@@ -3004,10 +2849,10 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.log_message = t(lang, "explore.already_fallen", "❌ 你已經倒下了，請先去旅館休息療傷！")
             return
 
-        getattr(self.player, "real_player", self.player).current_subarea = subarea_id
-        self.cog.save_players()
         if not self._spend_stamina(4):
             return
+        getattr(self.player, "real_player", self.player).current_subarea = subarea_id
+        self.cog.save_players()
 
         event_chance = subarea.get("event_chance", area_data.get("event_chance", 0.2))
         if random.random() < event_chance and self.cog.events:
@@ -3015,7 +2860,10 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             return
 
         subarea_name = tf(subarea, "name", lang) or subarea_id
-        self._begin_area_encounter(area_data, subarea.get("monsters", []), area_name=subarea_name)
+        subarea_monsters = subarea.get("monsters")
+        if subarea_monsters is None:
+            subarea_monsters = list(area_data.get("monsters", {}).keys())
+        self._begin_area_encounter(area_data, subarea_monsters, area_name=subarea_name)
 
     async def handle_random_event(self, area_data=None, subarea_data=None):
         lang = self.player.language
@@ -3086,12 +2934,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         target_area = custom_id.replace("move_to_", "")
         area_data = self.cog.areas.get(target_area, {})
         if not self._area_unlocked(area_data):
-            requires_boss = area_data.get("requires_boss")
-            if requires_boss:
-                boss_name = self._boss_name_for_area(requires_boss, lang)
-                self.log_message = t(lang, "menu.move_blocked_boss", "❌ 這條路還被封鎖著，得先擊敗【{boss_name}】才能通行。", boss_name=boss_name)
-            else:
-                self.log_message = t(lang, "menu.move_blocked_generic", "❌ 目前還無法前往這個區域。")
+            self.log_message = t(lang, "menu.move_blocked_generic", "You can't travel to this area yet.")
             self.build_main_menu()
             return
 
@@ -3100,11 +2943,14 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         real.current_subarea = None
         self.cog.save_players()
         area_name = tf(self.cog.areas[target_area], "area_name", lang)
-        self.log_message = t(lang, "explore.arrived_at_area", "🗺️ 成功抵達了【{area_name}】。", area_name=area_name)
+        self.log_message = t(
+            lang, "explore.arrived_at_area",
+            "You successfully arrived at {area_name}.",
+            area_name=area_name,
+        )
         self.build_main_menu()
 
     async def handle_status(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
         p = self.player
         lang = p.language
         user_bal = self.cog.get_bank_balance(self.user_id)
@@ -3133,7 +2979,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             value=(
                 f"❤️ HP: {p.current_hp}/{p.max_hp}\n"
                 f"💧 MP: {p.current_mp}/{p.max_mp}\n"
-                f"⚡ Stamina: {current_stamina}/{max_stamina}\n"
+                f"⚡ {'體力' if lang != 'en' else 'Stamina'}: {current_stamina}/{max_stamina}\n"
                 f"⚔️ ATK: {get_player_atk(p, self.cog.items, self.cog.status_effects)} | 🛡️ DEF: {get_player_def(p, self.cog.items)}\n"
                 f"✨ MAG: {get_player_magic(p, self.cog.items, self.cog.status_effects)} | 🚀 SPD: {get_player_spd(p)}\n"
                 f"🍀 LUCK: {getattr(p, 'base_luck', 0)}\n"
@@ -3171,5 +3017,146 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.build_artisan_menu()
         elif state == "subarea":
             self.build_subarea_menu()
+        elif state == "char_menu":
+            self.build_char_menu()
         else:
             self.build_main_menu()
+
+    # --- Multi-Character slots management ---
+
+    def build_char_menu(self, notice=None):
+        self.clear_items()
+        self.current_menu_state = "char_menu"
+        lang = self.player.language
+
+        self.log_message = t(lang, "menu.char_prompt", "👥 【角色管理】\n在這裡你可以切換、創建、或刪除不同的角色存檔（最多 3 個角色）。")
+        if notice:
+            self.log_message = f"{notice}\n\n{self.log_message}"
+
+        for slot_idx in range(3):
+            slot = str(slot_idx)
+            player_key = f"{self.user_id}_{slot}"
+            exists = player_key in self.cog.players
+
+            # Label prefix
+            slot_label = t(lang, "menu.char_slot_label", "角色存檔 {num}", num=slot_idx + 1)
+
+            if exists:
+                p = self.cog.players[player_key]
+                weapon_name = tf(self.cog.items.get(p.weapon, {}), "name", lang) if p.weapon else t(lang, "blacksmith.none", "None")
+                slot_info = f" {slot_label} (Lv.{p.level} / {weapon_name})"
+
+                is_active = self.cog.active_slots.get(self.user_id, "0") == slot
+
+                if is_active:
+                    self.add_action_button(
+                        label=f"{slot_info} [Active]",
+                        style=discord.ButtonStyle.success,
+                        custom_id=f"char_active_{slot}",
+                        disabled=True,
+                        row=slot_idx
+                    )
+                else:
+                    self.add_action_button(
+                        label=f"Switch: {slot_info}",
+                        style=discord.ButtonStyle.primary,
+                        custom_id=f"char_switch_{slot}",
+                        row=slot_idx
+                    )
+
+                # Delete button
+                self.add_action_button(
+                    label=t(lang, "menu.char_delete", "刪除"),
+                    style=discord.ButtonStyle.danger,
+                    custom_id=f"char_delete_ask_{slot}",
+                    row=slot_idx
+                )
+            else:
+                self.add_action_button(
+                    label=t(lang, "menu.char_create_slot", "🆕 創立新角色: {slot_label}", slot_label=slot_label),
+                    style=discord.ButtonStyle.primary,
+                    custom_id=f"char_create_{slot}",
+                    row=slot_idx
+                )
+
+        self.add_action_button(
+            label=t(lang, "menu.btn_back", "返回"),
+            style=discord.ButtonStyle.secondary,
+            custom_id="btn_church_menu",
+            row=4,
+            emoji="🔙"
+        )
+
+    async def handle_char_switch(self, slot: str):
+        self.cog.active_slots[self.user_id] = slot
+        # Reload the player object
+        self.player = RoguePlayerWrapper(self.cog.get_player(self.user_id))
+        self.cog.save_players()
+
+        # Restore battle states for the new slot
+        self._load_player_state()
+
+        if not self.player.onboarding_done:
+            self.build_language_select_menu()
+        else:
+            self.build_main_menu()
+
+    async def handle_char_create(self, slot: str):
+        self.cog.active_slots[self.user_id] = slot
+
+        player_key = f"{self.user_id}_{slot}"
+        # Force create a fresh character
+        from trpg.player import TRPGPlayer
+        p = TRPGPlayer(self.user_id)  # raw Discord user_id
+        p.character_slot = slot
+        recalc_player_stats(p, self.cog.items, heal_full=True)
+        self.cog.players[player_key] = p
+        self.cog.save_players()
+
+        self.player = RoguePlayerWrapper(p)
+        self._load_player_state()
+
+        self.build_language_select_menu()
+
+    async def handle_char_delete_ask(self, slot: str):
+        self.clear_items()
+        lang = self.player.language
+        self.log_message = t(
+            lang,
+            "menu.char_delete_confirm_prompt",
+            "⚠️ 警告：確定要刪除角色存檔 {num} 嗎？此操作將會永久清除所有等級、裝備與進度，且無法復原！",
+            num=int(slot) + 1
+        )
+        self.add_action_button(
+            label=t(lang, "menu.char_delete_confirm_yes", "💥 確定刪除"),
+            style=discord.ButtonStyle.danger,
+            custom_id=f"char_delete_confirm_{slot}",
+            row=0
+        )
+        self.add_action_button(
+            label=t(lang, "menu.char_delete_confirm_no", "取消"),
+            style=discord.ButtonStyle.secondary,
+            custom_id="btn_char_menu",
+            row=0
+        )
+
+    async def handle_char_delete_confirm(self, slot: str):
+        lang = self.player.language
+        player_key = f"{self.user_id}_{slot}"
+
+        if player_key in self.cog.players:
+            del self.cog.players[player_key]
+
+        current_active = self.cog.active_slots.get(self.user_id, "0")
+
+        if current_active == slot:
+            # Switch active slot to any other remaining slot, or "0" if none exist
+            remaining = [str(i) for i in range(3) if f"{self.user_id}_{i}" in self.cog.players]
+            new_active = remaining[0] if remaining else "0"
+            self.cog.active_slots[self.user_id] = new_active
+            self.player = RoguePlayerWrapper(self.cog.get_player(self.user_id))
+            self._load_player_state()
+
+        self.cog.save_players()
+        notice = t(lang, "menu.char_deleted", "✅ 成功刪除角色存檔 {num}。", num=int(slot) + 1)
+        self.build_char_menu(notice=notice)

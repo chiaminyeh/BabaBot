@@ -302,6 +302,12 @@ async def _send_reward_popup(view, interaction, title, quest_line, npc_name, raw
         tag=tag, title=title, npc_name=npc_name, ai_text=ai_text,
         reward_exp=reward_exp, reward_money=reward_money, reward_items=reward_items_text,
     )
+    view.log_message = t(
+        lang, "quest.main_menu_reward_prompt",
+        "🎉 【任務達成】委託已完成：【{title}】\n💬 {npc_name}：「{ai_text}」\n🎁 獲得 {reward_exp} EXP、{reward_money} 金幣{reward_items}！",
+        title=title, npc_name=npc_name, ai_text=ai_text,
+        reward_exp=reward_exp, reward_money=reward_money, reward_items=reward_items_text
+    )
     try:
         await interaction.followup.send(content, ephemeral=True)
     except Exception as e:
@@ -415,6 +421,11 @@ async def _maybe_send_offer_popup(view, interaction):
         "❗ **突發委託出現！** {tag}\n**{title}**\n💬 {npc_name}：「{ai_text}」\n\n"
         "✅ 已自動為你接下這個委託，可在任務大廳查看進度。",
         tag=tag, title=title, npc_name=npc_name, ai_text=ai_text,
+    )
+    view.log_message = t(
+        lang, "quest.main_menu_offer_prompt",
+        "❗ 【突發委託】新任務已接取：【{title}】\n💬 {npc_name}：「{ai_text}」",
+        title=title, npc_name=npc_name, ai_text=ai_text
     )
     try:
         await interaction.followup.send(content, ephemeral=True)

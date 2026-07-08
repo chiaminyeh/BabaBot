@@ -36,6 +36,7 @@ class TRPGCog(commands.Cog):
         # 舊面板——不然兩份面板的 active_battle 快照會共用同一個 monster_slots list
         # 物件，玩家能兩邊面板輪流點按鈕，等於一回合打兩次（見 start_trpg）。
         self.active_views = {}
+        self.active_slots = {}
         self.load_all_config()
 
     def get_bank_balance(self, user_id) -> int:
@@ -98,16 +99,79 @@ class TRPGCog(commands.Cog):
         # 魔塔／地下城共用怪物池（分層，依樓層抽怪）
         self.monster_pool = load_monster_pool(DATA_DIR)
 
-        # 掃描動態區域 JSON
-        self.areas = {}
-        for file in os.listdir(DATA_DIR):
-            if file.startswith("area_") and file.endswith(".json"):
-                area_id = file.replace(".json", "")
-                self.areas[area_id] = self._load_json(file, {})
+        # 讀取並動態水合區域設定
+        flat_monsters = self._load_json("monsters.json", {})
+        self.areas = self._load_json("areas.json", {})
+        for area_id, area_data in self.areas.items():
+            # 水合 monsters 欄位
+            if "monsters" in area_data and isinstance(area_data["monsters"], dict):
+                hydrated_monsters = {}
+                for m_id, m_cfg in area_data["monsters"].items():
+                    m_def = flat_monsters.get(m_id)
+                    if m_def:
+                        # 複製並合併 spawn_rate 等設定
+                        m_instance = dict(m_def)
+                        m_instance.update(m_cfg)
+                        hydrated_monsters[m_id] = m_instance
+                area_data["monsters"] = hydrated_monsters
+
+            # 水合 boss 欄位
+            if "boss" in area_data and isinstance(area_data["boss"], str):
+                m_def = flat_monsters.get(area_data["boss"])
+                if m_def:
+                    area_data["boss"] = dict(m_def)
+
+            # 水合 boss_minions 欄位
+            if "boss_minions" in area_data and isinstance(area_data["boss_minions"], list):
+                hydrated_minions = {}
+                for m_id in area_data["boss_minions"]:
+                    m_def = flat_monsters.get(m_id)
+                    if m_def:
+                        hydrated_minions[m_id] = m_def
+                area_data["boss_minions"] = hydrated_minions
 
         # 讀取玩家存檔
         raw = self._load_json(os.path.basename(self.players_file), {})
-        self.players = {k: TRPGPlayer.from_dict(v) for k, v in raw.items()}
+        self.players = {}
+        
+        # 解決舊存檔/新存檔的主鍵衝突 (優先採用明確的 uid_slot)
+        parsed = {}  # (uid, slot) -> (is_legacy, dict_val)
+        for k, v in raw.items():
+            parts = k.split("_")
+            uid = parts[0]
+            slot = parts[1] if len(parts) > 1 else "0"
+            is_legacy = len(parts) == 1
+            
+            key = (uid, slot)
+            if key not in parsed:
+                parsed[key] = (is_legacy, v)
+            else:
+                # 衝突處理：如果已有紀錄且現有紀錄是 legacy 格式，而新讀入的是明確的 slot 格式，則覆蓋之。
+                existing_is_legacy, _ = parsed[key]
+                if existing_is_legacy and not is_legacy:
+                    parsed[key] = (is_legacy, v)
+
+        for (uid, slot), (_, v) in parsed.items():
+            v["id"] = uid
+            v["character_slot"] = slot
+            player_key = f"{uid}_{slot}"
+            self.players[player_key] = TRPGPlayer.from_dict(v)
+
+        # 讀取 active_slots，並強制標準化與驗證
+        raw_active = self._load_json("trpg_active_slots.json", {})
+        self.active_slots = {}
+        for k, v in raw_active.items():
+            uid_str = str(k).strip()
+            slot_str = str(v).strip()
+            if slot_str in ("0", "1", "2"):
+                self.active_slots[uid_str] = slot_str
+
+        # 防禦性檢查：若 active_slots 指向的存檔不存在，自動降級 fallback 回 "0"
+        for uid, slot in list(self.active_slots.items()):
+            if slot != "0":
+                player_key = f"{uid}_{slot}"
+                if player_key not in self.players:
+                    self.active_slots[uid] = "0"
 
     def save_players(self):
         """原子寫入：先寫入暫存檔再 os.replace，避免中途中斷造成存檔損毀。"""
@@ -117,16 +181,28 @@ class TRPGCog(commands.Cog):
             json.dump(serialized, f, ensure_ascii=False, indent=4)
         os.replace(tmp_path, self.players_file)
 
+        # 儲存 active_slots
+        active_slots_path = os.path.join(DATA_DIR, "trpg_active_slots.json")
+        tmp_active_path = active_slots_path + ".tmp"
+        with open(tmp_active_path, "w", encoding="utf-8") as f:
+            json.dump(self.active_slots, f, ensure_ascii=False, indent=4)
+        os.replace(tmp_active_path, active_slots_path)
+
     def get_player(self, user_id):
         uid = str(user_id)
-        if uid not in self.players:
+        slot = self.active_slots.get(uid, "0")
+        player_key = f"{uid}_{slot}"
+        if player_key not in self.players:
             player = TRPGPlayer(uid)
+            player.character_slot = slot
             recalc_player_stats(player, self.items, heal_full=True)
-            self.players[uid] = player
+            self.players[player_key] = player
             self.save_players()
         else:
-            migrate_player_stats(self.players[uid], self.items)
-        return self.players[uid]
+            migrate_player_stats(self.players[player_key], self.items)
+            if not hasattr(self.players[player_key], "character_slot"):
+                self.players[player_key].character_slot = slot
+        return self.players[player_key]
     
     async def generate_npc_dialogue(self, prompt: str):
         # 抓取掛載在 bot 上的 response_cog

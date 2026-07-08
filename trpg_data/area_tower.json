@@ -1,8 +1,0 @@
-{
-    "area_name": "無盡魔塔",
-    "req_level": 15,
-    "event_chance": 0.0,
-    "monsters": {},
-    "area_name_en": "Endless Tower",
-    "requires_boss": "area_10deep_forest"
-}

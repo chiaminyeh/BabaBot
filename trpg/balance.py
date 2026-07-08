@@ -13,7 +13,7 @@ STAT_POINTS_PER_LEVEL = 2
 
 # --- Stat allocation: 1 spent point -> this much of the stat ----------------
 # (vit also adds HP/DEF, int also adds MP — see stats.recalc_player_stats)
-ALLOC_BONUS = {"atk": 3, "vit": 1, "int": 1, "spd": 3, "luck": 1}
+ALLOC_BONUS = {"atk": 3, "vit": 1, "int": 1, "spd": 2, "luck": 1}
 
 # --- Stamina ---------------------------------------------------------------
 STAMINA_MAX = 200
@@ -43,15 +43,15 @@ LUCK_CRIT_BONUS_PER_POINT = 0.002        # +0.2% crit chance per luck point
 LUCK_DROP_RATE_BONUS_PER_POINT = 0.01    # +1% relative boost to every drop rate per luck point
 
 # Flee (player fleeing combat) chance: base + (player_spd - monster_spd) * factor, clamped.
-FLEE_BASE_CHANCE = 0.4
+FLEE_BASE_CHANCE = 0.5
 FLEE_MIN_CHANCE = 0.2
 FLEE_MAX_CHANCE = 0.95
 FLEE_SPD_FACTOR = 0.015
 
-# Dodge (monster's attack missing a defending/dodging player) chance: same shape as flee.
+# Dodge (monster's attack missing a defending/dodging player)
 DODGE_BASE_CHANCE = 0.3
-DODGE_MIN_CHANCE = 0.1
-DODGE_MAX_CHANCE = 0.85
+DODGE_MIN_CHANCE = 0.05
+DODGE_MAX_CHANCE = 0.95
 DODGE_SPD_FACTOR = 0.015
 
 # Schrodinger's Watch accessory: gambles every hit between doubling and halving damage.
@@ -112,35 +112,35 @@ BOSS_MONEY_MULT = 4
 SET_BONUSES = {
     "guardian": {     # 守護者 / Guardian — tanky bruiser set
         2: {"def": 25, "hp": 150},
-        3: {"def": 50, "hp": 400, "res": 15, "atk": 20},
+        3: {"def": 50, "hp": 400, "atk": 20},
     },
     "archmage": {     # 大法師 / Archmage — caster set
         2: {"magic": 25, "mp": 40},
-        3: {"magic": 60, "mp": 120, "res": 10},
+        3: {"magic": 60, "mp": 120},
     },
     "assassin": {     # 刺客 / Assassin — lvl16 atk+spd burst set
-        2: {"atk": 15, "spd": 20},
-        3: {"atk": 35, "spd": 45, "res": 10},
+        2: {"atk": 15, "spd": 10},
+        3: {"atk": 35, "spd": 25},
     },
     "necromancer": {  # 死靈法師 / Necromancer — lvl30 dark caster set
         2: {"magic": 40, "hp": 150},
-        3: {"magic": 90, "hp": 350, "res": 20},
+        3: {"magic": 90, "hp": 350},
     },
     "vampiric": {     # 血族 / Vampiric — lvl40 sustain set
         2: {"atk": 30, "hp": 250},
-        3: {"atk": 70, "hp": 550, "res": 15},
+        3: {"atk": 70, "hp": 550},
     },
     "phoenix": {      # 鳳凰 / Phoenix — lvl60 hybrid fire set
         2: {"atk": 50, "magic": 50},
         3: {"atk": 110, "magic": 110, "hp": 400},
     },
     "voidwalker": {   # 虛空行者 / Voidwalker — lvl70 speed/evasion set
-        2: {"spd": 60, "def": 60},
-        3: {"spd": 130, "def": 130, "atk": 40},
+        2: {"spd": 30},
+        3: {"spd": 60},
     },
     "nether": {       # 冥界 / Nether — lvl80 top-tier all-round set
         2: {"atk": 80, "def": 80},
-        3: {"atk": 180, "def": 180, "hp": 600, "res": 30},
+        3: {"atk": 180, "def": 180, "hp": 600},
     },
 }
 
@@ -181,7 +181,7 @@ DUNGEON_MAX_FLOOR = 15
 DUNGEON_BOSS_FLOOR = 15
 # Mini-boss checkpoints: forced UNIQUE boss fights (defined in dungeon.DUNGEON_MINIBOSSES,
 # each with its own signature mechanic) that grant a relic choice, not a run-ending fight.
-DUNGEON_MINIBOSS_FLOORS = (4, 8, 12)
+DUNGEON_MINIBOSS_FLOORS = (5,10)
 # Sealed level-1 starting character for a dungeon run.
 DUNGEON_START_STATS = {
     "max_hp": 60, "base_atk": 12, "base_def": 5, "base_mdef": 3,
@@ -222,7 +222,7 @@ DUNGEON_ROOM_WEIGHTS = {"monster": 70, "elite": 20, "rest": 10}
 # stacks * dmg_per_stack flat damage. Stacks are CAPPED — pre-cap corrosion
 # builds snowballed into deleting minibosses in 2-3 turns, so both the per-stack
 # damage and the total stack count got reined in.
-CORROSION_BASE_DMG = 2            # base flat damage per stack (scaled by floor)
-CORROSION_DMG_PER_FLOOR = 0.6
-CORROSION_MAX_STACKS = 10         # hard ceiling on accumulated stacks
+CORROSION_BASE_DMG = 10            # base flat damage per stack (scaled by floor)
+CORROSION_DMG_PER_FLOOR = 0
+CORROSION_MAX_STACKS = 99         # hard ceiling on accumulated stacks
 CORROSION_TURNS = 99             # effectively lasts the whole fight once applied

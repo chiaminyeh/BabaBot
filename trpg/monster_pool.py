@@ -11,11 +11,47 @@ from trpg.balance import (
 
 
 def load_monster_pool(data_dir: str) -> dict:
-    path = os.path.join(data_dir, "monsters.json")
-    if not os.path.exists(path):
+    # 1. Load flat monsters database
+    monsters_path = os.path.join(data_dir, "monsters.json")
+    if not os.path.exists(monsters_path):
         return {}
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    with open(monsters_path, "r", encoding="utf-8") as f:
+        monsters = json.load(f)
+
+    # 2. Load tiers config
+    tiers_path = os.path.join(data_dir, "monster_tiers.json")
+    if not os.path.exists(tiers_path):
+        return {}
+    with open(tiers_path, "r", encoding="utf-8") as f:
+        tiers = json.load(f)
+
+    # 3. Hydrate the tiers with full monster definitions
+    hydrated_tiers = {}
+    for tier_id, tier_data in tiers.items():
+        hydrated_tier = {
+            "floor_range": tier_data.get("floor_range", [1, 1])
+        }
+        # Monsters
+        if "monsters" in tier_data:
+            hydrated_tier["monsters"] = {}
+            for m_id in tier_data["monsters"]:
+                if m_id in monsters:
+                    hydrated_tier["monsters"][m_id] = monsters[m_id]
+        # Boss
+        if "boss" in tier_data:
+            boss_id = tier_data["boss"]
+            if boss_id in monsters:
+                hydrated_tier["boss"] = monsters[boss_id]
+        # Boss Minions
+        if "boss_minions" in tier_data:
+            hydrated_tier["boss_minions"] = {}
+            for m_id in tier_data["boss_minions"]:
+                if m_id in monsters:
+                    hydrated_tier["boss_minions"][m_id] = monsters[m_id]
+
+        hydrated_tiers[tier_id] = hydrated_tier
+
+    return hydrated_tiers
 
 
 def pick_tier_for_floor(pool: dict, floor: int) -> dict:

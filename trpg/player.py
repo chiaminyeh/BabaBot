@@ -44,6 +44,7 @@ _SCALAR_DEFAULTS = {
     "sargeras_defeat_count": 0,
     "legend_cave_unlocked": False,
     "language": "zh",  # 顯示語言："zh" 或 "en"
+    "character_slot": "0",  # 角色存檔編號
     # 進行中戰鬥的快照（monster_slots/combat 狀態），讓 /trpg 重開或面板逾時都能接回原本的戰鬥，
     # 不再是白吃的免費逃跑。戰鬥結束（勝利/死亡/逃跑成功）時清回 None。
     "active_battle": None,
