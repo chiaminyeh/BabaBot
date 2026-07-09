@@ -1,0 +1,16 @@
+{
+    "char.stat_alloc_header": "📊 【流派點數分配】每級 2 點，死亡後重置。\n",
+    "char.stat_alloc_legend": "\n\n騎士：提升近戰、血量與防禦 | 盜賊：提升速度、暴擊與收割 | 法師：提升魔力與魔力值 | 術士：提升詛咒、吸取與混傷 | 幸運：提升暴擊、掉寶、經驗與金幣收益",
+    "char.stats_reset_notice": "🔄 已重置所有流派點數，請重新分配。",
+    "char.stats_reset_paid_notice": "🔄 支付了 {cost} 金幣，已重置所有流派點數，請重新分配。",
+    "char.stats_reset_skills_removed": "⚠️ 因點數歸零，你失去了這些專屬技能：{skills}",
+    "combat.skill_point_requirement_fail": "❌ 你的流派點數不足，無法使用【{skill}】（{req_text}）。",
+    "modal.bulk_stat_title": "一次分配流派點數",
+    "prestige.rule_4": "4. 轉生不會清除你的背包道具與金幣；但不再符合點數門檻的專屬技能會失效。\n",
+    "prestige.rule_5": "5. 每次轉生後，下一次轉生所需的等級都會提高 {step} 級。",
+    "prestige.skill_reset_notice": "⚠️ 因流派點數歸零，以下專屬技能已失效：{skills}",
+    "skill.equip_point_too_low": "❌ 流派點數不足！裝備【{skill_name}】需要 {req_text}。",
+    "skill.point_too_low_to_learn": "❌ 流派點數不足！習得【{skill_name}】需要 {req_text}。",
+    "skill.opt_locked_points": "🔒 {skill_name}（需 {req_text}）",
+    "stats.alloc_line3": "剩餘點數 {unspent}"
+}

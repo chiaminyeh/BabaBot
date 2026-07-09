@@ -4,8 +4,32 @@ from trpg.balance import (
 )
 from trpg.i18n import t
 
-STAT_KEYS = ("atk", "vit", "int", "spd", "luck")
-STAT_ABBR = {"atk": "ATK", "vit": "VIT", "int": "INT", "spd": "SPD", "luck": "LUCK"}
+STAT_KEYS = ("knight", "rogue", "mage", "warlock", "luck")
+STAT_ABBR = {
+    "knight": "KNT",
+    "rogue": "RGE",
+    "mage": "MAG",
+    "warlock": "WRL",
+    "luck": "LCK",
+}
+STAT_LABELS = {
+    "knight": {"zh": "騎士", "en": "Knight"},
+    "rogue": {"zh": "盜賊", "en": "Rogue"},
+    "mage": {"zh": "法師", "en": "Mage"},
+    "warlock": {"zh": "術士", "en": "Warlock"},
+    "luck": {"zh": "幸運", "en": "Luck"},
+}
+LEGACY_STAT_TO_ARCHETYPE = {
+    "atk": {"knight": 1},
+    "vit": {"knight": 1},
+    "int": {"mage": 1},
+    "spd": {"rogue": 1},
+    "luck": {"luck": 1},
+    "hp": {"knight": 1},
+    "def": {"knight": 1},
+    "magic": {"mage": 1},
+    "res": {},
+}
 POINTS_PER_LEVEL = STAT_POINTS_PER_LEVEL
 
 
@@ -17,18 +41,64 @@ def default_stat_alloc() -> dict:
     return {k: 0 for k in STAT_KEYS}
 
 
+def stat_display_name(stat_key: str, lang: str = "zh", short: bool = False) -> str:
+    stat_key = str(stat_key)
+    if short:
+        return STAT_ABBR.get(stat_key, stat_key.upper())
+    return STAT_LABELS.get(stat_key, {}).get(lang, stat_key.title())
+
+
+def normalize_stat_alloc(raw_alloc: dict | None) -> dict:
+    normalized = default_stat_alloc()
+    if not isinstance(raw_alloc, dict):
+        return normalized
+
+    for key, raw_value in raw_alloc.items():
+        try:
+            value = int(raw_value)
+        except (TypeError, ValueError):
+            continue
+        if value == 0:
+            continue
+        if key in normalized:
+            normalized[key] += value
+            continue
+        for new_key, weight in LEGACY_STAT_TO_ARCHETYPE.get(key, {}).items():
+            normalized[new_key] += value * weight
+    return normalized
+
+
+def normalize_requirement_map(reqs: dict | None) -> dict:
+    normalized = default_stat_alloc()
+    if not isinstance(reqs, dict):
+        return {}
+
+    for key, raw_value in reqs.items():
+        try:
+            value = int(raw_value)
+        except (TypeError, ValueError):
+            continue
+        if value <= 0:
+            continue
+        if key in normalized:
+            normalized[key] = max(normalized[key], value)
+            continue
+        for new_key, weight in LEGACY_STAT_TO_ARCHETYPE.get(key, {}).items():
+            normalized[new_key] = max(normalized[new_key], value * weight)
+    return {key: value for key, value in normalized.items() if value > 0}
+
+
 def item_stat_requirements(item_data: dict) -> dict:
-    reqs = item_data.get("stat_requirements") or {}
-    return {
-        key: int(reqs[key])
-        for key in STAT_KEYS
-        if key in reqs and int(reqs[key]) > 0
-    }
+    return normalize_requirement_map(item_data.get("stat_requirements") or {})
 
 
-def meets_item_stat_requirements(player, item_data: dict) -> tuple[bool, dict]:
-    reqs = item_stat_requirements(item_data)
-    alloc = getattr(player, "stat_alloc", None) or default_stat_alloc()
+def skill_point_requirements(skill_data: dict) -> dict:
+    return normalize_requirement_map(skill_data.get("req_points") or {})
+
+
+def meets_point_requirements(player, reqs: dict | None) -> tuple[bool, dict]:
+    reqs = normalize_requirement_map(reqs)
+    alloc = normalize_stat_alloc(getattr(player, "stat_alloc", None) or {})
     missing = {
         stat: need
         for stat, need in reqs.items()
@@ -37,10 +107,25 @@ def meets_item_stat_requirements(player, item_data: dict) -> tuple[bool, dict]:
     return not missing, missing
 
 
+def meets_item_stat_requirements(player, item_data: dict) -> tuple[bool, dict]:
+    return meets_point_requirements(player, item_stat_requirements(item_data))
+
+
+def meets_skill_point_requirements(player, skill_data: dict) -> tuple[bool, dict]:
+    return meets_point_requirements(player, skill_point_requirements(skill_data))
+
+
+def meets_skill_requirements(player, skill_data: dict) -> tuple[bool, dict, int]:
+    req_level = int(skill_data.get("req_level", 1) or 1)
+    _, missing = meets_skill_point_requirements(player, skill_data)
+    return getattr(player, "level", 1) >= req_level and not missing, missing, req_level
+
+
 def format_stat_requirement_map(reqs: dict, lang: str = "zh", with_prefix: bool = True) -> str:
+    reqs = normalize_requirement_map(reqs)
     if not reqs:
         return ""
-    body = "/".join(f"{STAT_ABBR.get(stat, stat.upper())} {need}" for stat, need in reqs.items())
+    body = "/".join(f"{stat_display_name(stat, lang, short=True)} {need}" for stat, need in reqs.items())
     if not with_prefix:
         return body
     return f"Requires {body}" if lang == "en" else f"需求 {body}"
@@ -50,16 +135,38 @@ def format_item_stat_requirements(item_data: dict, lang: str = "zh", with_prefix
     return format_stat_requirement_map(item_stat_requirements(item_data), lang=lang, with_prefix=with_prefix)
 
 
+def format_skill_point_requirements(skill_data: dict, lang: str = "zh", with_prefix: bool = True) -> str:
+    return format_stat_requirement_map(skill_point_requirements(skill_data), lang=lang, with_prefix=with_prefix)
+
+
+def prune_unqualified_skills(player, skills_data: dict) -> list[str]:
+    learned = list(dict.fromkeys(getattr(player, "skills", []) or []))
+    equipped = list(dict.fromkeys(getattr(player, "equipped_skills", []) or []))
+    removed = []
+    kept_skills = []
+    for skill_id in learned:
+        skill = skills_data.get(skill_id, {})
+        ok, _, _ = meets_skill_requirements(player, skill)
+        if ok:
+            kept_skills.append(skill_id)
+        else:
+            removed.append(skill_id)
+    player.skills = kept_skills
+    player.equipped_skills = [skill_id for skill_id in equipped if skill_id in kept_skills]
+    return removed
+
+
 def total_stat_points(level: int) -> int:
     return POINTS_PER_LEVEL * level
 
 
 def get_allocated_points(stat_alloc: dict) -> int:
-    return sum(stat_alloc.get(k, 0) for k in STAT_KEYS)
+    alloc = normalize_stat_alloc(stat_alloc)
+    return sum(alloc.get(k, 0) for k in STAT_KEYS)
 
 
 def get_unspent_points(player) -> int:
-    alloc = getattr(player, "stat_alloc", None) or default_stat_alloc()
+    alloc = normalize_stat_alloc(getattr(player, "stat_alloc", None) or {})
     return total_stat_points(player.level) - get_allocated_points(alloc)
 
 
@@ -109,7 +216,8 @@ def active_set_bonuses(player, items: dict) -> list:
 
 def recalc_player_stats(player, items: dict = None, heal_full: bool = False):
     level = player.level
-    alloc = getattr(player, "stat_alloc", None) or default_stat_alloc()
+    alloc = normalize_stat_alloc(getattr(player, "stat_alloc", None) or {})
+    player.stat_alloc = alloc
     eq = get_equipment_bonuses(player, items or {})
     prestige = getattr(player, "prestige_count", 0)
     prestige_mult = 1.0 + prestige * PRESTIGE_BONUS_PER_LEVEL
@@ -119,35 +227,48 @@ def recalc_player_stats(player, items: dict = None, heal_full: bool = False):
     old_max_hp = getattr(player, "max_hp", 60)
     old_max_mp = getattr(player, "max_mp", 25)
 
-    base_atk = 10 + level * 2 + alloc.get("atk", 0) * ALLOC_BONUS["atk"] + eq["atk"]
+    knight = alloc.get("knight", 0)
+    rogue = alloc.get("rogue", 0)
+    mage = alloc.get("mage", 0)
+    warlock = alloc.get("warlock", 0)
+    luck = alloc.get("luck", 0)
+
+    base_atk = (
+        10 + level * 2
+        + knight * ALLOC_BONUS["knight"]
+        + rogue * 1.5
+        + warlock * 0.5
+        + eq["atk"]
+    )
     if getattr(player, "weapon", None):
         base_atk += weapon_upgrades.get(player.weapon, 0) * 3
     player.base_atk = int(base_atk * prestige_mult)
 
-    base_def = 4 + level * 1.5 + alloc.get("vit", 0) * 2 + eq["def"]
+    base_def = 4 + level * 1.5 + knight * 2.5 + rogue * 0.3 + warlock * 0.4 + eq["def"]
     if getattr(player, "armor", None):
         base_def += armor_upgrades.get(player.armor, 0) * 2
     player.base_def = int(base_def * prestige_mult)
 
-    base_max_hp = 50 + level * 10 + alloc.get("vit", 0) * 12 + eq["hp"]
+    base_max_hp = 50 + level * 10 + knight * 14 + warlock * 4 + rogue * 2 + eq["hp"]
     if getattr(player, "armor", None):
         base_max_hp += armor_upgrades.get(player.armor, 0) * 15
     player.max_hp = int(base_max_hp * prestige_mult)
 
-    base_int = 10 + int(level * 2.5) + alloc.get("int", 0) * 4 + eq["magic"]
+    base_int = 10 + int(level * 2.5) + mage * 4.5 + warlock * 3.5 + eq["magic"]
     player.base_int = int(base_int * prestige_mult)
+    player.base_magic = player.base_int
 
-    base_mdef = 2 + level * 1.0 + alloc.get("int", 0) * 1.5 + alloc.get("vit", 0) * 0.5 + eq["mdef"]
+    base_mdef = 2 + level * 1.0 + mage * 1.4 + warlock * 1.2 + knight * 0.5 + eq["mdef"]
     player.base_mdef = int(base_mdef * prestige_mult)
 
-    base_max_mp = 40 + level * 6 + alloc.get("int", 0) * 3 + eq["mp"]
+    base_max_mp = 40 + level * 6 + mage * 4 + warlock * 3 + eq["mp"]
     player.max_mp = int(base_max_mp * prestige_mult)
 
-    base_spd = 10 + level + alloc.get("spd", 0) * ALLOC_BONUS["spd"] + eq["spd"]
+    base_spd = 10 + level + rogue * ALLOC_BONUS["rogue"] + mage * 0.3 + eq["spd"]
     player.base_spd = int(base_spd * prestige_mult)
-    player.base_res = 0
+    player.base_res = int((warlock * 0.8 + knight * 0.3) * prestige_mult)
 
-    base_luck = alloc.get("luck", 0) * ALLOC_BONUS["luck"] + eq["luck"]
+    base_luck = luck * ALLOC_BONUS["luck"] + rogue * 0.2 + eq["luck"]
     player.base_luck = int(base_luck * prestige_mult)
 
     if heal_full:
@@ -169,18 +290,8 @@ def recalc_player_stats(player, items: dict = None, heal_full: bool = False):
     player.current_mp = min(player.current_mp, player.max_mp)
 
 
-def migrate_player_stats(player, items: dict):
-    if not getattr(player, "stat_alloc", None):
-        player.stat_alloc = default_stat_alloc()
-    else:
-        if "hp" in player.stat_alloc or "def" in player.stat_alloc:
-            player.stat_alloc["vit"] = player.stat_alloc.pop("hp", 0) + player.stat_alloc.pop("def", 0)
-        if "magic" in player.stat_alloc:
-            player.stat_alloc["int"] = player.stat_alloc.pop("magic", 0)
-        player.stat_alloc.pop("res", None)
-        for key in STAT_KEYS:
-            if key not in player.stat_alloc:
-                player.stat_alloc[key] = 0
+def migrate_player_stats(player, items: dict, skills_data: dict | None = None):
+    player.stat_alloc = normalize_stat_alloc(getattr(player, "stat_alloc", None) or {})
 
     if not hasattr(player, "base_int"):
         player.base_int = getattr(player, "base_magic", 0)
@@ -213,16 +324,28 @@ def migrate_player_stats(player, items: dict):
         player.mystery_shop_items = []
     if not hasattr(player, "mystery_shop_active"):
         player.mystery_shop_active = False
+
     recalc_player_stats(player, items, heal_full=False)
+    if skills_data is not None:
+        return prune_unqualified_skills(player, skills_data)
+    return []
 
 
 def format_stat_alloc_summary(player) -> str:
-    alloc = getattr(player, "stat_alloc", default_stat_alloc())
+    alloc = normalize_stat_alloc(getattr(player, "stat_alloc", default_stat_alloc()))
     unspent = get_unspent_points(player)
     lang = getattr(player, "language", "zh")
+    row1 = " | ".join(
+        f"{stat_display_name(key, lang, short=True)} {alloc.get(key, 0)}"
+        for key in ("knight", "rogue", "mage")
+    )
+    row2 = " | ".join(
+        f"{stat_display_name(key, lang, short=True)} {alloc.get(key, 0)}"
+        for key in ("warlock", "luck")
+    )
     return "\n".join([
-        f"ATK {alloc.get('atk', 0)} | VIT {alloc.get('vit', 0)} | INT {alloc.get('int', 0)}",
-        f"SPD {alloc.get('spd', 0)} | LUCK {alloc.get('luck', 0)}",
+        row1,
+        row2,
         t(lang, "stats.alloc_line3", "剩餘點數 {unspent}", unspent=unspent),
     ])
 

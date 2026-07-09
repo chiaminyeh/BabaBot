@@ -9,7 +9,7 @@ from trpg.combat import TRPGCombat, exp_to_next_level, get_player_atk, get_playe
 from trpg.status import format_status_list, clear_all_status, get_daily_jester_immunity
 from trpg.monster_pool import pick_random_monster
 from trpg.quest_popup import process_quest_popups, accept_quest
-from trpg.stats import default_stat_alloc, recalc_player_stats, get_unspent_points, format_stat_alloc_summary, get_potion_heal_target, prestige_required_level, format_item_stat_requirements, format_stat_requirement_map, item_stat_requirements, meets_item_stat_requirements
+from trpg.stats import default_stat_alloc, recalc_player_stats, get_unspent_points, format_stat_alloc_summary, get_potion_heal_target, prestige_required_level, format_item_stat_requirements, format_stat_requirement_map, item_stat_requirements, meets_item_stat_requirements, meets_skill_requirements, format_skill_point_requirements, prune_unqualified_skills, stat_display_name
 from trpg.player import RoguePlayerWrapper
 from trpg.entity import absorb_monster_damage
 from trpg import dungeon as dg
@@ -1552,10 +1552,15 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 await self.handle_skill_equip_menu(t(lang, "skill.equip_limit_reached", "❌ 技能裝備已達上限 (8/8)！請先卸下其他技能。"))
                 return
             skill = self.cog.skills.get(skill_id, {})
-            req_lv = skill.get("req_level", 1)
+            ok_req, missing_req, req_lv = meets_skill_requirements(self.player, skill)
             if self.player.level < req_lv:
                 skill_name = tf(skill, "name", lang) or skill_id
                 await self.handle_skill_equip_menu(t(lang, "skill.equip_level_too_low", "❌ 等級不足！裝備【{skill_name}】需要 Lv.{req_lv}。", skill_name=skill_name, req_lv=req_lv))
+                return
+            if missing_req:
+                skill_name = tf(skill, "name", lang) or skill_id
+                req_text = format_skill_point_requirements(skill, lang=lang)
+                await self.handle_skill_equip_menu(t(lang, "skill.equip_point_too_low", "❌ 流派點數不足！裝備【{skill_name}】需要 {req_text}。", skill_name=skill_name, req_text=req_text))
                 return
             if skill_id not in self.player.equipped_skills:
                 self.player.equipped_skills.append(skill_id)
@@ -1587,10 +1592,16 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             await self.handle_learn_skill_menu(t(lang, "skill.already_known", "❌ 你已經學會【{skill_name}】了，無需重複研讀。", skill_name=skill_name))
             return
 
-        req_lv = skill.get("req_level", 1)
+        ok_req, missing_req, req_lv = meets_skill_requirements(self.player, skill)
         if self.player.level < req_lv:
             await self.handle_learn_skill_menu(
                 t(lang, "skill.level_too_low_to_learn", "❌ 等級不足！習得【{skill_name}】需要 Lv.{req_lv}。", skill_name=skill_name, req_lv=req_lv)
+            )
+            return
+        if missing_req:
+            req_text = format_skill_point_requirements(skill, lang=lang)
+            await self.handle_learn_skill_menu(
+                t(lang, "skill.point_too_low_to_learn", "❌ 流派點數不足！習得【{skill_name}】需要 {req_text}。", skill_name=skill_name, req_text=req_text)
             )
             return
 
@@ -1661,8 +1672,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
     # 「手動輸入」開的是 StatPointModal（單一屬性、單一數字欄位）：打小數字=精準微調、
     # 打一個很大的數字＝等於全押到這項，取代原本另外一顆 All-in 按鈕的功能。
     _STAT_ALLOC_BUTTONS = (
-        ("ATK", "atk", "⚔️"), ("VIT", "vit", "🛡️"), ("INT", "int", "✨"),
-        ("SPD", "spd", "💨"), ("RES", "res", "🔰"), ("LUCK", "luck", "🍀"),
+        ("knight", "⚔️"), ("rogue", "🗡️"), ("mage", "✨"), ("warlock", "🌑"), ("luck", "🍀"),
     )
 
     async def handle_stat_alloc_menu(self, notice=""):
@@ -1684,7 +1694,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.player.stat_alloc[stat_key] = self.player.stat_alloc.get(stat_key, 0) + add_amount
         recalc_player_stats(self.player, self.cog.items, heal_full=False)
         self.cog.save_players(player=self.player)
-        await self.handle_stat_alloc_menu(t(lang, "char.points_invested", "✅ 已將 {add_amount} 點投入【{stat_key}】。", add_amount=add_amount, stat_key=stat_key.upper()))
+        await self.handle_stat_alloc_menu(t(lang, "char.points_invested", "✅ 已將 {add_amount} 點投入【{stat_key}】。", add_amount=add_amount, stat_key=stat_display_name(stat_key, lang)))
 
     def _stat_reset_cost(self) -> int:
         """屬性重置費用：Lv.10 以下免費（新手試錯期），之後隨等級成長——
@@ -1700,11 +1710,17 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             return
         self.player.stat_alloc = default_stat_alloc()
         recalc_player_stats(self.player, self.cog.items, heal_full=False)
+        removed = prune_unqualified_skills(self.player, self.cog.skills)
         self.cog.save_players(player=self.player)
+        removed_text = ""
+        if removed:
+            joiner = ", " if lang == "en" else "、"
+            removed_names = joiner.join(tf(self.cog.skills.get(skill_id, {}), "name", lang) or skill_id for skill_id in removed[:8])
+            removed_text = "\n" + t(lang, "char.stats_reset_skills_removed", "⚠️ 因點數歸零，你失去了這些專屬技能：{skills}", skills=removed_names)
         if cost > 0:
-            await self.handle_stat_alloc_menu(t(lang, "char.stats_reset_paid_notice", "🔄 支付了 {cost} 金幣，已重置所有屬性配點，請重新分配。", cost=cost))
+            await self.handle_stat_alloc_menu(t(lang, "char.stats_reset_paid_notice", "🔄 支付了 {cost} 金幣，已重置所有屬性配點，請重新分配。", cost=cost) + removed_text)
         else:
-            await self.handle_stat_alloc_menu(t(lang, "char.stats_reset_notice", "🔄 已重置所有屬性配點，請重新分配。"))
+            await self.handle_stat_alloc_menu(t(lang, "char.stats_reset_notice", "🔄 已重置所有屬性配點，請重新分配。") + removed_text)
 
     async def handle_rest(self):
         lang = self.player.language
@@ -2027,6 +2043,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.player.tower_state = {"safe_room_visited": False, "merchant_spawned": False, "merchant_items": []}
 
         recalc_player_stats(self.player, self.cog.items, heal_full=True)
+        removed = prune_unqualified_skills(self.player, self.cog.skills)
         self.cog.save_players(player=self.player)
 
         self.log_message = t(
@@ -2035,6 +2052,10 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             "🌟 恭喜成功轉生！你已重回 Lv.1，並永久獲得 +{bonus}% 的全屬性增幅！\n（魔塔/地下城樓層已重置，武器/防具/飾品已卸下）",
             bonus=self.player.prestige_count * 10,
         )
+        if removed:
+            joiner = ", " if lang == "en" else "、"
+            removed_names = joiner.join(tf(self.cog.skills.get(skill_id, {}), "name", lang) or skill_id for skill_id in removed[:8])
+            self.log_message += "\n" + t(lang, "prestige.skill_reset_notice", "⚠️ 因流派點數歸零，以下專屬技能已失效：{skills}", skills=removed_names)
         self.build_main_menu()
 
     def build_leaderboard_embed(self) -> discord.Embed:

@@ -8,7 +8,7 @@ import os
 
 from trpg.i18n import t
 from trpg.monster_pool import load_monster_pool
-from trpg.stats import recalc_player_stats, migrate_player_stats
+from trpg.stats import recalc_player_stats, migrate_player_stats, prune_unqualified_skills
 from trpg.player_db import PlayerDatabase
 from trpg.player import TRPGPlayer
 from trpg.view import TRPGGameView
@@ -164,6 +164,8 @@ class TRPGCog(commands.Cog):
             v["character_slot"] = slot
             player_key = f"{uid}_{slot}"
             self.players[player_key] = TRPGPlayer.from_dict(v)
+            migrate_player_stats(self.players[player_key], self.items, self.skills)
+            prune_unqualified_skills(self.players[player_key], self.skills)
 
         # 讀取 active_slots，並強制標準化與驗證
         self.active_slots = {}
@@ -262,9 +264,12 @@ class TRPGCog(commands.Cog):
             self.players[player_key] = player
             self.save_players(player=player, active_slot_user_id=uid)
         else:
-            migrate_player_stats(self.players[player_key], self.items)
+            removed = len(migrate_player_stats(self.players[player_key], self.items, self.skills))
+            removed += len(prune_unqualified_skills(self.players[player_key], self.skills))
             if not hasattr(self.players[player_key], "character_slot"):
                 self.players[player_key].character_slot = slot
+            if removed:
+                self.save_players(player=self.players[player_key])
         return self.players[player_key]
     
     async def generate_npc_dialogue(self, prompt: str):

@@ -11,6 +11,7 @@ sys.path.append(os.path.dirname(__file__))
 
 from trpg.cog import TRPGCog
 from trpg.player import TRPGPlayer
+from trpg.stats import migrate_player_stats, prune_unqualified_skills
 
 class MockBot:
     class Baba:
@@ -285,6 +286,36 @@ class TestMultiCharacter(unittest.TestCase):
                 ("56565", "0"),
             ).fetchone()[0]
         self.assertEqual(row, 0)
+
+    def test_legacy_stat_alloc_migrates_to_archetype_points(self):
+        player = TRPGPlayer("77777")
+        player.level = 10
+        player.stat_alloc = {"atk": 6, "vit": 4, "int": 5, "spd": 3, "luck": 2, "res": 9}
+
+        migrate_player_stats(player, {})
+
+        self.assertEqual(player.stat_alloc["knight"], 10)
+        self.assertEqual(player.stat_alloc["mage"], 5)
+        self.assertEqual(player.stat_alloc["rogue"], 3)
+        self.assertEqual(player.stat_alloc["luck"], 2)
+        self.assertEqual(player.stat_alloc["warlock"], 0)
+
+    def test_prune_unqualified_skills_removes_invalid_learned_and_equipped_skills(self):
+        player = TRPGPlayer("78787")
+        player.level = 20
+        player.stat_alloc = {"knight": 0, "rogue": 0, "mage": 0, "warlock": 0, "luck": 0}
+        player.skills = ["shield_bash", "fireball"]
+        player.equipped_skills = ["shield_bash", "fireball"]
+        skills = {
+            "shield_bash": {"req_level": 2, "req_points": {"knight": 10}},
+            "fireball": {"req_level": 1, "req_points": {"mage": 10}},
+        }
+
+        removed = prune_unqualified_skills(player, skills)
+
+        self.assertCountEqual(removed, ["shield_bash", "fireball"])
+        self.assertEqual(player.skills, [])
+        self.assertEqual(player.equipped_skills, [])
 
 if __name__ == "__main__":
     unittest.main()

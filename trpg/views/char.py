@@ -1,11 +1,19 @@
 import discord
 from trpg.i18n import t, tf
-from trpg.stats import get_unspent_points, format_stat_alloc_summary, prestige_required_level, PRESTIGE_LEVEL_STEP
+from trpg.stats import (
+    get_unspent_points,
+    format_stat_alloc_summary,
+    prestige_required_level,
+    PRESTIGE_LEVEL_STEP,
+    stat_display_name,
+    meets_skill_requirements,
+    format_skill_point_requirements,
+)
 
 class CharLayout:
     _STAT_ALLOC_BUTTONS = (
-        ("ATK", "atk", "⚔️"), ("VIT", "vit", "🛡️"), ("INT", "int", "✨"),
-        ("SPD", "spd", "💨"), ("RES", "res", "🔰"), ("LUCK", "luck", "🍀"),
+        ("knight", "⚔️"), ("rogue", "🗡️"), ("mage", "✨"),
+        ("warlock", "🌑"), ("luck", "🍀"),
     )
 
     @staticmethod
@@ -101,10 +109,9 @@ class CharLayout:
         unspent = get_unspent_points(view.player)
         view.log_message = (
             prefix
-            + t(lang, "char.stat_alloc_header", "📊 【屬性分配】每級 2 點，死亡後重置。\n")
+            + t(lang, "char.stat_alloc_header", "📊 【流派點數分配】每級 2 點，死亡後重置。\n")
             + format_stat_alloc_summary(view.player)
-            + t(lang, "char.stat_alloc_legend", "\n\n攻擊+3 ATK/點 | 體力+12 HP & +2 DEF/點 | 魔力+4 MAG & +3 MP/點 | "
-                "速度+2 SPD/點 | 抗性+2 RES/點 | 運氣+1 LUCK/點（提升暴擊率與掉寶率）")
+            + t(lang, "char.stat_alloc_legend", "\n\n騎士：提升近戰、血量與防禦 | 盜賊：提升速度、暴擊與收割 | 法師：提升魔力與魔力值 | 術士：提升詛咒、吸取與混傷 | 幸運：提升暴擊、掉寶、經驗與金幣收益")
         )
         if unspent > 0:
             view.log_message += t(
@@ -114,11 +121,13 @@ class CharLayout:
                 unspent=unspent,
             )
 
-            for label, key, emoji in CharLayout._STAT_ALLOC_BUTTONS:
-                row = 0 if key != "luck" else 1
+            for idx, (key, emoji) in enumerate(CharLayout._STAT_ALLOC_BUTTONS):
+                row = 0 if idx < 3 else 1
+                label = stat_display_name(key, lang)
                 view.add_action_button(label=f"+1 {label}", style=discord.ButtonStyle.primary, custom_id=f"stat_add_{key}", row=row, emoji=emoji)
-            for label, key, emoji in CharLayout._STAT_ALLOC_BUTTONS:
-                row = 2 if key != "luck" else 3
+            for idx, (key, emoji) in enumerate(CharLayout._STAT_ALLOC_BUTTONS):
+                row = 2 if idx < 3 else 3
+                label = stat_display_name(key, lang)
                 view.add_action_button(label=t(lang, "char.btn_stat_manual", "輸入 {stat}", stat=label), style=discord.ButtonStyle.success, custom_id=f"stat_manual_{key}", row=row, emoji=emoji)
 
         last_row = 4 if unspent > 0 else 0
@@ -149,7 +158,7 @@ class CharLayout:
             + t(lang, "prestige.rule_1", "1. 轉生將使你的等級重置回 Lv.1，EXP 歸零，並重置屬性配點。\n")
             + t(lang, "prestige.rule_2", "2. 轉生後你將獲得 1 層永久被動增幅，所有戰鬥屬性額外 +10%！\n")
             + t(lang, "prestige.rule_3", "3. 轉生會卸下你身上的武器、防具與飾品，並重置魔塔／地下城的目前樓層（已達成的里程碑勳章與獎杯不會消失）。\n")
-            + t(lang, "prestige.rule_4", "4. 轉生不會清除你的背包道具、金幣與已學會的技能。\n")
+            + t(lang, "prestige.rule_4", "4. 轉生不會清除你的背包道具與金幣；但不再符合點數門檻的專屬技能會失效。\n")
             + t(lang, "prestige.rule_5", "5. 每次轉生後，下一次轉生所需的等級都會提高 {step} 級。", step=PRESTIGE_LEVEL_STEP)
         )
 
@@ -187,10 +196,17 @@ class CharLayout:
                 if skill_id in view.player.skills:
                     learned_lines.append(t(lang, "skill.already_learned_label", "已學會：{skill_name}", skill_name=skill_name))
                 else:
-                    req_lv = skill.get("req_level", 1)
+                    ok_req, missing_req, req_lv = meets_skill_requirements(view.player, skill)
                     item_name = tf(item, "name", lang) or scroll_id
-                    label = item_name if view.player.level >= req_lv else t(lang, "skill.opt_locked", "🔒 {skill_name}（需 Lv.{req}）", skill_name=item_name, req=req_lv)
-                    learnable.append((label, f"learn_{scroll_id}", (tf(skill, "desc", lang) or "")[:100], "📜"))
+                    if ok_req:
+                        label = item_name
+                    elif view.player.level < req_lv:
+                        label = t(lang, "skill.opt_locked", "🔒 {skill_name}（需 Lv.{req}）", skill_name=item_name, req=req_lv)
+                    else:
+                        req_text = format_skill_point_requirements(skill, lang=lang, with_prefix=False)
+                        label = t(lang, "skill.opt_locked_points", "🔒 {skill_name}（需 {req_text}）", skill_name=item_name, req_text=req_text)
+                    desc = (tf(skill, "desc", lang) or "")[:100]
+                    learnable.append((label, f"learn_{scroll_id}", desc, "📜"))
             if learned_lines:
                 view.log_message += "\n" + "\n".join(f"✅ {ln}" for ln in learned_lines[:20])
             if learnable:
@@ -241,9 +257,12 @@ class CharLayout:
             for skill_id in unequipped_list[start:start + per_page]:
                 skill = view.cog.skills.get(skill_id, {})
                 skill_name = tf(skill, "name", lang) or skill_id
-                req_lv = skill.get("req_level", 1)
+                ok_req, missing_req, req_lv = meets_skill_requirements(view.player, skill)
                 if view.player.level < req_lv:
                     label = t(lang, "skill.opt_locked", "🔒 {skill_name}（需 Lv.{req}）", skill_name=skill_name, req=req_lv)
+                elif missing_req:
+                    req_text = format_skill_point_requirements(skill, lang=lang, with_prefix=False)
+                    label = t(lang, "skill.opt_locked_points", "🔒 {skill_name}（需 {req_text}）", skill_name=skill_name, req_text=req_text)
                 else:
                     label = skill_name
                 options.append((label, f"equip_skill_{skill_id}", (tf(skill, "desc", lang) or "")[:100], "⚪"))

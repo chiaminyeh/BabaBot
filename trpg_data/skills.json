@@ -43,7 +43,10 @@
         "req_level": 3,
         "dungeon_pool": true,
         "name_en": "💪 Battle Focus",
-        "desc_en": "Rally your fighting spirit: for the next 3 turns, ATK +25% and SPD +15% (CD: 5)"
+        "desc_en": "Rally your fighting spirit: for the next 3 turns, ATK +25% and SPD +15% (CD: 5)",
+        "req_points": {
+            "knight": 10
+        }
     },
     "heal_light": {
         "name": "💚 初級治療",
@@ -68,7 +71,10 @@
         "req_level": 1,
         "name_en": "⚔️✖️2 Rapid Slash Combo",
         "desc_en": "Swiftly strikes twice in succession, each hit dealing 0.75x damage (CD: 2)",
-        "dungeon_pool": true
+        "dungeon_pool": true,
+        "req_points": {
+            "rogue": 10
+        }
     },
     "twin_shot": {
         "name": "⚔️☠️✖️2 雙矢連射",
@@ -84,7 +90,10 @@
         "status_turns": 2,
         "dungeon_pool": true,
         "name_en": "⚔️☠️✖️2 Twin Shot",
-        "desc_en": "Fires two rapid arrows, each dealing 0.7x damage, with a 70% chance to Poison the enemy (CD: 3)"
+        "desc_en": "Fires two rapid arrows, each dealing 0.7x damage, with a 70% chance to Poison the enemy (CD: 3)",
+        "req_points": {
+            "rogue": 10
+        }
     },
     "combo_attack": {
         "name": "🔄⚔️ 連續攻擊",
@@ -95,7 +104,10 @@
         "status_target_damage_mult": 1.25,
         "name_en": "🔄⚔️ Combo Strike",
         "desc_en": "Passive: basic attacks strike one extra time (0.75x damage). If the target is already afflicted by a status ailment, both hits deal 25% more damage (requires Lv.8)",
-        "dungeon_pool": true
+        "dungeon_pool": true,
+        "req_points": {
+            "rogue": 18
+        }
     },
     "shadow_step": {
         "name": "💨 暗影步",
@@ -111,7 +123,10 @@
         "cd": 4,
         "req_level": 5,
         "name_en": "💨 Shadow Step",
-        "desc_en": "Costs 15 MP to become Intangible for 2 turns and gain 35% SPD for 2 turns (CD: 4, requires Lv.5)"
+        "desc_en": "Costs 15 MP to become Intangible for 2 turns and gain 35% SPD for 2 turns (CD: 4, requires Lv.5)",
+        "req_points": {
+            "rogue": 10
+        }
     },
     "blood_strike": {
         "name": "🩸🌑 血之獻祭",
@@ -124,7 +139,10 @@
         "req_level": 10,
         "name_en": "🩸🌑 Blood Sacrifice",
         "desc_en": "Costs 20% max HP, dealing true dark damage equal to 2.5x the HP sacrificed (CD: 4, requires Lv.10)",
-        "dungeon_pool": true
+        "dungeon_pool": true,
+        "req_points": {
+            "warlock": 10
+        }
     },
     "fireball": {
         "name": "🔮🔥 火球術",
@@ -142,7 +160,10 @@
         "magic_scaling": 0.8,
         "name_en": "🔮🔥 Fireball",
         "desc_en": "Deals 60 base fire damage, with a 70% chance to inflict Burn on the enemy for 2 turns (CD: 3)",
-        "dungeon_pool": true
+        "dungeon_pool": true,
+        "req_points": {
+            "mage": 10
+        }
     },
     "ice_spear": {
         "name": "🔮❄️ 寒冰矛",
@@ -160,7 +181,10 @@
         "magic_scaling": 0.8,
         "name_en": "🔮❄️ Ice Spear",
         "desc_en": "Deals 50 base ice damage, with a 65% chance to Freeze the enemy for 1 turn (CD: 4)",
-        "dungeon_pool": true
+        "dungeon_pool": true,
+        "req_points": {
+            "mage": 10
+        }
     },
     "thunder_strike": {
         "name": "🔮⚡ 落雷術",
@@ -178,7 +202,10 @@
         "magic_scaling": 0.8,
         "name_en": "🔮⚡ Lightning Bolt",
         "desc_en": "Deals 80 base thunder damage, with a 75% chance to inflict Paralysis for 2 turns (CD: 5, requires Lv.5)",
-        "dungeon_pool": true
+        "dungeon_pool": true,
+        "req_points": {
+            "mage": 16
+        }
     },
     "water_ball": {
         "name": "🔮💧✖️2 水球術",
@@ -194,7 +221,10 @@
         "base_power": 40,
         "magic_scaling": 0.8,
         "name_en": "🔮💧✖️2 Water Ball",
-        "desc_en": "Deals 40 base water damage, hitting twice and able to reach backline enemies (CD: 3)"
+        "desc_en": "Deals 40 base water damage, hitting twice and able to reach backline enemies (CD: 3)",
+        "req_points": {
+            "mage": 16
+        }
     },
     "stone_spike": {
         "name": "🔮🌍 岩刺術",
@@ -208,7 +238,10 @@
         "base_power": 100,
         "magic_scaling": 1.2,
         "name_en": "🔮🌍 Rock Spike",
-        "desc_en": "Deals 100 base earth damage, ignoring 60% of defense (CD: 4)"
+        "desc_en": "Deals 100 base earth damage, ignoring 60% of defense (CD: 4)",
+        "req_points": {
+            "mage": 18
+        }
     },
     "holy_smash": {
         "name": "🔮✨ 神聖制裁",
@@ -222,7 +255,10 @@
         "base_power": 150,
         "magic_scaling": 1.8,
         "name_en": "🔮✨ Holy Judgment",
-        "desc_en": "Deals 150 base holy damage, especially devastating against undead (CD: 5, requires Lv.12)"
+        "desc_en": "Deals 150 base holy damage, especially devastating against undead (CD: 5, requires Lv.12)",
+        "req_points": {
+            "mage": 22
+        }
     },
     "dark_orb": {
         "name": "🔮🌑☠️ 暗影球",
@@ -239,7 +275,10 @@
         "base_power": 130,
         "magic_scaling": 1.2,
         "name_en": "🔮🌑☠️ Shadow Orb",
-        "desc_en": "Deals 130 base dark damage, with a 70% chance to inflict Poison (CD: 4, requires Lv.10)"
+        "desc_en": "Deals 130 base dark damage, with a 70% chance to inflict Poison (CD: 4, requires Lv.10)",
+        "req_points": {
+            "warlock": 16
+        }
     },
     "hypnotic_gaze": {
         "name": "🔮🌑💤 魅惑安眠",
@@ -256,7 +295,10 @@
         "base_power": 90,
         "magic_scaling": 1.0,
         "name_en": "🔮🌑💤 Charming Slumber",
-        "desc_en": "Deals 90 base dark damage, with a 40% chance to lull the enemy into Sleep (CD: 5, requires Lv.15)"
+        "desc_en": "Deals 90 base dark damage, with a 40% chance to lull the enemy into Sleep (CD: 5, requires Lv.15)",
+        "req_points": {
+            "warlock": 20
+        }
     },
     "inferno": {
         "name": "🔮🔥 煉獄火",
@@ -273,7 +315,10 @@
         "base_power": 180,
         "magic_scaling": 1.8,
         "name_en": "🔮🔥 Inferno",
-        "desc_en": "Deals 180 base fire damage, with a 70% chance to inflict intense Burn for 3 turns (CD: 5, requires Lv.15)"
+        "desc_en": "Deals 180 base fire damage, with a 70% chance to inflict intense Burn for 3 turns (CD: 5, requires Lv.15)",
+        "req_points": {
+            "mage": 24
+        }
     },
     "blizzard": {
         "name": "🔮❄️ 暴風雪",
@@ -290,7 +335,10 @@
         "base_power": 140,
         "magic_scaling": 1.2,
         "name_en": "🔮❄️ Blizzard",
-        "desc_en": "Deals 140 base ice damage, with a 65% chance to Freeze the enemy for 2 turns (CD: 5, requires Lv.12)"
+        "desc_en": "Deals 140 base ice damage, with a 65% chance to Freeze the enemy for 2 turns (CD: 5, requires Lv.12)",
+        "req_points": {
+            "mage": 22
+        }
     },
     "divine_thunder": {
         "name": "🔮⚡ 神聖落雷",
@@ -308,7 +356,10 @@
         "base_power": 170,
         "magic_scaling": 1.2,
         "name_en": "🔮⚡ Divine Thunder",
-        "desc_en": "Deals 170 base thunder damage to all enemies with a 75% chance to inflict Paralysis for 3 turns, trading lower single-target damage for area coverage (CD: 6, requires Lv.18)"
+        "desc_en": "Deals 170 base thunder damage to all enemies with a 75% chance to inflict Paralysis for 3 turns, trading lower single-target damage for area coverage (CD: 6, requires Lv.18)",
+        "req_points": {
+            "mage": 28
+        }
     },
     "void_eruption": {
         "name": "🔮🌑 虛空爆發",
@@ -322,7 +373,10 @@
         "base_power": 500,
         "magic_scaling": 2.5,
         "name_en": "🔮🌑 Void Eruption",
-        "desc_en": "Deals 500 base dark damage, ignoring 80% of defense (CD: 6, requires Lv.25)"
+        "desc_en": "Deals 500 base dark damage, ignoring 80% of defense (CD: 6, requires Lv.25)",
+        "req_points": {
+            "warlock": 30
+        }
     },
     "venom_cloud": {
         "name": "🔮🌑☠️ 劇毒之雲",
@@ -340,7 +394,10 @@
         "base_power": 90,
         "magic_scaling": 0.8,
         "name_en": "🔮🌑☠️ Venom Cloud",
-        "desc_en": "Deals 90 base dark damage to all enemies, with a 70% chance to inflict Poison (CD: 4, requires Lv.15)"
+        "desc_en": "Deals 90 base dark damage to all enemies, with a 70% chance to inflict Poison (CD: 4, requires Lv.15)",
+        "req_points": {
+            "warlock": 24
+        }
     },
     "frost_nova": {
         "name": "🔮❄️ 冰霜新星",
@@ -358,7 +415,10 @@
         "base_power": 170,
         "magic_scaling": 1.2,
         "name_en": "🔮❄️ Frost Nova",
-        "desc_en": "Deals 170 base ice damage to all enemies, with a 65% chance to Freeze them for 2 turns (CD: 5, requires Lv.18)"
+        "desc_en": "Deals 170 base ice damage to all enemies, with a 65% chance to Freeze them for 2 turns (CD: 5, requires Lv.18)",
+        "req_points": {
+            "mage": 28
+        }
     },
     "meteor_swarm": {
         "name": "🔮🔥 隕石風暴",
@@ -376,7 +436,10 @@
         "base_power": 400,
         "magic_scaling": 2.5,
         "name_en": "🔮🔥 Meteor Swarm",
-        "desc_en": "Deals massive 400 base fire damage to all enemies, with a 70% chance to inflict intense Burn for 3 turns (CD: 6, requires Lv.25)"
+        "desc_en": "Deals massive 400 base fire damage to all enemies, with a 70% chance to inflict intense Burn for 3 turns (CD: 6, requires Lv.25)",
+        "req_points": {
+            "mage": 30
+        }
     },
     "earthquake": {
         "name": "🔮🌍💫 大地震擊",
@@ -596,6 +659,9 @@
         "power_multiplier": 1.0,
         "cd": 2,
         "req_level": 2,
-        "dungeon_pool": true
+        "dungeon_pool": true,
+        "req_points": {
+            "knight": 10
+        }
     }
 }

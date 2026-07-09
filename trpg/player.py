@@ -1,12 +1,12 @@
 """Player save model: TRPGPlayer, shop-level gating, and the dungeon stat wrapper."""
 
-from trpg.stats import default_stat_alloc, recalc_player_stats
+from trpg.stats import default_stat_alloc, recalc_player_stats, meets_skill_requirements
 from trpg.combat import exp_to_next_level
 from trpg.dungeon import SEALED_FIELDS
 
 # Bump this when you change the save schema in a way that needs real migration
 # logic (not just a new defaulted field). Stored on every player save.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # Immutable scalar defaults (safe to share — never mutated in place).
 _SCALAR_DEFAULTS = {
@@ -170,7 +170,7 @@ def _item_shop_level_ok(player, item_id: str, item_data: dict, skills: dict) -> 
         return False
     if item_data.get("type") == "skill_scroll":
         skill = skills.get(item_data.get("teaches", ""), {})
-        if skill.get("req_level", 1) > player.level:
+        if not meets_skill_requirements(player, skill)[0]:
             return False
     return True
 

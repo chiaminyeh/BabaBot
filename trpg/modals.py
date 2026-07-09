@@ -103,11 +103,11 @@ class StatPointModal(discord.ui.Modal):
 
 class BulkStatAllocModal(discord.ui.Modal):
     STAT_FIELDS = (
-        ("atk", "ATK 攻擊"),
-        ("vit", "VIT 體魄"),
-        ("int", "INT 智力"),
-        ("spd", "SPD 速度"),
-        ("luck", "LUCK 運氣"),
+        ("knight", "Knight / 騎士"),
+        ("rogue", "Rogue / 盜賊"),
+        ("mage", "Mage / 法師"),
+        ("warlock", "Warlock / 術士"),
+        ("luck", "Luck / 幸運"),
     )
 
     def __init__(self, game_view):
@@ -115,11 +115,11 @@ class BulkStatAllocModal(discord.ui.Modal):
         super().__init__(title=t(lang, "modal.bulk_stat_title", "一次分配屬性點"))
         self.game_view = game_view
         self.inputs = {}
-        from trpg.stats import get_unspent_points
+        from trpg.stats import get_unspent_points, stat_display_name
         unspent = get_unspent_points(game_view.player)
         for key, label in self.STAT_FIELDS:
             box = discord.ui.TextInput(
-                label=f"{label} (剩餘 {unspent} 點)",
+                label=f"{stat_display_name(key, lang)} ({t(lang, 'stats.alloc_line3', '剩餘點數 {unspent}', unspent=unspent)})",
                 placeholder="0",
                 default="0",
                 max_length=4,

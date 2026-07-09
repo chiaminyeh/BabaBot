@@ -12,6 +12,7 @@ from trpg.balance import (
     SCHRODINGER_DOUBLE_CHANCE, SCHRODINGER_DOUBLE_MULT, SCHRODINGER_HALVE_MULT,
     BOSS_DAILY_SCROLL_CHANCE, FALLBACK_BOSS_SCROLLS, TOWER_MILESTONES,
     LUCK_CRIT_BONUS_PER_POINT, LUCK_DROP_RATE_BONUS_PER_POINT,
+    LUCK_EXP_BONUS_PER_POINT, LUCK_GOLD_BONUS_PER_POINT,
 )
 
 from trpg.status import (
@@ -25,6 +26,8 @@ from trpg.status import (
 
 from trpg.stats import (
     get_potion_heal_target,
+    meets_skill_requirements,
+    format_skill_point_requirements,
 )
 
 from trpg.entity import PlayerCombatant, MonsterCombatant
@@ -183,6 +186,14 @@ def luck_crit_bonus(luck: int) -> float:
 def luck_drop_rate_mult(luck: int) -> float:
     """運氣換算成的掉寶率相對加成倍率（乘在每一項 drop 機率上，非疊加到 100% 之外的絕對值）。"""
     return 1.0 + max(0, luck) * LUCK_DROP_RATE_BONUS_PER_POINT
+
+
+def luck_exp_mult(luck: int) -> float:
+    return 1.0 + max(0, luck) * LUCK_EXP_BONUS_PER_POINT
+
+
+def luck_gold_mult(luck: int) -> float:
+    return 1.0 + max(0, luck) * LUCK_GOLD_BONUS_PER_POINT
 
 
 def absorb_note_text(reason: str, lang: str) -> str:
@@ -836,6 +847,10 @@ class TRPGCombat:
         req_lv = skill.get("req_level", 1)
         if self.player.level < req_lv:
             return t(lang, "combat.skill_level_too_low", "❌ 需要 Lv.{lv} 才能使用【{skill}】。", lv=req_lv, skill=skill_name)
+        ok_req, missing_req, _ = meets_skill_requirements(self.player, skill)
+        if not ok_req and missing_req:
+            req_text = format_skill_point_requirements(skill, lang=lang)
+            return t(lang, "combat.skill_point_requirement_fail", "❌ 你的流派點數不足，無法使用【{skill}】（{req_text}）。", skill=skill_name, req_text=req_text)
 
         # 沉默狀態：完全封鎖技能（普攻/防禦/道具不受影響）。跟資源檢查一樣放在
         # _player_turn_start() 之前——施放失敗不該吃掉玩家的回合。
@@ -1053,7 +1068,10 @@ class TRPGCombat:
         max_gold = monster.get("money_max", 0)
         if max_gold < min_gold:
             max_gold = min_gold
-        return random.randint(min_gold, max_gold), monster.get("exp", 0)
+        luck = getattr(self.player, "base_luck", 0)
+        gold = int(random.randint(min_gold, max_gold) * luck_gold_mult(luck))
+        exp = int(monster.get("exp", 0) * luck_exp_mult(luck))
+        return gold, exp
 
     def _roll_drops_for(self, monster: dict) -> str:
         lang = self.player.language

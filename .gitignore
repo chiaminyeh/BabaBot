@@ -13,3 +13,4 @@ data/ai_pipeline/
 bank.json
 daily.json
 trpg_data/trpg_players.json
+trpg_data/trpg_players.sqlite3

@@ -11,9 +11,10 @@ XP_CURVE_EXP = 1.8
 # Stat points granted to the player per level.
 STAT_POINTS_PER_LEVEL = 2
 
-# --- Stat allocation: 1 spent point -> this much of the stat ----------------
-# (vit also adds HP/DEF, int also adds MP — see stats.recalc_player_stats)
-ALLOC_BONUS = {"atk": 3, "vit": 1, "int": 1, "spd": 2, "luck": 1}
+# --- Archetype point allocation ---------------------------------------------
+# These are the direct headline payoffs for each invested point. stats.py also
+# layers secondary derived bonuses (HP/DEF/MP/etc.) on top of these anchors.
+ALLOC_BONUS = {"knight": 2, "rogue": 3, "mage": 1, "warlock": 1, "luck": 1}
 
 # --- Stamina ---------------------------------------------------------------
 STAMINA_MAX = 200
@@ -37,10 +38,12 @@ PRESTIGE_LEVEL_STEP = 1
 PHYSICAL_CRIT_CHANCE = 0.10   # normal weapon swings
 SKILL_CRIT_CHANCE = 0.12      # physical/HP-sacrifice skills (magic can't crit)
 
-# Luck stat payoff: +crit chance (flat) and +drop rate (relative multiplier) per
-# point of player.base_luck. See combat.luck_crit_bonus / combat._roll_drops_for.
+# Luck stat payoff: passive-only bonuses. No active skill unlocks hang off Luck.
+# See combat.luck_crit_bonus / luck_drop_rate_mult / luck_exp_mult / luck_gold_mult.
 LUCK_CRIT_BONUS_PER_POINT = 0.002        # +0.2% crit chance per luck point
 LUCK_DROP_RATE_BONUS_PER_POINT = 0.01    # +1% relative boost to every drop rate per luck point
+LUCK_EXP_BONUS_PER_POINT = 0.005         # +0.5% experience gain per luck point
+LUCK_GOLD_BONUS_PER_POINT = 0.005        # +0.5% gold gain per luck point
 
 # Flee (player fleeing combat) chance: base + (player_spd - monster_spd) * factor, clamped.
 FLEE_BASE_CHANCE = 0.5
