@@ -130,10 +130,11 @@ class Combatant:
 
 
 class PlayerCombatant(Combatant):
-    def __init__(self, player, items: dict, status_defs: dict):
+    def __init__(self, player, items: dict, status_defs: dict, skills: dict = None):
         self.player = player
         self.items = items
         self.status_defs = status_defs
+        self.skills = skills or {}
 
     @property
     def lang(self) -> str:

@@ -126,21 +126,21 @@ SET_BONUSES = {
         2: {"magic": 40, "hp": 150},
         3: {"magic": 90, "hp": 350},
     },
-    "vampiric": {     # 血族 / Vampiric — lvl40 sustain set
-        2: {"atk": 30, "hp": 250},
-        3: {"atk": 70, "hp": 550},
+    "vampiric": {     # 血族 / Vampiric — lvl40 sustain burst/sustain set
+        2: {"atk": 25, "spd": 15, "hp": 180},
+        3: {"atk": 60, "spd": 35, "hp": 480},
     },
-    "phoenix": {      # 鳳凰 / Phoenix — lvl60 hybrid fire set
-        2: {"atk": 50, "magic": 50},
-        3: {"atk": 110, "magic": 110, "hp": 400},
+    "phoenix": {      # 鳳凰 / Phoenix — lvl60 rebirth hybrid set
+        2: {"atk": 35, "magic": 45, "res": 15},
+        3: {"atk": 90, "magic": 100, "hp": 420, "spd": 20},
     },
-    "voidwalker": {   # 虛空行者 / Voidwalker — lvl70 speed/evasion set
-        2: {"spd": 30},
-        3: {"spd": 60},
+    "voidwalker": {   # 虛空行者 / Voidwalker — lvl70 speed/tempo set
+        2: {"spd": 30, "atk": 20},
+        3: {"spd": 65, "atk": 45, "magic": 45},
     },
-    "nether": {       # 冥界 / Nether — lvl80 top-tier all-round set
-        2: {"atk": 80, "def": 80},
-        3: {"atk": 180, "def": 180, "hp": 600},
+    "nether": {       # 冥界 / Nether — lvl80 top-tier endgame set
+        2: {"atk": 55, "magic": 55, "def": 55},
+        3: {"atk": 135, "magic": 135, "def": 135, "hp": 520},
     },
 }
 
@@ -163,11 +163,11 @@ AREA_SHOP_TIERS = {
     # sliding band instead of graveyard dumping the entire 16-80 range: you shop
     # where you adventure. The 4 true mythic items stay out of the shop entirely
     # (shop_weight 0) — those are forge-only, see trpg/recipes.py.
-    "area_30graveyard":       {"gear_range": (16, 45), "potion_tier": "high"},
-    "area_40vampire_castle":  {"gear_range": (30, 60), "potion_tier": "high"},
-    "area_55dragon_valley":   {"gear_range": (40, 70), "potion_tier": "high"},
-    "area_70void_rift":       {"gear_range": (55, 80), "potion_tier": "high"},
-    "area_99demon_castle":    {"gear_range": (60, 80), "potion_tier": "high"},
+    "area_30graveyard":       {"gear_range": (20, 40), "potion_tier": "high"},
+    "area_40vampire_castle":  {"gear_range": (35, 50), "potion_tier": "high"},
+    "area_55dragon_valley":   {"gear_range": (50, 65), "potion_tier": "high"},
+    "area_70void_rift":       {"gear_range": (65, 75), "potion_tier": "high"},
+    "area_99demon_castle":    {"gear_range": (75, 80), "potion_tier": "high"},
 }
 # (min_hp_potion, min_mp_potion) shop-slot item ids per potion_tier.
 SHOP_POTION_TIERS = {

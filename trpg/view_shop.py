@@ -8,7 +8,7 @@ from trpg.combat import get_sell_price
 from trpg.i18n import t, tf
 from trpg.player import _item_shop_level_ok
 from trpg.recipes import CRAFTING_RECIPES, MAX_UPGRADE_LEVEL, UPGRADE_COSTS
-from trpg.stats import recalc_player_stats
+from trpg.stats import format_item_stat_requirements, recalc_player_stats
 from trpg.view_shared import item_emoji
 
 
@@ -23,6 +23,9 @@ class ShopMixin:
         line = f"• {item_emoji(item)} {item_name}{req_str} | {item.get('price', 0)}$ | {item_desc}"
 
         if item.get("type") in ("weapon", "armor", "accessory"):
+            stat_req = format_item_stat_requirements(item, lang=lang)
+            if stat_req:
+                line += f" [{stat_req}]"
             comp_str = self._get_equipment_comparison_string(item)
             if comp_str:
                 line += f" {comp_str}"
@@ -92,7 +95,7 @@ class ShopMixin:
                 stock.append("stamina_potion")
             stock.extend(picks)
             state["items"] = [item_id for item_id in stock if item_id in self.cog.items]
-            self.cog.save_players()
+            self.cog.save_players(player=self.player)
 
     async def handle_shop_menu(self, notice=""):
         self._roll_shop_stock()
@@ -154,7 +157,7 @@ class ShopMixin:
 
         state["refresh_count"] = count + 1
         state["items"] = []
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         await self.handle_shop_menu(t(self.player.language, "shop.refresh_success", "🔄 商店已重新進貨。"))
 
     async def _refresh_buy_menu(self, notice: str):
@@ -181,7 +184,7 @@ class ShopMixin:
             return
 
         self.player.inventory[item_id] = self.player.inventory.get(item_id, 0) + amount
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         achv_text = self.check_achievements()
         notice_text = t(lang, "shop.buy_success", "✅ 購買了 {amount} 個【{name}】！", amount=amount, name=item_name)
         if achv_text:
@@ -210,7 +213,7 @@ class ShopMixin:
         if self.player.inventory[item_id] <= 0:
             del self.player.inventory[item_id]
         self.cog.adjust_bank(self.user_id, total_price)
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         await self.handle_sell_menu(t(lang, "shop.sell_success", "✅ 賣出了 {amount} 個【{name}】，獲得 {total_price}$！", amount=amount, name=tf(item, "name", lang) or item_id, total_price=total_price), paging=True)
 
     async def handle_sell_menu(self, notice="", paging=False):
@@ -314,7 +317,7 @@ class ShopMixin:
             equip_msg = t(lang, "craft.auto_equip_armor", "，已為你自動穿戴")
 
         recalc_player_stats(self.player, self.cog.items, heal_full=False)
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         notice_text = t(lang, "craft.success", "🎉 製作成功！你獲得了【{name}】{equip_msg}！", name=tf(recipe, "name", lang), equip_msg=equip_msg)
         notice_text += self.check_achievements()
         await self.handle_craft_menu(notice_text)
@@ -411,6 +414,6 @@ class ShopMixin:
         else:
             notice_text = t(lang, "blacksmith.upgrade_fail", "💥 強化失敗！材料被熔毀了，但裝備本體保住了。", current_up=current_up)
 
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         notice_text += self.check_achievements()
         await self.handle_blacksmith_menu(notice_text)

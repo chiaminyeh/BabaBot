@@ -1,8 +1,10 @@
 import os
 import json
+import sqlite3
 import unittest
 import shutil
 import sys
+import gc
 
 # Make sure we can import trpg components
 sys.path.append(os.path.dirname(__file__))
@@ -35,6 +37,7 @@ class TestMultiCharacter(unittest.TestCase):
         
         self.players_file = os.path.join(self.test_dir, "trpg_players.json")
         self.active_slots_file = os.path.join(self.test_dir, "trpg_active_slots.json")
+        self.players_db_file = os.path.join(self.test_dir, "trpg_players.sqlite3")
         
         self.bot = MockBot()
 
@@ -42,6 +45,7 @@ class TestMultiCharacter(unittest.TestCase):
         # Restore DATA_DIR
         import trpg.cog
         trpg.cog.DATA_DIR = self.orig_data_dir
+        gc.collect()
         
         # Cleanup test folder
         if os.path.exists(self.test_dir):
@@ -50,6 +54,19 @@ class TestMultiCharacter(unittest.TestCase):
     def write_json(self, filepath, data):
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
+
+    def read_db_counts(self):
+        with sqlite3.connect(self.players_db_file) as conn:
+            players = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+            active_slots = conn.execute("SELECT COUNT(*) FROM active_slots").fetchone()[0]
+        return players, active_slots
+
+    def read_player_row(self, user_id, slot):
+        with sqlite3.connect(self.players_db_file) as conn:
+            return conn.execute(
+                "SELECT level, current_area, prestige_count, language FROM players WHERE user_id = ? AND slot = ?",
+                (str(user_id), str(slot)),
+            ).fetchone()
 
     def test_legacy_saves_migration(self):
         # 1. Test that legacy saves (keyed by uid) migrate to uid_0
@@ -69,6 +86,7 @@ class TestMultiCharacter(unittest.TestCase):
         self.assertEqual(p.id, "11111")
         self.assertEqual(p.character_slot, "0")
         self.assertEqual(p.level, 5)
+        self.assertTrue(os.path.exists(self.players_db_file))
 
     def test_explicit_slot_loading(self):
         # 2. Test explicit slot keys (uid_0, uid_1) loading
@@ -182,13 +200,18 @@ class TestMultiCharacter(unittest.TestCase):
         cog.active_slots["99999"] = "0"
         p0 = cog.get_player("99999")
         p0.level = 12
+        cog.save_players(player=p0, active_slot_user_id="99999")
         
         cog.active_slots["99999"] = "1"
         p1 = cog.get_player("99999")
         p1.level = 24
+        cog.save_players(player=p1, active_slot_user_id="99999")
         
         # Save players and slots
         cog.save_players()
+        players_count, active_count = self.read_db_counts()
+        self.assertEqual(players_count, 2)
+        self.assertEqual(active_count, 1)
         
         # Create a fresh cog to reload from file
         cog2 = TRPGCog(self.bot)
@@ -206,6 +229,62 @@ class TestMultiCharacter(unittest.TestCase):
         p_switch = cog2.get_player("99999")
         self.assertEqual(p_switch.character_slot, "0")
         self.assertEqual(p_switch.level, 12)
+        del p_switch, p, p0, p1, cog2, cog
+
+    def test_db_boot_precedence_over_json(self):
+        legacy_data = {
+            "12121_0": {
+                "id": "12121",
+                "level": 7,
+                "character_slot": "0"
+            }
+        }
+        self.write_json(self.players_file, legacy_data)
+
+        cog = TRPGCog(self.bot)
+        cog.players["12121_0"].level = 42
+        cog.save_players(player=cog.players["12121_0"])
+
+        self.write_json(self.players_file, {
+            "12121_0": {
+                "id": "12121",
+                "level": 1,
+                "character_slot": "0"
+            }
+        })
+
+        cog2 = TRPGCog(self.bot)
+        self.assertEqual(cog2.players["12121_0"].level, 42)
+
+    def test_incremental_player_upsert_updates_summary_columns(self):
+        cog = TRPGCog(self.bot)
+        player = cog.get_player("45454")
+        player.level = 33
+        player.current_area = "area_40vampire_castle"
+        player.prestige_count = 2
+        player.language = "en"
+
+        cog.save_players(player=player, active_slot_user_id="45454")
+
+        row = self.read_player_row("45454", "0")
+        self.assertEqual(row, (33, "area_40vampire_castle", 2, "en"))
+
+    def test_deleted_player_removed_from_db(self):
+        cog = TRPGCog(self.bot)
+        player = cog.get_player("56565")
+        cog.save_players(player=player, active_slot_user_id="56565")
+        self.assertEqual(self.read_db_counts()[0], 1)
+
+        del cog.players["56565_0"]
+        cog.mark_player_deleted("56565_0")
+        cog.save_players(active_slot_user_id="56565")
+
+        with sqlite3.connect(self.players_db_file) as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM players WHERE user_id = ? AND slot = ?",
+                ("56565", "0"),
+            ).fetchone()[0]
+        self.assertEqual(row, 0)
 
 if __name__ == "__main__":
     unittest.main()

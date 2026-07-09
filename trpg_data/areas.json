@@ -272,6 +272,8 @@
     "area_20lab": {
         "area_name": "瘋狂博士的實驗室",
         "req_level": 20,
+        "identity": "異常實驗區：主打毒、燃燒、腐蝕與怪物變異。適合讓玩家開始練習『先掛異常，再打爆發』。",
+        "identity_en": "Status-lab zone: poison, burn, corrosion, and unstable mutations. Teaches players to set up ailments before cashing in with burst.",
         "monsters": {
             "failed_experiment": {
                 "spawn_rate": 0.55
@@ -344,6 +346,8 @@
     "area_30graveyard": {
         "area_name": "遺忘墓地",
         "req_level": 30,
+        "identity": "續戰消耗區：詛咒、靈體與持續削弱較多，考驗淨化、再生與穩定生存。",
+        "identity_en": "Attrition zone: curses, spirits, and sustained debuffs pressure the player to value cleanse, regeneration, and durable survival.",
         "monsters": {
             "skeleton": {
                 "spawn_rate": 0.45
@@ -431,6 +435,8 @@
     "area_40vampire_castle": {
         "area_name": "吸血鬼城堡",
         "req_level": 40,
+        "identity": "夜襲刺殺區：吸血、快攻與暗影單位較多，鼓勵高速爆發、先手擊殺與規避型生存。",
+        "identity_en": "Night raid zone: lifesteal, fast attackers, and shadow units reward speed burst, first-strike kills, and evasive survival.",
         "monsters": {
             "vampire_bat": {
                 "spawn_rate": 0.4
@@ -507,6 +513,8 @@
     "area_55dragon_valley": {
         "area_name": "龍臨峽谷",
         "area_name_en": "Dragonfall Gorge",
+        "identity": "高壓正面戰區：高攻、高破壞與龍息壓制明顯，鼓勵厚血、防禦與減傷反打。",
+        "identity_en": "High-pressure frontline zone: huge hits, armor-breaking force, and dragon breath encourage HP stacking, defense, and sturdy counterplay.",
         "req_level": 55,
         "requires_boss": "area_40vampire_castle",
         "monsters": {
@@ -541,7 +549,42 @@
                 "npc_kaldr_1",
                 "npc_kaldr_2"
             ]
-        }
+        },
+        "subareas": [
+            {
+                "id": "dragon_scorch_trail",
+                "name": "焦鱗坡道",
+                "name_en": "Scorchscale Trail",
+                "desc": "被龍焰反覆灼燒的坡道，岩層仍殘留高熱。",
+                "desc_en": "A slope burned over and over by dragonfire, with heat still trapped in the rock.",
+                "monsters": [
+                    "drake",
+                    "lava_tortoise"
+                ]
+            },
+            {
+                "id": "dragon_brood_roost",
+                "name": "巢群高台",
+                "name_en": "Brood Roost",
+                "desc": "龍裔巡守與飛龍盤旋的高地，是正面硬碰硬的試煉。",
+                "desc_en": "A high perch patrolled by dragonkin and circling wyverns where brute-force endurance is tested.",
+                "monsters": [
+                    "dragonkin_warrior",
+                    "wyvern"
+                ]
+            },
+            {
+                "id": "dragon_ritual_crag",
+                "name": "熔禱斷崖",
+                "name_en": "Magma Rite Crag",
+                "desc": "祭司在熔火與咆哮間祈禱，逼迫闖入者承受龍之威壓。",
+                "desc_en": "Dragon priests chant between magma bursts and thunderous roars, forcing intruders to endure draconic pressure.",
+                "monsters": [
+                    "dragon_priest",
+                    "dragonkin_guard"
+                ]
+            }
+        ]
     },
     "area_60colosseum": {
         "area_name": "修羅鬥技場",
@@ -677,6 +720,8 @@
     "area_70void_rift": {
         "area_name": "虛空裂隙",
         "area_name_en": "The Void Rift",
+        "identity": "失真機動區：虛空生物偏速度、位移與穿透，鼓勵高速流、無實體與節奏掌控。",
+        "identity_en": "Distortion mobility zone: void enemies lean on speed, phasing, and penetration, rewarding fast builds, Intangible plays, and tempo control.",
         "req_level": 70,
         "requires_boss": "area_55dragon_valley",
         "monsters": {
@@ -700,11 +745,48 @@
         "boss_minions": [
             "void_spawnling",
             "null_priest"
+        ],
+        "subareas": [
+            {
+                "id": "void_shattered_causeway",
+                "name": "碎界步道",
+                "name_en": "Shattered Causeway",
+                "desc": "空間像玻璃般碎裂，稍慢一步就會被虛空獵手撕開。",
+                "desc_en": "Space lies cracked like glass; hesitate for a step and void hunters tear through the opening.",
+                "monsters": [
+                    "void_stalker",
+                    "crystal_sentinel"
+                ]
+            },
+            {
+                "id": "void_phase_sink",
+                "name": "相位陷坑",
+                "name_en": "Phase Sink",
+                "desc": "地形不斷錯位，怪物忽隱忽現，逼你掌控節奏。",
+                "desc_en": "The terrain keeps slipping out of phase while enemies flicker in and out, demanding tight tempo control.",
+                "monsters": [
+                    "phase_wraith",
+                    "rift_horror"
+                ]
+            },
+            {
+                "id": "void_null_shrine",
+                "name": "湮滅祠堂",
+                "name_en": "Null Shrine",
+                "desc": "祭祀虛空的殘骸仍在低語，法術與速度都被推向極限。",
+                "desc_en": "Ruins devoted to the void still whisper here, pushing both spellcraft and speed to the edge.",
+                "monsters": [
+                    "void_mage_adept",
+                    "phase_wraith"
+                ]
+            }
         ]
     },
     "area_99demon_castle": {
         "area_name": "魔王城",
         "req_level": 80,
+        "identity": "終局綜合試煉：敵人同時具備爆發、續戰與控制，要求成熟流派而非鬆散混搭。",
+        "identity_en": "Endgame composite trial: enemies combine burst, sustain, and control, demanding a mature build identity rather than loose hybrid stats.",
         "desc": "【終局】深淵之主的殿堂，空氣中彌漫著令人窒息的魔力。",
         "emoji": "🏰",
         "explore_cost": 50,
@@ -736,7 +818,42 @@
         },
         "area_name_en": "Demon Lord's Castle",
         "desc_en": "[Endgame] The hall of the Abyssal Lord, where the air itself is thick with suffocating magic.",
-        "requires_boss": "area_40vampire_castle"
+        "requires_boss": "area_40vampire_castle",
+        "subareas": [
+            {
+                "id": "demon_black_gate",
+                "name": "黑曜城門",
+                "name_en": "Obsidian Gate",
+                "desc": "披甲深淵守衛與魔犬在門前巡弋，考驗你是否真的成型。",
+                "desc_en": "Armored abyss guards and hellhounds patrol the gate, testing whether your build is truly complete.",
+                "monsters": [
+                    "abyss_guard",
+                    "hellhound"
+                ]
+            },
+            {
+                "id": "demon_blasphemy_hall",
+                "name": "褻瀆大廳",
+                "name_en": "Hall of Blasphemy",
+                "desc": "戰場充滿沉默、詛咒與壓制，鬆散混搭會在此崩潰。",
+                "desc_en": "Silence, curses, and oppressive magic flood this hall; sloppy hybrids fall apart here.",
+                "monsters": [
+                    "demon_warlock",
+                    "fallen_seraph"
+                ]
+            },
+            {
+                "id": "demon_throne_approach",
+                "name": "魔座前庭",
+                "name_en": "Throne Approach",
+                "desc": "扭曲巨龍與深淵精銳守住最後道路，只剩成熟流派能撐過。",
+                "desc_en": "Corrupted dragons and abyss elites guard the last approach; only mature builds endure the march.",
+                "monsters": [
+                    "corrupted_dragon",
+                    "abyss_guard"
+                ]
+            }
+        ]
     },
     "area_dungeon": {
         "area_name": "深淵地下城",

@@ -6,9 +6,10 @@ to see exactly what's missing English translations.
 Checks:
   1. Every translatable field in trpg_data/*.json (name/desc/title/etc.) has a
      non-empty "_en" sibling.
-  2. Every t(lang, "key", ...) call site in the .py files has a matching entry
+  2. Every zh/en JSON pair uses the same placeholder names ({foo}, {bar}, ...).
+  3. Every t(lang, "key", ...) call site in the .py files has a matching entry
      in trpg_data/locale_en.json.
-  3. discord.ui.Label(text=...)/Modal(title=...) strings stay under Discord's
+  4. discord.ui.Label(text=...)/Modal(title=...) strings stay under Discord's
      hard component-length limits (45 chars) in BOTH zh and en — translated
      strings routinely run 2-3x longer than the Chinese original, and a call
      that only checks the zh fallback (which is what code review sees) can
@@ -21,16 +22,18 @@ import ast
 import json
 import os
 import re
+import sys
 
 DATA_DIR = "trpg_data"
 SKIP_FILES = {"trpg_players.json", "equipment.json", "locale_en.json", "glossary.json"}
 TRANSLATABLE_FIELDS = {
     "name", "title", "desc", "description", "label", "npc_name",
     "message", "area_name", "transform_text", "name_suffix",
-    "result_text", "accept_prompt", "turn_in_prompt",
+    "result_text", "accept_prompt", "turn_in_prompt", "intro", "identity",
 }
 
-CALL_RE = re.compile(r"""\bt\(\s*[\w.\[\]'"]+\s*,\s*["']([\w.]+)["']""")
+CALL_RE = re.compile(r"""\bt\(\s*[\w.\[\]'\"]+\s*,\s*[\"']([\w.]+)[\"']""")
+PLACEHOLDER_RE = re.compile(r"{([^{}]+)}")
 
 
 def scan_json_missing(node, path, missing):
@@ -46,8 +49,30 @@ def scan_json_missing(node, path, missing):
             scan_json_missing(item, f"{path}[{i}]", missing)
 
 
+
+def check_json_placeholders(fname, node, path=""):
+    issues = []
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if isinstance(v, str) and not k.endswith("_en"):
+                en_key = f"{k}_en"
+                en_val = node.get(en_key)
+                if isinstance(en_val, str):
+                    zh_fields = sorted(set(PLACEHOLDER_RE.findall(v)))
+                    en_fields = sorted(set(PLACEHOLDER_RE.findall(en_val)))
+                    if zh_fields != en_fields:
+                        issues.append((f"{fname}{path}/{k}", zh_fields, en_fields))
+            issues.extend(check_json_placeholders(fname, v, f"{path}/{k}"))
+    elif isinstance(node, list):
+        for i, item in enumerate(node):
+            issues.extend(check_json_placeholders(fname, item, f"{path}[{i}]"))
+    return issues
+
+
+
 def check_json():
     by_file = {}
+    placeholder_issues = []
     for fname in sorted(os.listdir(DATA_DIR)):
         if not fname.endswith(".json") or fname in SKIP_FILES:
             continue
@@ -56,19 +81,35 @@ def check_json():
         scan_json_missing(data, fname, missing)
         if missing:
             by_file[fname] = missing
+        placeholder_issues.extend(check_json_placeholders(fname, data))
+
+    issues = 0
 
     if not by_file:
         print("[JSON data] All translatable fields have English translations.")
-        return
+    else:
+        issues += sum(len(v) for v in by_file.values())
+        total = sum(len(v) for v in by_file.values())
+        print(f"[JSON data] {total} missing/empty _en field(s):")
+        for fname, missing in by_file.items():
+            print(f"  {fname}: {len(missing)} missing")
+            for m in missing[:10]:
+                print(f"    - {m}")
+            if len(missing) > 10:
+                print(f"    ... and {len(missing) - 10} more")
 
-    total = sum(len(v) for v in by_file.values())
-    print(f"[JSON data] {total} missing/empty _en field(s):")
-    for fname, missing in by_file.items():
-        print(f"  {fname}: {len(missing)} missing")
-        for m in missing[:10]:
-            print(f"    - {m}")
-        if len(missing) > 10:
-            print(f"    ... and {len(missing) - 10} more")
+    if not placeholder_issues:
+        print("[JSON placeholders] All zh/en field pairs use matching placeholder names.")
+    else:
+        issues += len(placeholder_issues)
+        print(f"[JSON placeholders] {len(placeholder_issues)} zh/en pair(s) disagree on placeholder names:")
+        for path, zh_fields, en_fields in placeholder_issues[:20]:
+            print(f"  - {path} | zh={zh_fields} | en={en_fields}")
+        if len(placeholder_issues) > 20:
+            print(f"    ... and {len(placeholder_issues) - 20} more")
+
+    return issues
+
 
 
 def check_py_keys():
@@ -86,7 +127,7 @@ def check_py_keys():
     missing = sorted(k for k in used_keys if k not in catalog)
     if not missing:
         print(f"[Code strings] All {len(used_keys)} t() keys have English catalog entries.")
-        return
+        return 0
 
     by_prefix = {}
     for k in missing:
@@ -100,6 +141,8 @@ def check_py_keys():
             print(f"    - {k}  (in {used_keys[k]})")
         if len(keys) > 10:
             print(f"    ... and {len(keys) - 10} more")
+    return len(missing)
+
 
 
 def _t_call_key_and_fallback(node):
@@ -113,6 +156,7 @@ def _t_call_key_and_fallback(node):
        isinstance(fallback_node, ast.Constant) and isinstance(fallback_node.value, str):
         return key_node.value, fallback_node.value
     return None
+
 
 
 def check_component_limits():
@@ -165,16 +209,19 @@ def check_component_limits():
 
     if not problems:
         print("[Component limits] All Modal titles / Label text-description stay within Discord's length limits.")
-        return
+        return 0
 
     print(f"[Component limits] {len(problems)} string(s) risk exceeding Discord's hard limit (raw template, before placeholder substitution — actual runtime length can only be longer):")
     for path, lineno, field, key, limit, zh_len, en_len in problems:
         print(f"  {path}:{lineno}  {field} (limit {limit})  key={key}  zh={zh_len} chars, en={en_len} chars")
+    return len(problems)
 
 
 if __name__ == "__main__":
-    check_json()
+    issues = 0
+    issues += check_json()
     print()
-    check_py_keys()
+    issues += check_py_keys()
     print()
-    check_component_limits()
+    issues += check_component_limits()
+    sys.exit(1 if issues else 0)

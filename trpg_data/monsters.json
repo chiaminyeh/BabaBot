@@ -274,7 +274,8 @@
             "dark"
         ],
         "drops": {
-            "high_health_potion": 0.3
+            "high_health_potion": 0.3,
+            "assassin_ring": 0.04
         },
         "money_min": 135,
         "money_max": 220,
@@ -1012,7 +1013,8 @@
         ],
         "drops": {
             "tainted_blood": 1,
-            "demon_core": 0.08
+            "demon_core": 0.08,
+            "netherplate": 0.04
         },
         "money_min": 400,
         "money_max": 600,
@@ -1058,7 +1060,8 @@
         ],
         "drops": {
             "void_crystal": 0.5,
-            "demon_core": 0.1
+            "demon_core": 0.1,
+            "abyss_scepter": 0.04
         },
         "money_min": 380,
         "money_max": 580,
@@ -1182,7 +1185,12 @@
         "drops": {
             "sargeras_crown": 1.0,
             "demon_core": 3.0,
-            "void_crystal": 5.0
+            "void_crystal": 5.0,
+            "scroll_abyssal_requiem": 0.16,
+            "netherblade": 0.1,
+            "netherplate": 0.1,
+            "nethercrown": 0.1,
+            "abyss_scepter": 0.1
         },
         "active_skills": [
             {
@@ -1948,7 +1956,8 @@
         ],
         "drops": {
             "medium_health_potion": 0.35,
-            "flame_sword": 0.05
+            "flame_sword": 0.05,
+            "toxic_needle": 0.02
         },
         "status_on_hit": [
             "poison"
@@ -2041,7 +2050,8 @@
         ],
         "drops": {
             "burn_salve": 0.3,
-            "medium_health_potion": 0.3
+            "medium_health_potion": 0.3,
+            "hazmat_plate": 0.02
         },
         "status_on_hit": [
             "poison"
@@ -2081,7 +2091,10 @@
             "scroll_inferno": 0.2,
             "scroll_divine_thunder": 0.15,
             "medium_health_potion": 0.5,
-            "elixir_of_cleansing": 0.2
+            "elixir_of_cleansing": 0.2,
+            "scroll_status_hunter": 0.12,
+            "toxic_needle": 0.08,
+            "hazmat_plate": 0.08
         },
         "status_on_hit": [
             "poison",
@@ -2473,7 +2486,9 @@
         ],
         "drops": {
             "tainted_blood": 1,
-            "high_mana_potion": 0.3
+            "high_mana_potion": 0.3,
+            "crimson_rapier": 0.03,
+            "blood_ring": 0.04
         },
         "status_on_hit": [
             "paralysis"
@@ -2505,7 +2520,9 @@
             "sleep"
         ],
         "drops": {
-            "tainted_blood": 0.5
+            "tainted_blood": 0.5,
+            "noble_vampire_coat": 0.05,
+            "guardian_hammer": 0.03
         },
         "money_min": 140,
         "money_max": 230,
@@ -2541,7 +2558,11 @@
             "immortal_totem": 0.05,
             "holy_sword": 0.2,
             "dragon_plate": 0.15,
-            "pure_blood_essence": 0.12
+            "pure_blood_essence": 0.12,
+            "scroll_blood_awakening": 0.12,
+            "crimson_rapier": 0.08,
+            "noble_vampire_coat": 0.08,
+            "blood_ring": 0.08
         },
         "status_on_hit": [
             "burn",
@@ -2692,7 +2713,8 @@
         ],
         "drops": {
             "drake_fang": 0.5,
-            "dragon_scale_shard": 0.35
+            "dragon_scale_shard": 0.35,
+            "titan_warhammer": 0.04
         },
         "money_min": 220,
         "money_max": 360,
@@ -2786,7 +2808,8 @@
         ],
         "drops": {
             "dragon_scale_shard": 0.3,
-            "scroll_inferno": 0.04
+            "scroll_inferno": 0.04,
+            "phoenix_scepter": 0.04
         },
         "money_min": 240,
         "money_max": 380,
@@ -2826,7 +2849,12 @@
             "dragon_scale_shard": 1.0,
             "drake_fang": 1.0,
             "dragon_plate": 0.2,
-            "mystery_phoenix_feather": 0.06
+            "mystery_phoenix_feather": 0.06,
+            "scroll_titan_crash": 0.12,
+            "scroll_phoenix_rite": 0.12,
+            "phoenix_blade": 0.08,
+            "phoenix_mail": 0.08,
+            "phoenix_feather_charm": 0.08
         },
         "status_on_hit": [
             "burn"
@@ -2954,7 +2982,8 @@
         ],
         "drops": {
             "void_shard": 0.45,
-            "high_health_potion": 0.25
+            "high_health_potion": 0.25,
+            "voidwalker_band": 0.04
         },
         "money_min": 300,
         "money_max": 480,
@@ -3013,7 +3042,8 @@
         "drops": {
             "void_shard": 0.4,
             "echo_herb": 0.5,
-            "scroll_void_eruption": 0.03
+            "scroll_void_eruption": 0.03,
+            "void_orb": 0.04
         },
         "money_min": 330,
         "money_max": 520,
@@ -3082,7 +3112,8 @@
         ],
         "drops": {
             "void_shard": 0.5,
-            "ectoplasm": 0.6
+            "ectoplasm": 0.6,
+            "voidforged_edge": 0.04
         },
         "money_min": 350,
         "money_max": 560,
@@ -3135,8 +3166,12 @@
             "void_crystal": 0.8,
             "void_shard": 1.0,
             "demon_core": 0.3,
-            "voidwalker_glaive": 0.08,
-            "mystery_lucky_coin": 0.05
+            "voidwalker_glaive": 0.12,
+            "mystery_lucky_coin": 0.05,
+            "scroll_rift_strike": 0.12,
+            "voidwalker_plate": 0.08,
+            "voidwalker_band": 0.08,
+            "void_orb": 0.08
         },
         "status_on_hit": [
             "freeze",
@@ -3290,7 +3325,8 @@
             "sleep"
         ],
         "drops": {
-            "void_crystal": 0.15
+            "void_crystal": 0.15,
+            "nethercrown": 0.04
         },
         "money_min": 380,
         "money_max": 550,

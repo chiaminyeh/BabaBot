@@ -5,6 +5,7 @@ from trpg.balance import (
 from trpg.i18n import t
 
 STAT_KEYS = ("atk", "vit", "int", "spd", "luck")
+STAT_ABBR = {"atk": "ATK", "vit": "VIT", "int": "INT", "spd": "SPD", "luck": "LUCK"}
 POINTS_PER_LEVEL = STAT_POINTS_PER_LEVEL
 
 
@@ -14,6 +15,39 @@ def prestige_required_level(prestige_count: int) -> int:
 
 def default_stat_alloc() -> dict:
     return {k: 0 for k in STAT_KEYS}
+
+
+def item_stat_requirements(item_data: dict) -> dict:
+    reqs = item_data.get("stat_requirements") or {}
+    return {
+        key: int(reqs[key])
+        for key in STAT_KEYS
+        if key in reqs and int(reqs[key]) > 0
+    }
+
+
+def meets_item_stat_requirements(player, item_data: dict) -> tuple[bool, dict]:
+    reqs = item_stat_requirements(item_data)
+    alloc = getattr(player, "stat_alloc", None) or default_stat_alloc()
+    missing = {
+        stat: need
+        for stat, need in reqs.items()
+        if int(alloc.get(stat, 0)) < need
+    }
+    return not missing, missing
+
+
+def format_stat_requirement_map(reqs: dict, lang: str = "zh", with_prefix: bool = True) -> str:
+    if not reqs:
+        return ""
+    body = "/".join(f"{STAT_ABBR.get(stat, stat.upper())} {need}" for stat, need in reqs.items())
+    if not with_prefix:
+        return body
+    return f"Requires {body}" if lang == "en" else f"需求 {body}"
+
+
+def format_item_stat_requirements(item_data: dict, lang: str = "zh", with_prefix: bool = True) -> str:
+    return format_stat_requirement_map(item_stat_requirements(item_data), lang=lang, with_prefix=with_prefix)
 
 
 def total_stat_points(level: int) -> int:

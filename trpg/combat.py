@@ -121,6 +121,20 @@ def _format_physical_hit_msg(lang: str, dmg: int, is_crit: bool) -> str:
     return t(lang, "combat.player_normal_hit", "⚔️ 造成 {dmg} 點傷害。", dmg=dmg)
 
 
+def _status_synergy_multiplier_from_skills(player, skills: dict, target_statuses: dict) -> float:
+    if player is None or not skills or not target_statuses:
+        return 1.0
+    if not any(isinstance(v, dict) and v.get("turns", 0) > 0 for v in target_statuses.values()):
+        return 1.0
+    mult = 1.0
+    for skill_id in getattr(player, "equipped_skills", []) or []:
+        skill = skills.get(skill_id, {})
+        if skill.get("type") != "passive":
+            continue
+        mult *= float(skill.get("status_target_damage_mult", 1.0))
+    return mult
+
+
 def apply_schrodinger(player, dmg: int, is_crit: bool = False) -> tuple[int, str]:
     """薛丁格的懷錶：命中時賭一把翻倍或減半。訊息一律根據賭盤結果後的最終傷害重新組字，
     不能沿用賭盤前算好的舊訊息——沿用會讓玩家看到跟實際扣血量對不上的數字。"""
@@ -263,6 +277,7 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
         hit_logs = []
 
         for i in range(hits):
+            status_synergy = _status_synergy_multiplier_from_skills(getattr(caster, "player", None), getattr(caster, "skills", {}), target.status_effects)
             if hp_scaling_mult:
                 dmg = apply_elemental(int(hp_cost * hp_scaling_mult), ele_mult)
             elif skill_type == "magic":
@@ -271,6 +286,9 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
             else:
                 dmg = calc_physical_damage(atk, target.def_, multiplier)
                 dmg = apply_elemental(dmg, ele_mult)
+
+            if status_synergy != 1.0:
+                dmg = max(1, int(dmg * status_synergy))
 
             # 物理跟 HP 獻祭流都可以暴擊，魔法傷害不會
             if skill_type != "magic" and random.random() < (SKILL_CRIT_CHANCE + crit_bonus + luck_crit_bonus(caster.luck)):
@@ -642,6 +660,9 @@ class TRPGCombat:
 
         # 傳遞屬性與速度倍率給攻擊計算（地下城遺物/裝備可加暴擊率）
         base_dmg, is_crit = self._do_physical_hit(multiplier=multiplier, crit_bonus=eff.get("crit_bonus", 0.0), ele_mult=ele_mult)
+        synergy_mult = self._status_synergy_multiplier(target_status)
+        if synergy_mult != 1.0:
+            base_dmg = max(1, int(base_dmg * synergy_mult))
         p_dmg, hit_msg = apply_schrodinger(self.player, base_dmg, is_crit)
 
         monster_name = tf(self.monster, "name", lang)
@@ -680,9 +701,12 @@ class TRPGCombat:
         combo_mult = self._equipped_passive_value("extra_attack_multiplier")
         if combo_mult and self.monster_hp > 0:
             combo_dmg, combo_is_crit = self._do_physical_hit(multiplier=combo_mult, crit_bonus=eff.get("crit_bonus", 0.0), ele_mult=ele_mult)
+            if synergy_mult != 1.0:
+                combo_dmg = max(1, int(combo_dmg * synergy_mult))
             combo_msg = _format_physical_hit_msg(lang, combo_dmg, combo_is_crit)
             self.monster_hp -= combo_dmg
             log += "\n" + t(lang, "combat.combo_attack_extra_hit", "🔄 藉著氣勢再補了一擊，{combo_msg}", combo_msg=combo_msg)
+
             combo_note = absorb_note_text(target_slot.pop("last_absorb", "") if target_slot else "", lang)
             if combo_note:
                 log += f"\n   ↳ {combo_note}"
@@ -731,7 +755,7 @@ class TRPGCombat:
             self.player.dungeon_state["floor"] = 1
             self.player.current_area = "area_00village"
             self.player.current_subarea = None
-            self.cog.save_players()
+            self.cog.save_players(player=self.player)
         self.view.build_main_menu()
         return is_dungeon_run
 
@@ -786,8 +810,11 @@ class TRPGCombat:
             p_dmg = int(p_dmg * 1.6)
         return p_dmg, is_crit
 
+    def _status_synergy_multiplier(self, target_status: dict) -> float:
+        return _status_synergy_multiplier_from_skills(self.player, self.cog.skills, target_status)
+
     def _resolve_skill_targets(self, target_type: str) -> list:
-        """依技能的 target_type 從活著的怪物欄位中選出目標：front=最前排、back=非前排的那一個、all=全部。"""
+
         alive = [s for s in self.view.monster_slots if s["hp"] > 0]
         if not alive:
             return []
@@ -866,7 +893,7 @@ class TRPGCombat:
             if not target_slots:
                 log += t(lang, "combat.skill_no_target", "❌ 沒有可以攻擊的目標。")
             else:
-                caster = PlayerCombatant(self.player, self.cog.items, self.cog.status_effects)
+                caster = PlayerCombatant(self.player, self.cog.items, self.cog.status_effects, self.cog.skills)
                 targets = [MonsterCombatant(slot, self.cog.status_effects, self.player.language) for slot in target_slots]
                 skill_log, _ = execute_skill(caster, targets, skill, self.cog.status_effects, hp_cost=actual_hp_cost)
                 log += skill_log
@@ -929,6 +956,13 @@ class TRPGCombat:
             p.status_effects.clear()
             p.combat_debuffs = {}
             parts.append(t(lang, "combat.skill_cleanse", "🧼 【{skill}】淨化了你身上的異常狀態與減益！", skill=skill_name))
+
+        self_status = skill.get("self_status")
+        if self_status:
+            turns = skill.get("self_status_turns", 1)
+            s_log = apply_status(PlayerCombatant(p, self.cog.items, self.cog.status_effects, self.cog.skills), self_status, turns, self.cog.status_effects, f"【{skill_name}】")
+            if s_log:
+                parts.append(s_log)
 
         if not parts:
             parts.append(t(lang, "combat.skill_cast_generic", "✨ 你施放了【{skill}】。", skill=skill_name))
@@ -1131,7 +1165,7 @@ class TRPGCombat:
         is_elite = any(m.get("is_elite") for m in killed_monsters)
         base_log = t(lang, "combat.dungeon_victory", "🏆 戰鬥勝利！") + kill_log
         self.view.on_dungeon_victory(is_elite=is_elite, is_boss=is_boss, base_log=base_log)
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         return self.view.log_message
 
     def _process_victory(self) -> str:
@@ -1232,7 +1266,7 @@ class TRPGCombat:
             log += achv_text
 
         self.view.record_combat_history(log)
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         self._clear_battle_state()
         self.view.in_battle = False
         self.view.monster_slots = []

@@ -53,7 +53,7 @@ class TutorialMixin:
     async def handle_lang_select(self, lang_code: str):
         real = getattr(self.player, "real_player", self.player)
         real.language = lang_code
-        self.cog.save_players()
+        self.cog.save_players(player=real)
         self.build_tutorial_prompt_menu()
 
     def build_tutorial_prompt_menu(self):
@@ -72,7 +72,7 @@ class TutorialMixin:
 
         if not want_tutorial:
             real.onboarding_done = True
-            self.cog.save_players()
+            self.cog.save_players(player=real)
             self.log_message = t(
                 lang, "tutorial.skipped",
                 "好的！隨時可以到村莊裡找村長聊聊，他知道的可不少。祝你冒險順利！",
@@ -118,7 +118,7 @@ class TutorialMixin:
         if not self.in_battle:
             real = getattr(self.player, "real_player", self.player)
             real.onboarding_done = True
-            self.cog.save_players()
+            self.cog.save_players(player=real)
             self.in_tutorial_battle = False
             try:
                 await interaction.followup.send(

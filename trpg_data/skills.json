@@ -88,24 +88,30 @@
     },
     "combo_attack": {
         "name": "🔄⚔️ 連續攻擊",
-        "desc": "被動：普攻額外攻擊一次（0.75 倍傷害，需 Lv.8）",
+        "desc": "被動：普攻額外攻擊一次（0.75 倍傷害）；若目標帶有異常狀態，這次與追加打擊都會再提高 25% 傷害（需 Lv.8）",
         "type": "passive",
         "req_level": 8,
         "extra_attack_multiplier": 0.75,
+        "status_target_damage_mult": 1.25,
         "name_en": "🔄⚔️ Combo Strike",
-        "desc_en": "Passive: basic attacks strike one extra time (0.75x damage, requires Lv.8)",
+        "desc_en": "Passive: basic attacks strike one extra time (0.75x damage). If the target is already afflicted by a status ailment, both hits deal 25% more damage (requires Lv.8)",
         "dungeon_pool": true
     },
     "shadow_step": {
         "name": "💨 暗影步",
-        "desc": "消耗 15 MP，有 85% 機率強制脫離戰鬥（CD: 4，需 Lv.5）",
-        "type": "flee",
-        "flee_chance": 0.85,
+        "desc": "消耗 15 MP，立即進入【無實體】2 回合，並提升速度 35% 2 回合（CD: 4，需 Lv.5）",
+        "type": "support",
+        "self_status": "intangible",
+        "self_status_turns": 2,
+        "buff": {
+            "spd_mult": 1.35,
+            "turns": 2
+        },
         "mp_cost": 15,
         "cd": 4,
         "req_level": 5,
         "name_en": "💨 Shadow Step",
-        "desc_en": "Costs 15 MP, 85% chance to forcibly escape combat (CD: 4, requires Lv.5)"
+        "desc_en": "Costs 15 MP to become Intangible for 2 turns and gain 35% SPD for 2 turns (CD: 4, requires Lv.5)"
     },
     "blood_strike": {
         "name": "🩸🌑 血之獻祭",
@@ -392,17 +398,21 @@
     },
     "iron_skin": {
         "name": "💪 鋼鐵之軀",
-        "desc": "提升自身防禦力 2 倍，持續 3 回合（CD: 4）",
+        "desc": "提升自身防禦力 2 倍，並在持續期間每回合回復 4% 最大 HP，持續 3 回合（CD: 4）",
         "type": "support",
         "buff": {
             "def_mult": 2.0,
+            "turns": 3
+        },
+        "regen": {
+            "pct": 0.04,
             "turns": 3
         },
         "mp_cost": 20,
         "cd": 4,
         "req_level": 5,
         "name_en": "💪 Iron Skin",
-        "desc_en": "Doubles your defense for 3 turns — a defensive shield (CD: 4).",
+        "desc_en": "Doubles your defense and restores 4% max HP each turn for 3 turns (CD: 4).",
         "dungeon_pool": true
     },
     "battle_cry": {
@@ -476,6 +486,103 @@
         "name_en": "⚔️✖️3 Blade Dance",
         "desc_en": "Strikes the front target 3 times for 0.6x physical damage each, with bonus crit chance (CD: 3).",
         "dungeon_pool": true
+    },
+    "status_hunter": {
+        "name": "☠️ 獵異追擊",
+        "desc": "被動：攻擊帶有異常狀態的目標時，額外造成 45% 傷害（需 Lv.25）",
+        "type": "passive",
+        "req_level": 25,
+        "status_target_damage_mult": 1.45,
+        "name_en": "☠️ Status Hunter",
+        "desc_en": "Passive: deal 45% extra damage to targets already afflicted by a status ailment (requires Lv.25)"
+    },
+    "blood_awakening": {
+        "name": "🩸 血醒儀式",
+        "desc": "喚醒血族本能：4 回合內攻擊力 +45%、速度 +20%，並每回合回復 5% 最大 HP（CD: 6，需 Lv.40）",
+        "type": "support",
+        "buff": {
+            "atk_mult": 1.45,
+            "spd_mult": 1.2,
+            "turns": 4
+        },
+        "regen": {
+            "pct": 0.05,
+            "turns": 4
+        },
+        "mp_cost": 32,
+        "cd": 6,
+        "req_level": 40,
+        "name_en": "🩸 Blood Awakening",
+        "desc_en": "Awaken vampiric instincts: for 4 turns, ATK +45%, SPD +20%, and restore 5% max HP each turn (CD: 6, requires Lv.40)"
+    },
+    "titan_crash": {
+        "name": "🛡️💥 泰坦鎮擊",
+        "desc": "以防禦力猛烈撞擊敵人，造成 1.55 倍土屬性傷害，並讓敵人攻擊力下降 20%（2 回合，CD: 4，需 Lv.50）",
+        "type": "physical",
+        "element": "earth",
+        "power_stat": "def",
+        "power_multiplier": 1.55,
+        "debuff_target": {
+            "stat": "atk",
+            "mult": 0.8,
+            "turns": 2
+        },
+        "mp_cost": 18,
+        "cd": 4,
+        "req_level": 50,
+        "name_en": "🛡️💥 Titan Crash",
+        "desc_en": "Crash into the enemy with your defense, dealing 1.55x earth damage and lowering their ATK by 20% for 2 turns (CD: 4, requires Lv.50)"
+    },
+    "phoenix_rite": {
+        "name": "🔥🕊️ 鳳凰儀式",
+        "desc": "以不滅之火重整戰線：清除自身異常，回復 18% 最大 HP，接著 3 回合每回合再回復 8% 最大 HP（CD: 6，需 Lv.60）",
+        "type": "support",
+        "cleanse": true,
+        "heal_percent": 0.18,
+        "regen": {
+            "pct": 0.08,
+            "turns": 3
+        },
+        "mp_cost": 36,
+        "cd": 6,
+        "req_level": 60,
+        "name_en": "🔥🕊️ Phoenix Rite",
+        "desc_en": "Rekindle yourself in undying flame: cleanse all ailments, restore 18% max HP, then recover 8% max HP each turn for 3 turns (CD: 6, requires Lv.60)"
+    },
+    "rift_strike": {
+        "name": "🌌⚔️ 裂隙突襲",
+        "desc": "以速度撕開空間，連擊 2 次，每擊造成 0.9 倍暗屬性傷害，並有 45% 機率使敵人麻痺 2 回合（CD: 4，需 Lv.70）",
+        "type": "physical",
+        "element": "dark",
+        "power_stat": "spd",
+        "power_multiplier": 0.9,
+        "hits": 2,
+        "apply_status": "paralysis",
+        "apply_status_chance": 0.45,
+        "status_turns": 2,
+        "mp_cost": 24,
+        "cd": 4,
+        "req_level": 70,
+        "name_en": "🌌⚔️ Rift Strike",
+        "desc_en": "Rip through space with pure speed, striking twice for 0.9x dark damage each and giving each hit a 45% chance to inflict Paralysis for 2 turns (CD: 4, requires Lv.70)"
+    },
+    "abyssal_requiem": {
+        "name": "🌑🎼 深淵安魂曲",
+        "desc": "對全體敵人降下深淵樂章：造成 520 點基礎暗屬性傷害，65% 機率使其沉默 2 回合，並無視 70% 防禦（CD: 7，需 Lv.80）",
+        "type": "magic",
+        "element": "dark",
+        "target_type": "all",
+        "base_power": 520,
+        "magic_scaling": 2.8,
+        "def_pierce": 0.7,
+        "apply_status": "silence",
+        "apply_status_chance": 0.65,
+        "status_turns": 2,
+        "mp_cost": 105,
+        "cd": 7,
+        "req_level": 80,
+        "name_en": "🌑🎼 Abyssal Requiem",
+        "desc_en": "Unleash a funeral hymn from the abyss on all enemies: 520 base dark damage, 65% chance to inflict Silence for 2 turns, and ignores 70% defense (CD: 7, requires Lv.80)"
     },
     "shield_bash": {
         "name": "🛡️ 盾擊",

@@ -127,7 +127,7 @@ def accept_quest(view, quest_id) -> bool:
     if not quest_info or not can_accept_quest(view, quest_id, quest_info):
         return False
     _real_player(view).active_quests[quest_id] = {"progress": 0}
-    view.cog.save_players()
+    view.cog.save_players(player=_real_player(view))
     return True
 
 
@@ -329,7 +329,7 @@ async def _try_pop_completed_active_quest(view, interaction) -> bool:
         reward_items_text = _grant_quest_rewards(view, quest_info)
         del player.active_quests[quest_id]
         _mark_completed(player, quest_id, quest_info)
-        cog.save_players()
+        cog.save_players(player=player)
 
         lang = getattr(player, "language", "zh")
         target_name = quest_info.get("target_monster") or quest_info.get("target_item") or t(lang, "quest.default_target", "目標")
@@ -361,7 +361,7 @@ async def _try_pop_completed_hidden_quest(view, interaction) -> bool:
         reward_items_text = _grant_quest_rewards(view, quest_info)
         _mark_completed(player, quest_id, quest_info)
         del progress_map[quest_id]
-        cog.save_players()
+        cog.save_players(player=player)
 
         lang = getattr(player, "language", "zh")
         target_name = quest_info.get("target_monster") or quest_info.get("target_item") or t(lang, "quest.default_target", "目標")
@@ -401,7 +401,7 @@ async def _maybe_send_offer_popup(view, interaction):
     quest_id, quest_info = random.choice(candidates)
     player.last_quest_popup_ts = now
     accept_quest(view, quest_id)
-    cog.save_players()
+    cog.save_players(player=player)
 
     lang = getattr(player, "language", "zh")
     target_name = quest_info.get("target_monster") or quest_info.get("target_item") or t(lang, "quest.default_target", "目標")

@@ -31,7 +31,7 @@ class DungeonMixin:
                 "dungeon.intro",
                 "**Endless Abyss Dungeon**\nStart from scratch inside the dungeon. Build your run with gear, relics, and temporary skills. Clear Floor 15 or die trying.",
             )
-            self.cog.save_players()
+            self.cog.save_players(player=self.player)
 
         if not d_state.get("archetype"):
             self.build_archetype_menu()
@@ -49,7 +49,7 @@ class DungeonMixin:
         if d_state.get("floor_state") != "choosing":
             d_state["doors"] = dg.roll_doors(floor)
             d_state["floor_state"] = "choosing"
-            self.cog.save_players()
+            self.cog.save_players(player=self.player)
         self.build_door_menu()
 
     _DOOR_DISPLAY = {
@@ -99,7 +99,7 @@ class DungeonMixin:
         room_type = doors[idx]
         d_state["floor_state"] = "pending"
         d_state["doors"] = []
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         self._resolve_floor_room(room_type)
 
     def build_archetype_menu(self):
@@ -127,7 +127,7 @@ class DungeonMixin:
             name=tf(adef, "name", lang),
             desc=tf(adef, "desc", lang),
         )
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         self.build_dungeon_menu()
 
     def _render_floor_resolved_menu(self):
@@ -182,7 +182,7 @@ class DungeonMixin:
             d_state["current_hp"] = min(d_state["max_hp"], d_state.get("current_hp", 0) + heal)
             self.log_message = t(lang, "dungeon.room_rest_done", "You rest at the campfire and recover {heal} HP.", heal=heal)
             d_state["floor_state"] = "resolved"
-            self.cog.save_players()
+            self.cog.save_players(player=self.player)
             self.build_dungeon_menu()
             return
 
@@ -192,7 +192,7 @@ class DungeonMixin:
             d_state["current_hp"] = min(d_state["max_hp"], d_state.get("current_hp", 0) + heal)
             self.log_message = t(lang, "dungeon.event_heal", "A healing spring restores {heal} HP.", heal=heal)
             d_state["floor_state"] = "resolved"
-            self.cog.save_players()
+            self.cog.save_players(player=self.player)
             self.build_dungeon_menu()
             return
         if roll < 0.45:
@@ -203,7 +203,7 @@ class DungeonMixin:
                 self._dungeon_run_over(t(lang, "dungeon.death_in_run", "\nYou died in the dungeon."))
                 return
             d_state["floor_state"] = "resolved"
-            self.cog.save_players()
+            self.cog.save_players(player=self.player)
             self.build_dungeon_menu()
             return
         if roll < 0.65:
@@ -219,7 +219,7 @@ class DungeonMixin:
             dg.recompute_loadout(self.player, d_state, self.cog)
             self.log_message = t(lang, "dungeon.event_whetstone", "You find a whetstone. ATK increases by {gain} for this run.", gain=gain)
             d_state["floor_state"] = "resolved"
-            self.cog.save_players()
+            self.cog.save_players(player=self.player)
             self.build_dungeon_menu()
             return
 
@@ -230,7 +230,7 @@ class DungeonMixin:
         d_state["current_hp"] = min(d_state["max_hp"], d_state.get("current_hp", 0) + gain)
         self.log_message = t(lang, "dungeon.event_vitality_spring", "A vitality spring increases max HP by {gain} for this run.", gain=gain)
         d_state["floor_state"] = "resolved"
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         self.build_dungeon_menu()
 
     async def handle_dung_next(self):
@@ -241,7 +241,7 @@ class DungeonMixin:
         d_state["floor_state"] = "pending"
         dg.recompute_loadout(self.player, d_state, self.cog)
         self.log_message = ""
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         self.build_dungeon_menu()
 
     def on_dungeon_victory(self, is_elite=False, is_boss=False, base_log=""):
@@ -275,20 +275,20 @@ class DungeonMixin:
             relics = dg.roll_relics(self.cog, d_state, floor, 3)
             if relics:
                 d_state["pending_relics"] = relics
-                self.cog.save_players()
+                self.cog.save_players(player=self.player)
                 self.build_dungeon_relic_menu(base_log)
                 return
         elif is_elite:
             skills = dg.roll_dungeon_skills(self.cog, d_state, 3)
             if skills:
                 d_state["pending_skills"] = skills
-                self.cog.save_players()
+                self.cog.save_players(player=self.player)
                 self.build_dungeon_skill_menu(base_log)
                 return
 
         loot = dg.roll_loot(self.cog, floor, 3)
         d_state["pending_loot"] = loot
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         self.build_dungeon_loot_menu(base_log)
 
     def build_dungeon_loot_menu(self, base_log=""):
@@ -334,7 +334,7 @@ class DungeonMixin:
                 idef = self.cog.dungeon_items.get(loot[idx], {})
                 self.log_message = t(lang, "dungeon.loot_equipped", "Equipped {name}.", name=tf(idef, "name", lang))
         d_state["pending_loot"] = []
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         self.build_dungeon_menu()
 
     def build_dungeon_relic_menu(self, base_log=""):
@@ -373,7 +373,7 @@ class DungeonMixin:
                     desc=tf(rdef, "desc", lang),
                 )
         d_state["pending_relics"] = []
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         self.build_dungeon_menu()
 
     def build_dungeon_skill_menu(self, base_log=""):
@@ -411,7 +411,7 @@ class DungeonMixin:
                     desc=tf(sdef, "desc", lang),
                 )
         d_state["pending_skills"] = []
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         self.build_dungeon_menu()
 
     def _dungeon_run_over(self, reason_log: str):
@@ -423,7 +423,7 @@ class DungeonMixin:
         real.current_area = "area_00village"
         real.current_subarea = None
         self.log_message = reason_log
-        self.cog.save_players()
+        self.cog.save_players(player=self.player)
         self.build_main_menu()
 
     async def handle_dungeon_flee(self):

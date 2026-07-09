@@ -161,7 +161,7 @@ class BulkStatAllocModal(discord.ui.Modal):
         for key, amount in values.items():
             self.game_view.player.stat_alloc[key] = self.game_view.player.stat_alloc.get(key, 0) + amount
         recalc_player_stats(self.game_view.player, self.game_view.cog.items, heal_full=False)
-        self.game_view.cog.save_players()
+        self.game_view.cog.save_players(player=self.game_view.player)
         await self.game_view.handle_stat_alloc_menu(
             t(lang, "modal.bulk_stat_done", "✅ 已分配 {total} 點屬性。", total=total)
         )
