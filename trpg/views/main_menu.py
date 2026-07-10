@@ -38,7 +38,13 @@ class MainMenuLayout:
             view.add_action_button(label=t(lang, "menu.btn_village_chief", "村長"), style=discord.ButtonStyle.secondary, custom_id="btn_ask_chief", row=1, emoji="🧓")
             view.add_action_button(label=t(lang, "menu.btn_church", "教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", row=1, emoji="⛪")
         else:
-            view.add_action_button(label=t(lang, "menu.btn_explore", "探索"), style=discord.ButtonStyle.primary, custom_id="btn_explore", row=0, emoji="⚔️")
+            area_data = view.cog.areas.get(view.player.current_area, {})
+            current_subarea = view._current_subarea_data(area_data)
+            explore_label = t(lang, "menu.btn_explore", "探索")
+            if current_subarea:
+                current_subarea_name = tf(current_subarea, "name", lang) or current_subarea.get("id", "子區域")
+                explore_label = t(lang, "menu.btn_resume_subarea", "探索：{subarea_name}", subarea_name=current_subarea_name)
+            view.add_action_button(label=explore_label, style=discord.ButtonStyle.primary, custom_id="btn_explore", row=0, emoji="⚔️")
             view.add_action_button(label=t(lang, "menu.btn_move", "移動"), style=discord.ButtonStyle.secondary, custom_id="btn_move_menu", row=0, emoji="🗺️")
             view.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.secondary, custom_id="btn_status", row=0, emoji="📜")
             view.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.secondary, custom_id="btn_equip_menu", row=0, emoji="🛡️")
@@ -52,9 +58,11 @@ class MainMenuLayout:
                 view.add_action_button(label=t(lang, "menu.btn_area_boss_done", "✅ 已討伐"), style=discord.ButtonStyle.secondary, custom_id="btn_boss_explore", row=1, emoji="👹", disabled=True)
             else:
                 view.add_action_button(label=t(lang, "menu.btn_area_boss", "區域BOSS"), style=discord.ButtonStyle.danger, custom_id="btn_boss_explore", row=1, emoji="👹")
+            if current_subarea:
+                view.add_action_button(label=t(lang, "menu.btn_change_subarea", "切換子區域"), style=discord.ButtonStyle.secondary, custom_id="btn_subarea_menu", row=2, emoji="🧭")
             if view.player.current_area == "area_01grassland":
                 view.add_action_button(label=t(lang, "menu.btn_back_village", "返回新手村"), style=discord.ButtonStyle.secondary, custom_id="move_to_area_00village", row=2, emoji="🏠")
-            area_npc = view.cog.areas.get(view.player.current_area, {}).get("npc")
+            area_npc = area_data.get("npc")
             if area_npc:
                 npc_name = tf(area_npc, "name", lang) or "NPC"
                 view.add_action_button(label=npc_name[:80], style=discord.ButtonStyle.success, custom_id="btn_area_npc", row=2, emoji=area_npc.get("emoji") or "🧑")
@@ -75,20 +83,20 @@ class MainMenuLayout:
         view.current_menu_state = "subarea"
         lang = view.player.language
         area_data = view.cog.areas.get(view.player.current_area, {})
-        area_name = tf(area_data, "area_name", lang) or t(lang, "explore.unknown_area", "Unknown Area")
+        area_name = tf(area_data, "area_name", lang) or t(lang, "explore.unknown_area", "未知區域")
         visible = view._visible_subareas(area_data)
         if not visible:
-            view.log_message = t(lang, "explore.area_peaceful", "📍 This area feels quiet. There is nowhere to explore here.")
+            view.log_message = t(lang, "explore.area_peaceful", "📍 這個區域目前很平靜，沒有可探索的子區域。")
             view.build_main_menu()
             return
 
         current = view._current_subarea_data(area_data)
-        lines = [t(lang, "menu.subarea_prompt", "Choose where to explore in {area_name}.", area_name=area_name)]
+        lines = [t(lang, "menu.subarea_prompt", "請選擇要探索的子區域：{area_name}", area_name=area_name)]
         if current:
             current_name = tf(current, "name", lang) or current.get("id", "")
             current_desc = tf(current, "desc", lang) or ""
             lines.append("")
-            lines.append(t(lang, "menu.subarea_current", "Current subarea: {subarea_name}", subarea_name=current_name))
+            lines.append(t(lang, "menu.subarea_current", "目前子區域：{subarea_name}", subarea_name=current_name))
             if current_desc:
                 lines.append(current_desc)
         view.log_message = "\n".join(lines)
@@ -100,7 +108,7 @@ class MainMenuLayout:
                 style=discord.ButtonStyle.primary,
                 custom_id=f"subarea_{sub['id']}",
             )
-        view.add_action_button(label=t(lang, "menu.btn_back", "Back"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
+        view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
     @staticmethod
     def build_guild_menu(view):

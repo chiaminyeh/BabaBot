@@ -237,6 +237,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
     #   positional args | guard: require in_battle (else silently ignore)
     _EXACT_ROUTES = {
         "btn_explore": {"m": "handle_explore"},
+        "btn_subarea_menu": {"m": "build_subarea_menu", "await": False},
         "btn_move_menu": {"m": "handle_move_menu"},
         "btn_status": {"m": "handle_status", "i": True},
         "b_sta": {"m": "handle_status", "i": True},
@@ -2206,8 +2207,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.log_message = t(
                 lang,
                 "explore.monster_appeared_subarea",
-                "⚔️ In {area_name}, a {monster_name} appears!",
-                area_name=area_name,
+                "⚔️ 你在【{subarea_name}】遭遇了【{monster_name}】！",
+                subarea_name=area_name,
                 monster_name=tf(monster_instance, "name", lang),
             )
         else:
@@ -2228,6 +2229,10 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.build_dungeon_menu()
             return
         if area_data.get("subareas"):
+            current_subarea = self._current_subarea_data(area_data)
+            if current_subarea:
+                await self.handle_subarea_explore(current_subarea.get("id"))
+                return
             self.build_subarea_menu()
             return
         if not self._spend_stamina(4):
@@ -2245,7 +2250,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         area_data = self.cog.areas.get(self.player.current_area, {})
         subarea = next((sub for sub in self._visible_subareas(area_data) if sub.get("id") == subarea_id), None)
         if not subarea:
-            self.log_message = t(lang, "menu.subarea_missing", "❌ That subarea is not available right now.")
+            self.log_message = t(lang, "menu.subarea_missing", "❌ 這個子區域目前無法探索。")
             self.build_main_menu()
             return
         if self.player.current_hp <= 0:
@@ -2284,15 +2289,10 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             return
 
         weights = [self.cog.events[eid].get("weight", 1) for eid in event_pool]
-        status_embed.add_field(name=t(lang, "char.equipped_weapon", "Equipped Weapon"), value=weapon_name, inline=True)
-        status_embed.add_field(name=t(lang, "char.status_effects", "Status Effects"), value=format_status_list(p.status_effects, self.cog.status_effects, p.language), inline=True)
-        if p.accessory:
-            acc_item = self.cog.items.get(p.accessory, {})
-            acc_name = f"{item_emoji(acc_item)} {tf(acc_item, 'name', lang) or p.accessory}"
-            status_embed.add_field(name=t(lang, "char.accessory", "Accessory"), value=acc_name, inline=True)
-        skill_list = ", ".join([tf(self.cog.skills.get(s, {}), "name", lang) or s for s in p.skills]) or none_label
-        status_embed.add_field(name=t(lang, "char.learned_skills", "Learned Skills"), value=skill_list, inline=True)
-        status_embed.add_field(name=t(lang, "char.bag_contents", "Bag Contents"), value=inv_desc, inline=False)
+        selected_id = random.choices(event_pool, weights=weights)[0]
+        event = self.cog.events.get(selected_id, {})
+        log = tf(event, "message", lang) or t(lang, "explore.nothing_happened", "🌫️ 四周靜悄悄的，什麼也沒發生。")
+
         quest_id = event.get("quest_id")
         if quest_id and accept_quest(self, quest_id):
             quest_info = self.cog.quests.get(quest_id, {})
