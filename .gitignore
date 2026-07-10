@@ -9,6 +9,7 @@ __pycache__/
 # (trpg_data/*.json content files like items.json/skills.json/monsters.json/quests.json
 # stay tracked; only the player save file is runtime state.)
 logs/
+.hermes/
 data/ai_pipeline/
 bank.json
 daily.json

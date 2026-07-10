@@ -409,7 +409,7 @@ async def on_ready():
         'schedule_cog',
         'blackjack_cog',
         'poker_cog',
-        'bomb_cog',
+        # 'bomb_cog',
         'response_cog',
         'trpg_cog',
         'wordle_cog',
@@ -452,7 +452,7 @@ async def reload(ctx):
         await bot.reload_extension("response_cog")
         # await bot.reload_extension("time_cog")
         await bot.reload_extension("wordle_cog")
-        await bot.reload_extension("bomb_cog")
+        # await bot.reload_extension("bomb_cog")
         await bot.reload_extension("schedule_cog")
         await bot.reload_extension("poker_cog")
         await bot.reload_extension("blackjack_cog")
