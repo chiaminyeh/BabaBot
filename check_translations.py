@@ -116,7 +116,7 @@ def check_py_keys():
     catalog = json.load(open(os.path.join(DATA_DIR, "locale_en.json"), encoding="utf-8"))
     used_keys = {}
     for root, dirs, files in os.walk("."):
-        dirs[:] = [d for d in dirs if d not in (".git", "__pycache__", "scripts")]
+        dirs[:] = [d for d in dirs if d not in (".git", "__pycache__", "scripts", ".venv")]
         for fname in files:
             if fname.endswith(".py") and fname != "check_translations.py":
                 path = os.path.join(root, fname)
@@ -166,7 +166,7 @@ def check_component_limits():
     problems = []
 
     for root, dirs, files in os.walk("."):
-        dirs[:] = [d for d in dirs if d not in (".git", "__pycache__", "scripts")]
+        dirs[:] = [d for d in dirs if d not in (".git", "__pycache__", "scripts", ".venv")]
         for fname in files:
             if not fname.endswith(".py"):
                 continue

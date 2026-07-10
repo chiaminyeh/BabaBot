@@ -71,11 +71,10 @@ class response_cog(commands.Cog):
         
         # 定義免費 Gemini 模型的輪詢優先順序
         self.gemini_models = [
+            "gemini-3.1-flash-lite",
             "gemini-3.5-flash",
-            "gemini-3-flash",
             "gemini-2.5-flash",
-            "gemini-2.5-flash-lite",
-            "gemini-1.5-flash"
+            "gemini-2.5-flash-lite"
         ]
 
     async def send_message(self, message, user_message, is_private):

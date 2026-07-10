@@ -4,6 +4,7 @@ info.txt
 # Python bytecode cache
 __pycache__/
 *.pyc
+.venv/
 
 # Runtime data — mutates during normal bot operation, not game content.
 # (trpg_data/*.json content files like items.json/skills.json/monsters.json/quests.json
@@ -15,3 +16,5 @@ bank.json
 daily.json
 trpg_data/trpg_players.json
 trpg_data/trpg_players.sqlite3
+trpg_data/backup_legacy_json/
+*.log
