@@ -171,9 +171,9 @@ class DungeonMixin:
             mon = dg.build_monster(self.cog, floor, rt)
             self.start_combat([mon])
             if rt == "elite":
-                self.log_message = t(lang, "dungeon.elite_encounter", "An elite monster appears: {monster_name}", monster_name=tf(mon, "name", lang))
+                self.log_message = t(lang, "dungeon.elite_encounter", "💠 精英怪物擋住了去路！\n你遭遇了【{monster_name}】！", monster_name=tf(mon, "name", lang))
             else:
-                self.log_message = t(lang, "dungeon.monster_encounter", "A monster appears: {monster_name}", monster_name=tf(mon, "name", lang))
+                self.log_message = t(lang, "dungeon.monster_encounter", "⚔️ 怪物從陰影中現身！\n你遭遇了【{monster_name}】！", monster_name=tf(mon, "name", lang))
             self.build_battle_menu()
             return
 
@@ -209,7 +209,7 @@ class DungeonMixin:
         if roll < 0.65:
             mon = dg.build_monster(self.cog, floor, "monster")
             self.start_combat([mon])
-            self.log_message = t(lang, "dungeon.event_ambush", "An ambush! {monster_name} attacks.", monster_name=tf(mon, "name", lang))
+            self.log_message = t(lang, "dungeon.event_ambush", "😱 是陷阱！【{monster_name}】從陰影中撲了出來！", monster_name=tf(mon, "name", lang))
             self.build_battle_menu()
             return
         if roll < 0.825:

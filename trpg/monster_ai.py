@@ -611,13 +611,13 @@ def _trait_desperado(combat, slot):
 
 
 def _trait_avenger(combat, slot):
-    taken = slot.get("dmg_last_window", 0)
-    max_hp = slot["monster"].get("max_hp") or 1
-    ratio = taken / max_hp
-    if ratio < 0.05:
+    """受傷後固定疊攻擊；不再按玩家剛造成的傷害量反擊。"""
+    if slot.get("dmg_last_window", 0) <= 0:
         return 1.0, ""
+    stacks = min(3, slot.get("avenger_atk_stacks", 0) + 1)
+    slot["avenger_atk_stacks"] = stacks
     lang = combat.player.language
-    return 1.0 + min(1.0, ratio * 1.5), t(lang, "monster_ai.trait_avenger", "💢 【復仇怒火】{name} 記住了你剛才造成的傷害，加倍奉還！", name=tf(slot["monster"], "name", lang))
+    return 1.0 + stacks * 0.15, t(lang, "monster_ai.trait_avenger", "💢 【復仇怒火】{name} 受到傷害後更加憤怒，攻擊力提升！", name=tf(slot["monster"], "name", lang))
 
 
 def _trait_bloodthirst(combat, slot, dmg, log):

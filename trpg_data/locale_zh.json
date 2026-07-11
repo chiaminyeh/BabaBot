@@ -12,5 +12,8 @@
     "skill.equip_point_too_low": "❌ 流派點數不足！裝備【{skill_name}】需要 {req_text}。",
     "skill.point_too_low_to_learn": "❌ 流派點數不足！習得【{skill_name}】需要 {req_text}。",
     "skill.opt_locked_points": "🔒 {skill_name}（需 {req_text}）",
-    "stats.alloc_line3": "剩餘點數 {unspent}"
+    "stats.alloc_line3": "剩餘點數 {unspent}",
+    "dungeon.elite_encounter": "💠 精英怪物擋住了去路！擊敗牠可以學到新技能！\n你遭遇了【{monster_name}】！",
+    "dungeon.monster_encounter": "⚔️ 怪物從陰影中現身！\n你遭遇了【{monster_name}】！",
+    "dungeon.event_ambush": "😱 是陷阱！【{monster_name}】從陰影中撲了出來！"
 }

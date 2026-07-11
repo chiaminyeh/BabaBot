@@ -52,7 +52,6 @@ class MainMenuLayout:
             view.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.secondary, custom_id="btn_status", row=0, emoji="📜")
             view.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.secondary, custom_id="btn_equip_menu", row=0, emoji="🛡️")
             view.add_action_button(label=t(lang, "menu.btn_potions", "藥水"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=1, emoji="🎒")
-            view.add_action_button(label=t(lang, "menu.btn_log", "記錄"), style=discord.ButtonStyle.secondary, custom_id="btn_combat_history", row=1, emoji="📝")
             if view.player.current_area != "area_tower":
                 view.add_action_button(label=t(lang, "shop.btn_shop", "商店"), style=discord.ButtonStyle.primary, custom_id="btn_shop_menu", row=1, emoji="🛒")
             today_str = datetime.today().strftime("%Y-%m-%d")
@@ -127,7 +126,6 @@ class MainMenuLayout:
         view.add_action_button(label=t(lang, "menu.btn_achievements", "成就"), style=discord.ButtonStyle.primary, custom_id="btn_achievements", emoji="🏅")
         view.add_action_button(label=t(lang, "menu.btn_leaderboard", "排行榜"), style=discord.ButtonStyle.secondary, custom_id="btn_leaderboard", emoji="🏆")
         view.add_action_button(label=t(lang, "menu.btn_stat_alloc", "屬性分配"), style=discord.ButtonStyle.primary, custom_id="btn_stat_alloc", emoji="📊")
-        view.add_action_button(label=t(lang, "menu.btn_combat_history", "戰鬥記錄"), style=discord.ButtonStyle.secondary, custom_id="btn_combat_history", emoji="📝")
         view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
     @staticmethod
@@ -361,7 +359,6 @@ class MainMenuLayout:
         view.add_action_button(label=t(lang, "menu.btn_move", "移動"), style=discord.ButtonStyle.secondary, custom_id="btn_move_menu", row=0, emoji="🗺️")
         view.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.success, custom_id="btn_status", row=0, emoji="📜")
         view.add_action_button(label=t(lang, "menu.btn_potions", "藥水"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=1, emoji="🎒")
-        view.add_action_button(label=t(lang, "menu.btn_log", "記錄"), style=discord.ButtonStyle.secondary, custom_id="btn_combat_history", row=1, emoji="📝")
 
     @staticmethod
     def handle_move_menu(view):
