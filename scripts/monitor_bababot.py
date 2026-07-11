@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -18,15 +17,13 @@ def _load_repo_script_module(name: str, filename: str):
     return module
 
 
-fixer = _load_repo_script_module("run_approved_bababot_fix", "run_approved_bababot_fix.py")
 watch = _load_repo_script_module("watch_bababot_errors", "watch_bababot_errors.py")
+restart = _load_repo_script_module("restart_bababot", "restart_bababot.py")
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 INCIDENTS_PATH = REPO_ROOT / "logs" / "watchdog_incidents.json"
 AUTO_FIX_SIGNATURES = (
     "Bababot main.py process is no longer running.",
-    "NameError: name 'status_embed' is not defined",
-    "object NoneType can't be used in 'await' expression",
 )
 
 
@@ -78,27 +75,21 @@ def run_fix_for_incident(incident: dict[str, Any]) -> tuple[int, str, str]:
         auto_fix_reason="matched simple runtime signature",
     )
 
-    prompt = fixer.build_prompt(incident)
-    command = [
-        "hermes",
-        "--yolo",
-        "-s",
-        "bababot-dev",
-        "chat",
-        "-q",
-        prompt,
-        "-t",
-        "terminal,file,skills",
-    ]
-    result = subprocess.run(
-        command,
-        cwd=str(REPO_ROOT),
-        text=True,
-        capture_output=True,
-        encoding="utf-8",
-        errors="replace",
-    )
-    return result.returncode, (result.stdout or "").strip(), (result.stderr or "").strip()
+    try:
+        exit_code = restart.main()
+    except Exception as exc:
+        return 1, "", f"fixed restart remediation failed: {exc.__class__.__name__}: {exc}"
+
+    if exit_code == 0:
+        update_incident(
+            incident_id,
+            status="resolved",
+            resolved_at=utc_now(),
+            fix_summary="Fixed remediation: restarted bababot main.py and restart smoke check passed.",
+        )
+        return 0, "fixed restart remediation succeeded", ""
+
+    return exit_code, "", f"fixed restart remediation exited {exit_code}"
 
 
 def mark_blocked(incident_id: str, summary: str) -> None:
@@ -141,15 +132,19 @@ def main() -> int:
     state = watch.load_state()
     incidents = load_incidents()
     new_events = watch.collect_new_events(state)
-    if not new_events:
+    pending_incidents = [incident for incident in incidents if incident.get("status") == "new"]
+
+    if not new_events and not pending_incidents:
         watch.save_state(state)
         return 0
 
-    incidents.extend(new_events)
-    save_incidents(incidents)
+    if new_events:
+        incidents.extend(new_events)
+        save_incidents(incidents)
+        pending_incidents.extend(new_events)
 
     messages: list[str] = []
-    for incident in new_events:
+    for incident in pending_incidents:
         incident_id = incident.get("id")
         if not incident_id:
             continue

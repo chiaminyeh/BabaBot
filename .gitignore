@@ -1,7 +1,7 @@
 .env
 info.txt
 
-# Python bytecode cache
+# Python bytecode cache / virtualenv
 __pycache__/
 *.pyc
 .venv/
@@ -12,9 +12,13 @@ __pycache__/
 logs/
 .hermes/
 data/ai_pipeline/
+config/ai_token_monitor.json
+scripts/binomial_plot.py
 bank.json
 daily.json
 trpg_data/trpg_players.json
+trpg_data/trpg_active_slots.json
 trpg_data/trpg_players.sqlite3
 trpg_data/backup_legacy_json/
 *.log
+*.tmp

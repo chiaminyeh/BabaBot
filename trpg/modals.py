@@ -94,11 +94,12 @@ class StatPointModal(discord.ui.Modal):
             await interaction.followup.send(t(lang, "modal.qty_invalid", "❌ 數量無效，請輸入正整數！"), ephemeral=True)
             return
 
-        await self.game_view.handle_stat_add(self.stat_key, amount=amount)
-        try:
-            await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
-        except Exception as e:
-            print(f"屬性點面板更新失敗: {e}")
+        async with self.game_view.mutation_lock:
+            await self.game_view.handle_stat_add(self.stat_key, amount=amount)
+            try:
+                await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
+            except Exception as e:
+                print(f"屬性點面板更新失敗: {e}")
 
 
 class BulkStatAllocModal(discord.ui.Modal):
@@ -156,19 +157,20 @@ class BulkStatAllocModal(discord.ui.Modal):
             )
             return
 
-        if not getattr(self.game_view.player, "stat_alloc", None):
-            self.game_view.player.stat_alloc = default_stat_alloc()
-        for key, amount in values.items():
-            self.game_view.player.stat_alloc[key] = self.game_view.player.stat_alloc.get(key, 0) + amount
-        recalc_player_stats(self.game_view.player, self.game_view.cog.items, heal_full=False)
-        self.game_view.cog.save_players(player=self.game_view.player)
-        await self.game_view.handle_stat_alloc_menu(
-            t(lang, "modal.bulk_stat_done", "✅ 已分配 {total} 點屬性。", total=total)
-        )
-        try:
-            await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
-        except Exception as e:
-            print(f"批量屬性分配面板更新失敗: {e}")
+        async with self.game_view.mutation_lock:
+            if not getattr(self.game_view.player, "stat_alloc", None):
+                self.game_view.player.stat_alloc = default_stat_alloc()
+            for key, amount in values.items():
+                self.game_view.player.stat_alloc[key] = self.game_view.player.stat_alloc.get(key, 0) + amount
+            recalc_player_stats(self.game_view.player, self.game_view.cog.items, heal_full=False)
+            self.game_view.cog.save_players(player=self.game_view.player)
+            await self.game_view.handle_stat_alloc_menu(
+                t(lang, "modal.bulk_stat_done", "✅ 已分配 {total} 點屬性。", total=total)
+            )
+            try:
+                await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
+            except Exception as e:
+                print(f"批量屬性分配面板更新失敗: {e}")
 
 
 class BuyItemModal(discord.ui.Modal):
@@ -195,11 +197,12 @@ class BuyItemModal(discord.ui.Modal):
             await interaction.followup.send(t(lang, "modal.qty_invalid", "❌ 數量無效，請輸入正整數！"), ephemeral=True)
             return
 
-        await self.game_view.execute_buy(self.item_id, amount)
-        try:
-            await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
-        except Exception as e:
-            print(f"購買面板更新失敗: {e}")
+        async with self.game_view.mutation_lock:
+            await self.game_view.execute_buy(self.item_id, amount)
+            try:
+                await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
+            except Exception as e:
+                print(f"購買面板更新失敗: {e}")
 
 
 class SellItemModal(discord.ui.Modal):
@@ -226,8 +229,9 @@ class SellItemModal(discord.ui.Modal):
             await interaction.followup.send(t(lang, "modal.qty_invalid", "❌ 數量無效，請輸入正整數！"), ephemeral=True)
             return
 
-        await self.game_view.execute_sell(self.item_id, amount)
-        try:
-            await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
-        except Exception as e:
-            print(f"出售面板更新失敗: {e}")
+        async with self.game_view.mutation_lock:
+            await self.game_view.execute_sell(self.item_id, amount)
+            try:
+                await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
+            except Exception as e:
+                print(f"出售面板更新失敗: {e}")

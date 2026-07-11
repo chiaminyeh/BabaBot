@@ -1,3 +1,4 @@
+import asyncio
 import os
 import json
 import sqlite3
@@ -5,12 +6,16 @@ import unittest
 import shutil
 import sys
 import gc
+from unittest.mock import patch
 
 # Make sure we can import trpg components
 sys.path.append(os.path.dirname(__file__))
 
 from trpg.cog import TRPGCog
+from trpg.view import TRPGGameView
 from trpg.player import TRPGPlayer
+from trpg.combat import execute_skill
+from trpg.entity import PlayerCombatant, MonsterCombatant
 from trpg.stats import migrate_player_stats, prune_unqualified_skills
 
 class MockBot:
@@ -41,6 +46,7 @@ class TestMultiCharacter(unittest.TestCase):
         self.players_db_file = os.path.join(self.test_dir, "trpg_players.sqlite3")
         
         self.bot = MockBot()
+        self.write_core_content()
 
     def tearDown(self):
         # Restore DATA_DIR
@@ -56,6 +62,23 @@ class TestMultiCharacter(unittest.TestCase):
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
 
+    def write_core_content(self):
+        self.write_json(os.path.join(self.test_dir, "areas.json"), {
+            "area_00village": {"area_name": "Village"},
+            "area_01grassland": {"area_name": "Grassland"},
+            "area_05forest": {"area_name": "Forest"},
+            "area_40vampire_castle": {"area_name": "Vampire Castle"},
+        })
+        self.write_json(os.path.join(self.test_dir, "items.json"), {
+            "scroll_heal_light": {"name": "Heal Scroll"},
+        })
+        self.write_json(os.path.join(self.test_dir, "skills.json"), {
+            "fireball": {"name": "Fireball"},
+        })
+        self.write_json(os.path.join(self.test_dir, "monsters.json"), {
+            "slime": {"name": "Slime", "max_hp": 10, "atk": 1},
+        })
+
     def read_db_counts(self):
         with sqlite3.connect(self.players_db_file) as conn:
             players = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
@@ -68,6 +91,12 @@ class TestMultiCharacter(unittest.TestCase):
                 "SELECT level, current_area, prestige_count, language FROM players WHERE user_id = ? AND slot = ?",
                 (str(user_id), str(slot)),
             ).fetchone()
+
+    def test_startup_validation_fails_when_required_core_content_missing(self):
+        os.remove(os.path.join(self.test_dir, "areas.json"))
+
+        with self.assertRaisesRegex(RuntimeError, "TRPG startup validation failed: areas.json missing"):
+            TRPGCog(self.bot)
 
     def test_legacy_saves_migration(self):
         # 1. Test that legacy saves (keyed by uid) migrate to uid_0
@@ -316,6 +345,211 @@ class TestMultiCharacter(unittest.TestCase):
         self.assertCountEqual(removed, ["shield_bash", "fireball"])
         self.assertEqual(player.skills, [])
         self.assertEqual(player.equipped_skills, [])
+
+    def test_area_id_migration_and_invalid_area_fallback_persist(self):
+        self.write_json(os.path.join(self.test_dir, "areas.json"), {
+            "area_00village": {"area_name": "Village"},
+            "area_05forest": {"area_name": "Forest"},
+        })
+        self.write_json(self.players_file, {
+            "834715610536869978_0": {
+                "id": "834715610536869978",
+                "character_slot": "0",
+                "current_area": "area_forest",
+            },
+            "99900_0": {
+                "id": "99900",
+                "character_slot": "0",
+                "current_area": "area_deleted",
+                "current_subarea": "old_subarea",
+            },
+        })
+
+        cog = TRPGCog(self.bot)
+
+        self.assertEqual(cog.players["834715610536869978_0"].current_area, "area_05forest")
+        self.assertEqual(cog.players["99900_0"].current_area, "area_00village")
+        self.assertIsNone(cog.players["99900_0"].current_subarea)
+        with sqlite3.connect(self.players_db_file) as conn:
+            rows = dict(conn.execute("SELECT user_id, current_area FROM players"))
+        self.assertEqual(rows["834715610536869978"], "area_05forest")
+        self.assertEqual(rows["99900"], "area_00village")
+
+    def test_invalid_move_target_does_not_write_bad_area(self):
+        self.write_json(os.path.join(self.test_dir, "areas.json"), {
+            "area_00village": {"area_name": "Village"},
+            "area_05forest": {"area_name": "Forest"},
+        })
+        cog = TRPGCog(self.bot)
+        player = cog.get_player("123456")
+        player.onboarding_done = True
+        player.current_area = "area_00village"
+        cog.save_players(player=player, active_slot_user_id="123456")
+        original_save = cog.save_players
+        save_calls = []
+
+        def tracked_save(*args, **kwargs):
+            save_calls.append((args, kwargs))
+            return original_save(*args, **kwargs)
+
+        cog.save_players = tracked_save
+        view = TRPGGameView(cog, "123456")
+        save_calls.clear()
+
+        asyncio.run(view.handle_move_execute("move_to_area_missing"))
+
+        self.assertEqual(player.current_area, "area_00village")
+        self.assertIn("目的地資料不存在", view.log_message)
+        self.assertEqual(save_calls, [])
+
+    def test_build_main_menu_does_not_clear_active_battle(self):
+        cog = TRPGCog(self.bot)
+        view = TRPGGameView(cog, "24680")
+        view.in_battle = True
+        view.monster_slots = [{"monster": {"id": "slime", "name": "Slime", "max_hp": 10}, "hp": 10, "av": 0, "status": {}}]
+
+        view.build_main_menu()
+
+        self.assertTrue(view.in_battle)
+        self.assertEqual(view.monster_slots[0]["monster"]["id"], "slime")
+        self.assertTrue(view._blocked_during_battle("btn_back_main"))
+        self.assertFalse(view._blocked_during_battle("b_atk"))
+        self.assertFalse(view._blocked_during_battle("skill_fireball"))
+
+    def test_daily_boss_lock_preserved_and_written_on_kill(self):
+        self.write_json(os.path.join(self.test_dir, "areas.json"), {
+            "area_00village": {"area_name": "Village", "boss": {"id": "boss_village", "is_boss": True}},
+        })
+        self.write_json(os.path.join(self.test_dir, "items.json"), {
+            "scroll_heal_light": {"name": "Heal Scroll"},
+        })
+        cog = TRPGCog(self.bot)
+        player = cog.get_player("778899")
+        player.onboarding_done = True
+        player.current_area = "area_00village"
+        today = cog.players["778899_0"].last_stamina_refresh
+        player.daily_boss_kills = {
+            "area_00village": today,
+            "area_old": "1999-01-01",
+        }
+        view = TRPGGameView(cog, "778899")
+        today = view._today_str()
+        player.daily_boss_kills = {
+            "area_00village": today,
+            "area_old": "1999-01-01",
+        }
+
+        changed = view._refresh_daily_stamina()
+
+        self.assertTrue(changed)
+        self.assertEqual(player.daily_boss_kills, {"area_00village": today})
+        player.killed_bosses = []
+        log = view.combat._handle_boss_kill_rewards({"id": "boss_village", "is_boss": True, "drops": {"scroll_heal_light": 1.0}})
+        self.assertEqual(player.daily_boss_kills["area_00village"], today)
+        self.assertIn("scroll_heal_light", player.inventory)
+        self.assertIn("首殺", log)
+
+    def test_elemental_immunity_not_raised_to_one_by_status_synergy(self):
+        cog = TRPGCog(self.bot)
+        player = cog.get_player("90001")
+        player.base_atk = 100
+        player.base_luck = 0
+        player.equipped_skills = ["status_hunter"]
+        cog.skills["status_hunter"] = {"type": "passive", "status_target_damage_mult": 3.0}
+        slot = {
+            "monster": {"id": "fire_blob", "name": "Fire Blob", "max_hp": 20, "def": 0, "immunity": ["fire"]},
+            "hp": 20,
+            "status": {"poison": {"turns": 2}},
+        }
+
+        with patch("trpg.combat.random.uniform", return_value=1.0), patch("trpg.combat.random.random", return_value=1.0):
+            _log, total_dmg = execute_skill(
+                PlayerCombatant(player, cog.items, cog.status_effects, cog.skills),
+                [MonsterCombatant(slot, cog.status_effects, "zh")],
+                {"type": "physical", "element": "fire", "power_multiplier": 1.0},
+                cog.status_effects,
+            )
+
+        self.assertEqual(total_dmg, 0)
+        self.assertEqual(slot["hp"], 20)
+
+    def test_combo_attack_does_not_overflow_to_next_monster_with_old_multiplier(self):
+        cog = TRPGCog(self.bot)
+        cog.items["fire_sword"] = {"name": "Fire Sword", "element": "fire"}
+        cog.skills["combo_passive"] = {"type": "passive", "extra_attack_multiplier": 1.0}
+        player = cog.get_player("90002")
+        player.onboarding_done = True
+        player.weapon = "fire_sword"
+        player.base_atk = 20
+        player.base_luck = 0
+        player.equipped_skills = ["combo_passive"]
+        view = TRPGGameView(cog, "90002")
+        view.start_combat([
+            {"id": "dry_leaf", "name": "Dry Leaf", "max_hp": 5, "atk": 1, "def": 0, "weakness": ["fire"]},
+            {"id": "fire_spirit", "name": "Fire Spirit", "max_hp": 30, "atk": 1, "def": 0, "immunity": ["fire"]},
+        ])
+
+        with patch("trpg.combat.random.uniform", return_value=1.0), patch("trpg.combat.random.random", return_value=1.0):
+            log = view.combat.player_attack()
+
+        self.assertEqual(view.monster_slots[0]["hp"], 0)
+        self.assertEqual(view.monster_slots[1]["hp"], 30)
+        self.assertNotIn("再補了一擊", log)
+
+    def test_dungeon_flee_clears_dungeon_buffs_and_relic_effects(self):
+        cog = TRPGCog(self.bot)
+        player = cog.get_player("90003")
+        player.onboarding_done = True
+        player.current_area = "area_dungeon"
+        player.dungeon_state = {"in_run": True, "floor": 5, "choices": ["left"]}
+        player.dungeon_buffs = {"atk_mult": 2.0}
+        player.dungeon_relic_effects = {"lifesteal": 0.2}
+        view = TRPGGameView(cog, "90003")
+        view.start_combat([{"id": "dg_slime", "name": "DG Slime", "max_hp": 10, "atk": 1, "def": 0, "is_dungeon": True}])
+
+        was_dungeon = view.combat._end_combat_via_flee()
+
+        self.assertTrue(was_dungeon)
+        self.assertEqual(player.dungeon_buffs, {})
+        self.assertEqual(player.dungeon_relic_effects, {})
+        self.assertFalse(player.dungeon_state["in_run"])
+        self.assertEqual(player.dungeon_state["floor"], 1)
+        self.assertEqual(player.current_area, "area_00village")
+        self.assertFalse(view.in_battle)
+        self.assertEqual(view.monster_slots, [])
+
+    def test_wrong_cure_item_does_not_consume_or_advance_turn(self):
+        cog = TRPGCog(self.bot)
+        cog.items["antidote"] = {"name": "Antidote", "cures": ["poison"]}
+        player = cog.get_player("90004")
+        player.inventory["antidote"] = 1
+        player.status_effects = {"burn": {"turns": 2}}
+        view = TRPGGameView(cog, "90004")
+        view.start_combat([{"id": "slime", "name": "Slime", "max_hp": 10, "atk": 1, "def": 0}])
+        view.combat.player_av = 77
+
+        log = view.combat.use_cure_item("antidote")
+
+        self.assertIn("目前沒有", log)
+        self.assertEqual(player.inventory["antidote"], 1)
+        self.assertIn("burn", player.status_effects)
+        self.assertEqual(view.combat.player_av, 77)
+
+    def test_wild_flee_text_does_not_claim_return_to_village(self):
+        cog = TRPGCog(self.bot)
+        player = cog.get_player("90005")
+        player.onboarding_done = True
+        player.current_area = "area_05forest"
+        player.base_spd = 999
+        view = TRPGGameView(cog, "90005")
+        view.start_combat([{"id": "boar", "name": "Boar", "max_hp": 10, "atk": 1, "def": 0, "spd": 1}])
+
+        with patch("trpg.combat.random.random", return_value=0.0):
+            log = view.combat.attempt_flee()
+
+        self.assertIn("成功脫離", log)
+        self.assertNotIn("村", log)
+        self.assertEqual(player.current_area, "area_05forest")
 
 if __name__ == "__main__":
     unittest.main()

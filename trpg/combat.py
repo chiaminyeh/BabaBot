@@ -31,6 +31,7 @@ from trpg.stats import (
 )
 
 from trpg.entity import PlayerCombatant, MonsterCombatant
+from trpg import dungeon as dg
 
 
 def exp_to_next_level(level: int) -> int:
@@ -298,7 +299,7 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
                 dmg = calc_physical_damage(atk, target.def_, multiplier)
                 dmg = apply_elemental(dmg, ele_mult)
 
-            if status_synergy != 1.0:
+            if dmg > 0 and status_synergy != 1.0:
                 dmg = max(1, int(dmg * status_synergy))
 
             # 物理跟 HP 獻祭流都可以暴擊，魔法傷害不會
@@ -672,7 +673,7 @@ class TRPGCombat:
         # 傳遞屬性與速度倍率給攻擊計算（地下城遺物/裝備可加暴擊率）
         base_dmg, is_crit = self._do_physical_hit(multiplier=multiplier, crit_bonus=eff.get("crit_bonus", 0.0), ele_mult=ele_mult)
         synergy_mult = self._status_synergy_multiplier(target_status)
-        if synergy_mult != 1.0:
+        if base_dmg > 0 and synergy_mult != 1.0:
             base_dmg = max(1, int(base_dmg * synergy_mult))
         p_dmg, hit_msg = apply_schrodinger(self.player, base_dmg, is_crit)
 
@@ -710,9 +711,9 @@ class TRPGCombat:
         # 被動技能：連續攻擊（extra_attack_multiplier）—— 裝備了這個被動的話，
         # 普攻後會用同一套屬性/暴擊條件再補一下（之前這個欄位根本沒人讀，形同虛設）。
         combo_mult = self._equipped_passive_value("extra_attack_multiplier")
-        if combo_mult and self.monster_hp > 0:
+        if combo_mult and target_slot and target_slot.get("hp", 0) > 0:
             combo_dmg, combo_is_crit = self._do_physical_hit(multiplier=combo_mult, crit_bonus=eff.get("crit_bonus", 0.0), ele_mult=ele_mult)
-            if synergy_mult != 1.0:
+            if combo_dmg > 0 and synergy_mult != 1.0:
                 combo_dmg = max(1, int(combo_dmg * synergy_mult))
             combo_msg = _format_physical_hit_msg(lang, combo_dmg, combo_is_crit)
             self.monster_hp -= combo_dmg
@@ -747,7 +748,7 @@ class TRPGCombat:
         if random.random() < flee_chance:
             if self._end_combat_via_flee():
                 return log + "\n" + t(self.player.language, "combat.flee_success_dungeon", "🏃 你成功逃跑了！但地下城危機四伏，你只能一路逃回村莊。")
-            return log + "\n" + t(self.player.language, "combat.flee_success", "🏃 你化作一陣風，成功甩開了怪物逃回村里。")
+            return log + "\n" + t(self.player.language, "combat.flee_success", "🏃 你化作一陣風，成功脫離了戰鬥。")
 
         return self.advance_time(log + "\n" + t(self.player.language, "combat.flee_fail", "💨 逃跑失敗！你的速度不夠快，被攔截了！"))
 
@@ -758,15 +759,18 @@ class TRPGCombat:
         回傳 True 代表這次逃跑發生在地下城探索中（給呼叫端決定要顯示哪一種訊息）。"""
         from trpg.status import clear_all_status
         clear_all_status(self.player)
-        self._clear_battle_state()
         is_dungeon_run = bool(self.monster and self.monster.get("is_dungeon", False))
         if is_dungeon_run:
+            dg.end_run(self.player)
             self.player.dungeon_state["in_run"] = False
             self.player.dungeon_state["choices"] = []
             self.player.dungeon_state["floor"] = 1
             self.player.current_area = "area_00village"
             self.player.current_subarea = None
-            self.cog.save_players(player=self.player)
+        self._clear_battle_state()
+        self.view.in_battle = False
+        self.view.monster_slots = []
+        self.cog.save_players(player=self.player)
         self.view.build_main_menu()
         return is_dungeon_run
 
@@ -1019,6 +1023,10 @@ class TRPGCombat:
     def use_cure_item(self, item_id: str) -> str:
         lang = self.player.language
         if self.player.inventory.get(item_id, 0) <= 0: return t(lang, "combat.cure_item_not_owned", "❌ 背包裡沒有這個物品。")
+        item_data = self.cog.items.get(item_id, {})
+        cures = item_data.get("cures") or []
+        if not any(status_id in getattr(self.player, "status_effects", {}) for status_id in cures):
+            return t(lang, "status.cure_item_none_active", "❌ 你目前沒有這個藥草能解除的異常狀態。")
         dot_log, can_act = self._player_turn_start()
         if self.player.current_hp <= 0: return dot_log
         log = f"{dot_log}\n" if dot_log else ""
@@ -1104,6 +1112,9 @@ class TRPGCombat:
             scroll_pool = FALLBACK_BOSS_SCROLLS.get(boss_id, ["scroll_heal_light"])
 
         area_id = self.player.current_area
+        if not isinstance(getattr(self.player, "daily_boss_kills", None), dict):
+            self.player.daily_boss_kills = {}
+        self.player.daily_boss_kills[area_id] = today_str
         killed_bosses = getattr(self.player, "killed_bosses", [])
         is_first_kill = area_id not in killed_bosses
 

@@ -1,0 +1,1047 @@
+{
+    "area_00village": {
+        "area_name": "新手村",
+        "area_name_en": "Beginner's Village",
+        "is_village": true,
+        "events": [
+            "village_old_man_cat"
+        ],
+        "subareas": [
+            {
+                "events": [
+                    "village_old_man_cat"
+                ],
+                "name": "村口廣場",
+                "id": "village_square",
+                "desc": "公告欄、馬車與旅人往來的中心。",
+                "name_en": "Village Gate Square",
+                "desc_en": "The village hub where notice boards, wagons, and travelers all converge."
+            },
+            {
+                "events": [],
+                "name": "村外田埂",
+                "id": "village_outskirts",
+                "desc": "農田、土路與通往森林的小徑。",
+                "name_en": "Farmland Path",
+                "desc_en": "Fields, dirt roads, and the small trail leading toward the forest."
+            },
+            {
+                "events": [],
+                "name": "後巷倉庫",
+                "id": "village_back_alley",
+                "desc": "雜物堆、木箱與不太起眼的角落。",
+                "name_en": "Back Alley Storehouse",
+                "desc_en": "Stacks of clutter, wooden crates, and the sort of corner people stop noticing."
+            }
+        ]
+    },
+    "area_01grassland": {
+        "area_name": "新手村郊外",
+        "monsters": {
+            "slime": {
+                "spawn_rate": 0.5
+            },
+            "goblin": {
+                "spawn_rate": 0.3
+            },
+            "wild_boar": {
+                "spawn_rate": 0.2
+            },
+            "rabid_rat": {
+                "spawn_rate": 0.25
+            },
+            "bandit": {
+                "spawn_rate": 0.2
+            },
+            "ironshell_tortoise": {
+                "spawn_rate": 0.2
+            }
+        },
+        "boss_minions": [
+            "goblin_medic",
+            "goblin_raider"
+        ],
+        "boss": "goblin_chief",
+        "area_name_en": "Village Outskirts",
+        "subareas": [
+            {
+                "id": "grassland_farm",
+                "name": "農田",
+                "desc": "農舍、田埂和偶爾會有野獸出沒的空地。",
+                "events": [
+                    "herb_patch",
+                    "trap_pit"
+                ],
+                "name_en": "Farmland",
+                "desc_en": "Farm plots, ridges, and open ground where the occasional beast wanders through.",
+                "monsters": [
+                    "wild_boar",
+                    "rabid_rat"
+                ]
+            },
+            {
+                "id": "grassland_plain",
+                "name": "開闊平原",
+                "desc": "風最大、視野最開闊的一片草地。",
+                "events": [
+                    "shiny_coin",
+                    "bird_song",
+                    "slime_prank"
+                ],
+                "name_en": "Open Plains",
+                "desc_en": "A broad sweep of grassland with strong winds and the clearest lines of sight.",
+                "monsters": [
+                    "slime",
+                    "ironshell_tortoise"
+                ]
+            },
+            {
+                "id": "grassland_ruin_house",
+                "name": "破舊房子",
+                "desc": "像是被盜賊或哥布林當成臨時據點的廢屋。",
+                "requires_level": 3,
+                "events": [
+                    "find_chest",
+                    "thief_snatch",
+                    "lore_ruins"
+                ],
+                "name_en": "Ruined House",
+                "desc_en": "A half-collapsed house that looks perfect for bandits or goblins to use as a temporary den.",
+                "monsters": [
+                    "goblin",
+                    "bandit"
+                ]
+            }
+        ]
+    },
+    "area_05forest": {
+        "area_name": "迷霧森林",
+        "req_level": 5,
+        "monsters": {
+            "dire_wolf": {
+                "spawn_rate": 0.7
+            },
+            "orc": {
+                "spawn_rate": 0.3
+            },
+            "harpy": {
+                "spawn_rate": 0.35
+            },
+            "mushroom_sprite": {
+                "spawn_rate": 0.3
+            }
+        },
+        "boss_minions": [
+            "forest_sprite",
+            "thorn_vine"
+        ],
+        "boss": "forest_guardian",
+        "area_name_en": "Misty Forest",
+        "requires_boss": "area_01grassland",
+        "npc": {
+            "name": "精靈長老・艾露娜",
+            "name_en": "Elder Elune",
+            "emoji": "🧝‍♀️",
+            "intro": "一位身披翠綠斗篷的精靈長老靜立在古樹之下，空靈的目光彷彿看穿了千年的風霜。\n「旅人啊……森林正在哭泣。你願意聆聽她的悲鳴嗎？」",
+            "intro_en": "An elven elder in an emerald cloak stands silently beneath an ancient tree, her ethereal gaze seeming to pierce a thousand years of frost.\n\"Traveler... the forest is weeping. Will you listen to her lament?\"",
+            "quest_ids": [
+                "npc_elune_1",
+                "npc_elune_2"
+            ]
+        },
+        "subareas": [
+            {
+                "id": "forest_edge",
+                "name": "森林外緣",
+                "name_en": "Forest Edge",
+                "desc": "草叢、樹根和比較安全的路線。",
+                "desc_en": "Brush, roots, and the safer trails along the forest edge.",
+                "events": [
+                    "forest_cat_found"
+                ],
+                "monsters": [
+                    "dire_wolf",
+                    "mushroom_sprite"
+                ]
+            },
+            {
+                "id": "forest_bushes",
+                "name": "草叢深處",
+                "name_en": "Dense Bushes",
+                "desc": "最適合找失物、找貓、也找怪物。",
+                "desc_en": "The best place to find lost things, missing cats, and trouble.",
+                "events": [
+                    "forest_cat_found",
+                    "forest_herb_patch"
+                ],
+                "monsters": [
+                    "harpy",
+                    "mushroom_sprite"
+                ]
+            },
+            {
+                "id": "forest_old_shrine",
+                "name": "荒廢神龕",
+                "name_en": "Abandoned Shrine",
+                "desc": "被藤蔓纏住的古老小祭壇。",
+                "desc_en": "An old shrine choked by vines and left to the forest.",
+                "events": [
+                    "forest_herb_patch"
+                ],
+                "monsters": [
+                    "dire_wolf",
+                    "orc"
+                ],
+                "requires_quest": "quest_find_cat"
+            }
+        ]
+    },
+    "area_10deep_forest": {
+        "area_name": "森林深處",
+        "req_level": 10,
+        "monsters": {
+            "killer_bee": {
+                "spawn_rate": 0.6
+            },
+            "treant": {
+                "spawn_rate": 0.4
+            },
+            "giant_spider": {
+                "spawn_rate": 0.4
+            },
+            "will_o_wisp": {
+                "spawn_rate": 0.35
+            }
+        },
+        "boss": "bee_queen",
+        "boss_minions": [
+            "worker_bee",
+            "soldier_bee"
+        ],
+        "area_name_en": "Deep Forest",
+        "requires_boss": "area_05forest",
+        "subareas": [
+            {
+                "id": "deep_forest_giant_tree",
+                "name": "巨木林",
+                "name_en": "Giant Tree Grove",
+                "desc": "樹幹像牆一樣厚，能藏很多東西。",
+                "desc_en": "The trunks are thick as walls, with plenty hidden between them.",
+                "events": [
+                    "herb_patch",
+                    "poison_mist"
+                ],
+                "monsters": [
+                    "treant",
+                    "giant_spider"
+                ]
+            },
+            {
+                "id": "deep_forest_fairy_ring",
+                "name": "妖精圓環",
+                "name_en": "Fairy Ring",
+                "desc": "看起來安靜，但常有奇怪的回應。",
+                "desc_en": "It looks quiet, but strange answers often come back from the dark.",
+                "events": [
+                    "magic_drain",
+                    "wandering_merchant_gift"
+                ],
+                "monsters": [
+                    "will_o_wisp",
+                    "killer_bee"
+                ]
+            },
+            {
+                "id": "deep_forest_ritual_site",
+                "name": "儀式點",
+                "name_en": "Ritual Site",
+                "desc": "藏在更深處的隱藏子區域。",
+                "desc_en": "A hidden pocket deeper in the woods, revealed only once the ritual trail opens.",
+                "events": [
+                    "deep_forest_elf_cleanup"
+                ],
+                "monsters": [
+                    "will_o_wisp",
+                    "treant"
+                ],
+                "hidden": true,
+                "requires_quest": "quest_forest_cleanup"
+            }
+        ]
+    },
+    "area_20lab": {
+        "area_name": "瘋狂博士的實驗室",
+        "req_level": 20,
+        "identity": "異常實驗區：主打毒、燃燒、腐蝕與怪物變異。適合讓玩家開始練習『先掛異常，再打爆發』。",
+        "identity_en": "Status-lab zone: poison, burn, corrosion, and unstable mutations. Teaches players to set up ailments before cashing in with burst.",
+        "monsters": {
+            "failed_experiment": {
+                "spawn_rate": 0.55
+            },
+            "mutant_slime": {
+                "spawn_rate": 0.45
+            },
+            "clone_soldier": {
+                "spawn_rate": 0.35
+            },
+            "toxic_ooze": {
+                "spawn_rate": 0.3
+            }
+        },
+        "boss": "mad_doctor",
+        "boss_minions": [
+            "lab_medic",
+            "toxic_clone"
+        ],
+        "area_name_en": "Mad Doctor's Laboratory",
+        "requires_boss": "area_10deep_forest",
+        "events": [
+            "lab_warning_note"
+        ],
+        "subareas": [
+            {
+                "id": "lab_corridor",
+                "name": "實驗走廊",
+                "desc": "破碎的培養槽與散落器材隨處可見。",
+                "events": [
+                    "lab_warning_note"
+                ],
+                "name_en": "Experiment Corridor",
+                "desc_en": "Broken incubation tanks and scattered equipment line the passage.",
+                "monsters": [
+                    "clone_soldier",
+                    "failed_experiment"
+                ]
+            },
+            {
+                "id": "lab_specimen_room",
+                "name": "樣本室",
+                "desc": "標本瓶、殘骸與異常安靜的房間。",
+                "events": [
+                    "poison_mist"
+                ],
+                "name_en": "Specimen Room",
+                "desc_en": "Sample jars, remains, and the wrong kind of silence fill this room.",
+                "monsters": [
+                    "failed_experiment",
+                    "toxic_ooze"
+                ]
+            },
+            {
+                "id": "lab_control_room",
+                "name": "控制室",
+                "desc": "操作台與監視器還亮著微弱的光。",
+                "events": [
+                    "lab_warning_note"
+                ],
+                "name_en": "Control Room",
+                "desc_en": "Consoles and monitors still glow with a weak, stubborn light.",
+                "monsters": [
+                    "mutant_slime",
+                    "clone_soldier"
+                ]
+            }
+        ]
+    },
+    "area_30graveyard": {
+        "area_name": "遺忘墓地",
+        "req_level": 30,
+        "identity": "續戰消耗區：詛咒、靈體與持續削弱較多，考驗淨化、再生與穩定生存。",
+        "identity_en": "Attrition zone: curses, spirits, and sustained debuffs pressure the player to value cleanse, regeneration, and durable survival.",
+        "monsters": {
+            "skeleton": {
+                "spawn_rate": 0.45
+            },
+            "grave_goblin": {
+                "spawn_rate": 0.25
+            },
+            "ghost": {
+                "spawn_rate": 0.3
+            },
+            "banshee": {
+                "spawn_rate": 0.25
+            },
+            "grave_hound": {
+                "spawn_rate": 0.25
+            }
+        },
+        "boss": "lich",
+        "boss_minions": [
+            "bone_priest",
+            "grave_wraith"
+        ],
+        "area_name_en": "The Forgotten Graveyard",
+        "requires_boss": "area_20lab",
+        "npc": {
+            "name": "亡靈學者・莫爾斯",
+            "name_en": "Scholar Mors",
+            "emoji": "🧛",
+            "intro": "一名披著破舊長袍的學者蹲在墓碑之間抄寫碑文，聽見腳步聲也沒有抬頭。\n「活人？稀客。既然來了……幫我解開這座墓園的異變吧。」",
+            "intro_en": "A scholar in a tattered robe crouches between the tombstones copying epitaphs, not even looking up at your footsteps.\n\"A living one? How rare. Since you are here... help me unravel what has disturbed this graveyard.\"",
+            "quest_ids": [
+                "npc_mors_1",
+                "npc_mors_2"
+            ]
+        },
+        "events": [
+            "graveyard_lantern"
+        ],
+        "subareas": [
+            {
+                "id": "graveyard_lantern_path",
+                "name": "提燈小徑",
+                "desc": "零星墓燈在霧裡搖晃的石板路。",
+                "events": [
+                    "graveyard_lantern"
+                ],
+                "name_en": "Lantern Path",
+                "desc_en": "A stone path where lonely grave lanterns sway through the fog.",
+                "monsters": [
+                    "grave_goblin",
+                    "ghost"
+                ]
+            },
+            {
+                "id": "graveyard_mausoleum",
+                "name": "靈廟",
+                "desc": "封死的石門與高大的墓室。",
+                "events": [
+                    "lore_ruins"
+                ],
+                "name_en": "Mausoleum",
+                "desc_en": "Sealed stone doors and tall burial chambers stand in uneasy silence.",
+                "monsters": [
+                    "skeleton",
+                    "grave_hound"
+                ]
+            },
+            {
+                "id": "graveyard_crypt",
+                "name": "地下墓穴",
+                "desc": "通往更深層死者安眠處的陰冷階梯。",
+                "requires_level": 12,
+                "events": [
+                    "mp_drain_curse"
+                ],
+                "name_en": "Crypt",
+                "desc_en": "Cold stairs leading down toward the deeper resting place of the dead.",
+                "monsters": [
+                    "banshee",
+                    "skeleton"
+                ]
+            }
+        ]
+    },
+    "area_40vampire_castle": {
+        "area_name": "吸血鬼城堡",
+        "req_level": 40,
+        "identity": "夜襲刺殺區：吸血、快攻與暗影單位較多，鼓勵高速爆發、先手擊殺與規避型生存。",
+        "identity_en": "Night raid zone: lifesteal, fast attackers, and shadow units reward speed burst, first-strike kills, and evasive survival.",
+        "monsters": {
+            "vampire_bat": {
+                "spawn_rate": 0.4
+            },
+            "gargoyle": {
+                "spawn_rate": 0.35
+            },
+            "vampire_servant": {
+                "spawn_rate": 0.25
+            },
+            "blood_knight": {
+                "spawn_rate": 0.2
+            },
+            "shadow_assassin": {
+                "spawn_rate": 0.2
+            }
+        },
+        "boss": "vampire_lord",
+        "boss_minions": [
+            "blood_acolyte",
+            "night_stalker"
+        ],
+        "area_name_en": "Vampire Castle",
+        "requires_boss": "area_30graveyard",
+        "events": [
+            "castle_corpse"
+        ],
+        "subareas": [
+            {
+                "id": "castle_gatehall",
+                "name": "正門大廳",
+                "desc": "進門後就能看見的高聳廳堂與冷硬石柱。",
+                "events": [
+                    "castle_corpse"
+                ],
+                "name_en": "Gate Hall",
+                "desc_en": "A towering entrance hall of hard stone pillars and cold echoes.",
+                "monsters": [
+                    "vampire_bat",
+                    "gargoyle"
+                ]
+            },
+            {
+                "id": "castle_banquet",
+                "name": "宴會廳",
+                "desc": "長桌與早已腐敗的盛宴殘跡仍擺在原位。",
+                "events": [
+                    "wandering_bard"
+                ],
+                "name_en": "Banquet Hall",
+                "desc_en": "Long tables and the remains of a feast have been left to rot in place.",
+                "monsters": [
+                    "vampire_servant",
+                    "shadow_assassin"
+                ]
+            },
+            {
+                "id": "castle_chapel",
+                "name": "廢棄禮拜堂",
+                "desc": "殘破長椅與被黑暗侵蝕的祭壇。",
+                "requires_quest": "quest_forest_cleanup",
+                "events": [
+                    "castle_corpse"
+                ],
+                "name_en": "Abandoned Chapel",
+                "desc_en": "Broken pews and an altar slowly being swallowed by darkness.",
+                "monsters": [
+                    "blood_knight",
+                    "shadow_assassin"
+                ]
+            }
+        ]
+    },
+    "area_55dragon_valley": {
+        "area_name": "龍臨峽谷",
+        "area_name_en": "Dragonfall Gorge",
+        "identity": "高壓正面戰區：高攻、高破壞與龍息壓制明顯，鼓勵厚血、防禦與減傷反打。",
+        "identity_en": "High-pressure frontline zone: huge hits, armor-breaking force, and dragon breath encourage HP stacking, defense, and sturdy counterplay.",
+        "req_level": 55,
+        "requires_boss": "area_40vampire_castle",
+        "monsters": {
+            "drake": {
+                "spawn_rate": 0.3
+            },
+            "dragonkin_warrior": {
+                "spawn_rate": 0.25
+            },
+            "wyvern": {
+                "spawn_rate": 0.2
+            },
+            "lava_tortoise": {
+                "spawn_rate": 0.15
+            },
+            "dragon_priest": {
+                "spawn_rate": 0.1
+            }
+        },
+        "boss": "ancient_dragon",
+        "boss_minions": [
+            "drake_whelp",
+            "dragonkin_guard"
+        ],
+        "npc": {
+            "name": "龍語者・卡爾德",
+            "name_en": "Dragonspeaker Kaldr",
+            "emoji": "🐲",
+            "intro": "峭壁旁的洞居前，一位滿身龍紋刺青的老者盤坐在篝火邊，沙啞的嗓音如龍吼低鳴。\n「小傢伙，敢踏進龍的領地……你有那個膽識接受試煉嗎？」",
+            "intro_en": "Before a cliffside cave dwelling, an old man covered in dragon tattoos sits cross-legged by a fire, his rasping voice rumbling like a dragon's growl.\n\"Little one, daring to tread the domain of dragons... have you the nerve to face the trial?\"",
+            "quest_ids": [
+                "npc_kaldr_1",
+                "npc_kaldr_2"
+            ]
+        },
+        "subareas": [
+            {
+                "id": "dragon_scorch_trail",
+                "name": "焦鱗坡道",
+                "name_en": "Scorchscale Trail",
+                "desc": "被龍焰反覆灼燒的坡道，岩層仍殘留高熱。",
+                "desc_en": "A slope burned over and over by dragonfire, with heat still trapped in the rock.",
+                "monsters": [
+                    "drake",
+                    "lava_tortoise"
+                ]
+            },
+            {
+                "id": "dragon_brood_roost",
+                "name": "巢群高台",
+                "name_en": "Brood Roost",
+                "desc": "龍裔巡守與飛龍盤旋的高地，是正面硬碰硬的試煉。",
+                "desc_en": "A high perch patrolled by dragonkin and circling wyverns where brute-force endurance is tested.",
+                "monsters": [
+                    "dragonkin_warrior",
+                    "wyvern"
+                ]
+            },
+            {
+                "id": "dragon_ritual_crag",
+                "name": "熔禱斷崖",
+                "name_en": "Magma Rite Crag",
+                "desc": "祭司在熔火與咆哮間祈禱，逼迫闖入者承受龍之威壓。",
+                "desc_en": "Dragon priests chant between magma bursts and thunderous roars, forcing intruders to endure draconic pressure.",
+                "monsters": [
+                    "dragon_priest",
+                    "dragonkin_guard"
+                ]
+            }
+        ]
+    },
+    "area_60colosseum": {
+        "area_name": "修羅鬥技場",
+        "area_name_en": "Asura Colosseum",
+        "req_level": 60,
+        "requires_boss_count": 6,
+        "is_colosseum": true,
+        "rounds": [
+            {
+                "count": 2,
+                "floor": 45
+            },
+            {
+                "count": 3,
+                "floor": 52
+            }
+        ],
+        "champion": {
+            "id": "colosseum_champion",
+            "name": "不敗冠軍・剎羅",
+            "name_en": "Shura, the Undefeated Champion",
+            "is_boss": true,
+            "max_hp": 16000,
+            "atk": 520,
+            "def": 0,
+            "exp": 250000,
+            "spd": 88,
+            "weakness": [],
+            "resistance": [
+                "physical",
+                "sleep",
+                "paralysis",
+                "freeze"
+            ],
+            "money_min": 5000,
+            "money_max": 8000,
+            "drops": {
+                "mystery_elixir": 0.3,
+                "mystery_time_hourglass": 0.15
+            },
+            "status_on_hit": [
+                "paralysis"
+            ],
+            "status_chance": 0.3,
+            "ai": "multi_hit_flurry",
+            "active_skills": [
+                {
+                    "id": "champions_pressure",
+                    "name": "冠軍威壓",
+                    "name_en": "Champion's Pressure",
+                    "trigger": {
+                        "type": "interval",
+                        "value": 3
+                    },
+                    "effect": {
+                        "type": "buff_self_atk",
+                        "mult": 1.25,
+                        "turns": 2
+                    }
+                },
+                {
+                    "id": "arena_roar",
+                    "name": "震場怒吼",
+                    "name_en": "Arena Roar",
+                    "trigger": {
+                        "type": "interval",
+                        "value": 4
+                    },
+                    "effect": {
+                        "type": "inflict_status",
+                        "status_id": "silence",
+                        "turns": 1
+                    }
+                },
+                {
+                    "id": "executioners_strike",
+                    "name": "處刑一擊",
+                    "name_en": "Executioner's Strike",
+                    "trigger": {
+                        "type": "hp_below",
+                        "value": 0.3
+                    },
+                    "effect": {
+                        "type": "heavy_attack",
+                        "mult": 2.5
+                    }
+                }
+            ],
+            "phase2": {
+                "hp_below": 0.5,
+                "ai": "berserk_low_hp",
+                "name_suffix": "・修羅",
+                "name_suffix_en": " - Asura Form",
+                "transform_text": "剎羅捨棄防守架勢，場邊的戰鼓聲變得急促。真正的冠軍戰現在才開始。",
+                "transform_text_en": "Shura drops his guarded stance as the arena drums quicken. The real championship match begins now.",
+                "active_skills": [
+                    {
+                        "id": "asura_combo",
+                        "name": "修羅連破",
+                        "name_en": "Asura Breaker",
+                        "trigger": {
+                            "type": "interval",
+                            "value": 2
+                        },
+                        "effect": {
+                            "type": "heavy_attack",
+                            "mult": 1.9
+                        }
+                    },
+                    {
+                        "id": "arena_roar",
+                        "name": "鬥場怒吼",
+                        "name_en": "Arena Roar",
+                        "trigger": {
+                            "type": "interval",
+                            "value": 4
+                        },
+                        "effect": {
+                            "type": "inflict_status",
+                            "status_id": "silence",
+                            "turns": 1
+                        }
+                    }
+                ]
+            },
+            "traits": [
+                "wrath_stacker"
+            ]
+        },
+        "first_clear_reward_item": "champions_belt",
+        "clear_reward_gold": 20000
+    },
+    "area_70void_rift": {
+        "area_name": "虛空裂隙",
+        "area_name_en": "The Void Rift",
+        "identity": "失真機動區：虛空生物偏速度、位移與穿透，鼓勵高速流、無實體與節奏掌控。",
+        "identity_en": "Distortion mobility zone: void enemies lean on speed, phasing, and penetration, rewarding fast builds, Intangible plays, and tempo control.",
+        "req_level": 70,
+        "requires_boss": "area_55dragon_valley",
+        "monsters": {
+            "void_stalker": {
+                "spawn_rate": 0.28
+            },
+            "rift_horror": {
+                "spawn_rate": 0.25
+            },
+            "void_mage_adept": {
+                "spawn_rate": 0.22
+            },
+            "crystal_sentinel": {
+                "spawn_rate": 0.15
+            },
+            "phase_wraith": {
+                "spawn_rate": 0.1
+            }
+        },
+        "boss": "void_sovereign",
+        "boss_minions": [
+            "void_spawnling",
+            "null_priest"
+        ],
+        "subareas": [
+            {
+                "id": "void_shattered_causeway",
+                "name": "碎界步道",
+                "name_en": "Shattered Causeway",
+                "desc": "空間像玻璃般碎裂，稍慢一步就會被虛空獵手撕開。",
+                "desc_en": "Space lies cracked like glass; hesitate for a step and void hunters tear through the opening.",
+                "monsters": [
+                    "void_stalker",
+                    "crystal_sentinel"
+                ]
+            },
+            {
+                "id": "void_phase_sink",
+                "name": "相位陷坑",
+                "name_en": "Phase Sink",
+                "desc": "地形不斷錯位，怪物忽隱忽現，逼你掌控節奏。",
+                "desc_en": "The terrain keeps slipping out of phase while enemies flicker in and out, demanding tight tempo control.",
+                "monsters": [
+                    "phase_wraith",
+                    "rift_horror"
+                ]
+            },
+            {
+                "id": "void_null_shrine",
+                "name": "湮滅祠堂",
+                "name_en": "Null Shrine",
+                "desc": "祭祀虛空的殘骸仍在低語，法術與速度都被推向極限。",
+                "desc_en": "Ruins devoted to the void still whisper here, pushing both spellcraft and speed to the edge.",
+                "monsters": [
+                    "void_mage_adept",
+                    "phase_wraith"
+                ]
+            }
+        ]
+    },
+    "area_99demon_castle": {
+        "area_name": "魔王城",
+        "req_level": 80,
+        "identity": "終局綜合試煉：敵人同時具備爆發、續戰與控制，要求成熟流派而非鬆散混搭。",
+        "identity_en": "Endgame composite trial: enemies combine burst, sustain, and control, demanding a mature build identity rather than loose hybrid stats.",
+        "desc": "【終局】深淵之主的殿堂，空氣中彌漫著令人窒息的魔力。",
+        "emoji": "🏰",
+        "explore_cost": 50,
+        "monsters": {
+            "abyss_guard": {
+                "spawn_rate": 0.4
+            },
+            "demon_warlock": {
+                "spawn_rate": 0.4
+            },
+            "corrupted_dragon": {
+                "spawn_rate": 0.2
+            },
+            "hellhound": {
+                "spawn_rate": 0.25
+            },
+            "fallen_seraph": {
+                "spawn_rate": 0.15
+            }
+        },
+        "boss": "sargeras",
+        "boss_minions": [
+            "sargeras_imp"
+        ],
+        "drops": {
+            "void_crystal": 0.3,
+            "tainted_blood": 0.5,
+            "demon_core": 0.1
+        },
+        "area_name_en": "Demon Lord's Castle",
+        "desc_en": "[Endgame] The hall of the Abyssal Lord, where the air itself is thick with suffocating magic.",
+        "requires_boss": "area_40vampire_castle",
+        "subareas": [
+            {
+                "id": "demon_black_gate",
+                "name": "黑曜城門",
+                "name_en": "Obsidian Gate",
+                "desc": "披甲深淵守衛與魔犬在門前巡弋，考驗你是否真的成型。",
+                "desc_en": "Armored abyss guards and hellhounds patrol the gate, testing whether your build is truly complete.",
+                "monsters": [
+                    "abyss_guard",
+                    "hellhound"
+                ]
+            },
+            {
+                "id": "demon_blasphemy_hall",
+                "name": "褻瀆大廳",
+                "name_en": "Hall of Blasphemy",
+                "desc": "戰場充滿沉默、詛咒與壓制，鬆散混搭會在此崩潰。",
+                "desc_en": "Silence, curses, and oppressive magic flood this hall; sloppy hybrids fall apart here.",
+                "monsters": [
+                    "demon_warlock",
+                    "fallen_seraph"
+                ]
+            },
+            {
+                "id": "demon_throne_approach",
+                "name": "魔座前庭",
+                "name_en": "Throne Approach",
+                "desc": "扭曲巨龍與深淵精銳守住最後道路，只剩成熟流派能撐過。",
+                "desc_en": "Corrupted dragons and abyss elites guard the last approach; only mature builds endure the march.",
+                "monsters": [
+                    "corrupted_dragon",
+                    "abyss_guard"
+                ]
+            }
+        ]
+    },
+    "area_dungeon": {
+        "area_name": "深淵地下城",
+        "req_level": 15,
+        "event_chance": 0.0,
+        "monsters": {},
+        "area_name_en": "Abyssal Dungeon",
+        "requires_boss": "area_10deep_forest"
+    },
+    "area_legend_cave": {
+        "area_name": "傳說洞窟",
+        "req_level": 1,
+        "desc": "【主線】吟遊詩人口中的傳說洞窟，深處插著能擊退魔王的勇者之劍。",
+        "emoji": "🗝️",
+        "requires_flag": "legend_cave_unlocked",
+        "step_hp_cost_pct": 0.05,
+        "sword_item": "hero_sword",
+        "monsters": {},
+        "nodes": {
+            "entrance": {
+                "desc": "你站在傳說洞窟的入口，潮濕陰冷的空氣中夾雜著詭異的魔力波動，每一次呼吸都讓人隱隱不安。",
+                "exits": {
+                    "forward": "c1",
+                    "left": "c2",
+                    "right": "c3"
+                },
+                "desc_en": "You stand at the entrance to the Legendary Cave. The damp, cold air carries an eerie pulse of magic, and every breath leaves you faintly uneasy."
+            },
+            "c1": {
+                "desc": "狹窄的通道向前延伸，牆上的螢光苔蘚發出微弱的光，勉強照亮腳下的路。",
+                "exits": {
+                    "forward": "c4",
+                    "left": "c5",
+                    "right": null
+                },
+                "desc_en": "A narrow passage stretches onward. Faintly glowing moss on the walls casts just enough light to make out the path beneath your feet."
+            },
+            "c2": {
+                "desc": "一條死路，盡頭只有不斷滲水的石壁。",
+                "exits": {
+                    "forward": "c6",
+                    "left": null,
+                    "right": null
+                },
+                "desc_en": "A dead end. Nothing here but a stone wall continually seeping with water."
+            },
+            "c3": {
+                "desc": "岔路口瀰漫著刺鼻的硫磺味，令人頭暈目眩。",
+                "exits": {
+                    "forward": null,
+                    "left": "c7",
+                    "right": "entrance"
+                },
+                "desc_en": "A pungent smell of sulfur fills this fork in the path, leaving you dizzy and disoriented."
+            },
+            "c4": {
+                "desc": "腳下的地面開始向下傾斜，魔力的氣息愈發濃郁，皮膚傳來陣陣刺痛。",
+                "exits": {
+                    "forward": null,
+                    "left": "c8",
+                    "right": "c9"
+                },
+                "desc_en": "The ground beneath your feet begins to slope downward. The scent of magic grows thicker, and your skin prickles with stinging pain."
+            },
+            "c5": {
+                "desc": "盡頭是一灘發黑的積水，散發著腐朽的氣味，沒有路可以再走了。",
+                "exits": {
+                    "forward": null,
+                    "left": null,
+                    "right": null
+                },
+                "desc_en": "The path ends in a pool of blackened water reeking of decay. There is nowhere left to go."
+            },
+            "c6": {
+                "desc": "盡頭堆著一堆風化的骸骨，似乎是先前挑戰者留下的……你不敢多看。",
+                "exits": {
+                    "forward": null,
+                    "left": null,
+                    "right": null
+                },
+                "desc_en": "A pile of weathered bones lies at the dead end, likely the remains of some past challenger... you dare not look too closely.",
+                "loot": {
+                    "high_health_potion": 2
+                }
+            },
+            "c7": {
+                "desc": "牆壁上刻著古老的符文，幽幽發著光，但路到此為止。",
+                "exits": {
+                    "forward": null,
+                    "left": null,
+                    "right": null
+                },
+                "desc_en": "Ancient runes are carved into the wall, glowing faintly, but the path ends here."
+            },
+            "c8": {
+                "desc": "通道在此一分為二，其中一側隱約透出柔和的微光。",
+                "exits": {
+                    "forward": "c10",
+                    "left": null,
+                    "right": "c11"
+                },
+                "desc_en": "The passage splits into two here. One side faintly glimmers with a soft light."
+            },
+            "c9": {
+                "desc": "死路，地面散落著破碎的劍鞘碎片，看來不是第一個來到這裡的人。",
+                "exits": {
+                    "forward": null,
+                    "left": null,
+                    "right": null
+                },
+                "desc_en": "A dead end. Shattered fragments of a sword sheath litter the ground — it seems you are not the first to come this way.",
+                "loot": {
+                    "high_mana_potion": 2
+                }
+            },
+            "c10": {
+                "desc": "盡頭只有一面光滑的石牆，什麼都沒有，連回音都顯得格外空洞。",
+                "exits": {
+                    "forward": null,
+                    "left": null,
+                    "right": null
+                },
+                "desc_en": "Nothing but a smooth stone wall at the end. There's nothing here at all — even the echo feels hollow.",
+                "loot": {
+                    "mystery_elixir": 1,
+                    "high_health_potion": 2
+                },
+                "loot_requires_eye": true
+            },
+            "c11": {
+                "desc": "微弱的聖光從遠處透出，奇妙的是，周圍濃郁的魔力波動似乎也跟著減弱了一些。",
+                "exits": {
+                    "forward": "c12",
+                    "left": "c13",
+                    "right": null
+                },
+                "desc_en": "A faint holy light shines from somewhere ahead. Strangely, the thick pulse of magic around you seems to weaken a little as well."
+            },
+            "c12": {
+                "desc": "聖光越來越清晰，你的腳步聲在空洞的石室中迴盪，心跳也隨之加快。",
+                "exits": {
+                    "forward": "c14",
+                    "left": null,
+                    "right": "sword_room"
+                },
+                "desc_en": "The holy light grows clearer. Your footsteps echo through the hollow stone chamber, and your heartbeat quickens."
+            },
+            "c13": {
+                "desc": "死路，只有冰冷的石壁回應著你的腳步聲。",
+                "exits": {
+                    "forward": null,
+                    "left": null,
+                    "right": null
+                },
+                "desc_en": "A dead end. Only the cold stone walls answer the sound of your footsteps."
+            },
+            "c14": {
+                "desc": "死路，地上有一個破碎的石碑，碑文已經風化難以辨認。",
+                "exits": {
+                    "forward": null,
+                    "left": null,
+                    "right": null
+                },
+                "desc_en": "A dead end. A shattered stone tablet lies on the ground, its inscription too weathered to read.",
+                "loot": {
+                    "elixir_of_cleansing": 1
+                }
+            },
+            "sword_room": {
+                "desc": "你來到了一座圓形石室，正中央的石墩上，插著一把散發著聖潔光輝的長劍——【勇者之劍】！",
+                "is_sword_room": true,
+                "exits": {
+                    "forward": null,
+                    "left": null,
+                    "right": null
+                },
+                "desc_en": "You arrive in a round stone chamber. Upon a pedestal at its center stands a longsword radiating holy light — the [Hero's Sword]!"
+            }
+        },
+        "area_name_en": "The Legendary Cave",
+        "desc_en": "[Main Quest] The legendary cave spoken of by bards, said to hold deep within it the Hero's Sword capable of driving back the Demon Lord."
+    },
+    "area_tower": {
+        "area_name": "無盡魔塔",
+        "req_level": 15,
+        "event_chance": 0.0,
+        "monsters": {},
+        "area_name_en": "Endless Tower",
+        "requires_boss": "area_10deep_forest"
+    }
+}

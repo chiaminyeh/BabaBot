@@ -1,0 +1,63 @@
+{
+  "refresh_seconds": 30,
+  "max_file_mb": 25,
+  "providers": [
+    {
+      "name": "Codex",
+      "patterns": [
+        "~/.codex/**/*.jsonl",
+        "~/.codex/**/*.sqlite",
+        "~/.codex/**/*.db",
+        "~/.codex/**/*.log"
+      ]
+    },
+    {
+      "name": "Antigravity",
+      "patterns": [
+        "~/.antigravity/**/*",
+        "~/.config/antigravity/**/*",
+        "~/AppData/Roaming/Antigravity/**/*",
+        "~/AppData/Local/Antigravity/**/*"
+      ]
+    },
+    {
+      "name": "Google AI",
+      "patterns": [
+        "~/.gemini/**/*",
+        "~/.config/gemini/**/*",
+        "~/AppData/Roaming/Google/Gemini/**/*",
+        "~/AppData/Local/Google/Gemini/**/*",
+        "~/AppData/Roaming/google-generative-ai/**/*"
+      ]
+    },
+    {
+      "name": "Copilot",
+      "patterns": [
+        "~/AppData/Roaming/Code/User/globalStorage/github.copilot*/**/*",
+        "~/AppData/Roaming/Code - Insiders/User/globalStorage/github.copilot*/**/*",
+        "~/.config/github-copilot/**/*"
+      ]
+    },
+    {
+      "name": "Nous/Hermes",
+      "patterns": [
+        "~/.hermes/**/*.jsonl",
+        "~/.hermes/**/*.sqlite",
+        "~/.hermes/**/*.db",
+        "~/AppData/Local/hermes/**/*.jsonl",
+        "~/AppData/Local/hermes/**/*.sqlite",
+        "~/AppData/Local/hermes/**/*.db",
+        "~/AppData/Roaming/Hermes/**/*",
+        "~/AppData/Local/Nous/**/*"
+      ]
+    },
+    {
+      "name": "Manus AI",
+      "patterns": [
+        "~/.manus/**/*",
+        "~/AppData/Roaming/Manus/**/*",
+        "~/AppData/Local/Manus/**/*"
+      ]
+    }
+  ]
+}

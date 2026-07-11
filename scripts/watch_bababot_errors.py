@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
+import re
+import sqlite3
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,8 +33,26 @@ ERROR_MARKERS = (
     "modulenotfounderror",
     "commandinvokeerror",
 )
+REQUIRED_TRPG_CONTENT = {
+    "areas": "areas.json",
+    "monsters": "monsters.json",
+    "items": "items.json",
+    "skills": "skills.json",
+}
+TRPG_DATA_DIR = REPO_ROOT / "trpg_data"
+PLAYERS_DB_PATH = TRPG_DATA_DIR / "trpg_players.sqlite3"
 MAX_HASHES = 100
 MAX_TRACKED_FILES = 12
+
+
+def load_health_module():
+    script_path = REPO_ROOT / "scripts" / "check_bababot_health.py"
+    spec = importlib.util.spec_from_file_location("check_bababot_health", script_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load health checker from {script_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def load_environment() -> None:
@@ -174,6 +195,16 @@ def file_excerpt_for_marker(lines: list[str], marker_index: int) -> str:
     return excerpt[-1600:]
 
 
+def canonical_marker_index(lowered_lines: list[str], marker_index: int) -> int:
+    """Collapse the [ERROR] line and the following Traceback into one incident."""
+    line = lowered_lines[marker_index]
+    if "traceback (most recent call last):" in line:
+        for idx in range(marker_index - 1, max(-1, marker_index - 8), -1):
+            if "[error" in lowered_lines[idx]:
+                return idx
+    return marker_index
+
+
 def make_incident_id(source: Path, excerpt: str) -> str:
     digest = hashlib.sha256(f"{source.resolve()}::{excerpt}".encode("utf-8", "replace")).hexdigest()[:10]
     return f"inc-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{digest}"
@@ -189,7 +220,7 @@ def detect_error_events(text: str, source: Path, seen_hashes: set[str]) -> list[
     for idx, line in enumerate(lowered):
         if not any(marker in line for marker in ERROR_MARKERS):
             continue
-        excerpt = file_excerpt_for_marker(lines, idx)
+        excerpt = file_excerpt_for_marker(lines, canonical_marker_index(lowered, idx))
         if not excerpt:
             continue
         digest = hashlib.sha256(f"{source.resolve()}::{excerpt}".encode("utf-8", "replace")).hexdigest()
@@ -209,6 +240,91 @@ def detect_error_events(text: str, source: Path, seen_hashes: set[str]) -> list[
     return events
 
 
+def build_event(source: Path, excerpt: str, seen_hashes: set[str], *, kind: str = "runtime") -> dict[str, Any] | None:
+    digest = hashlib.sha256(f"{source.resolve()}::{kind}::{excerpt}".encode("utf-8", "replace")).hexdigest()
+    if digest in seen_hashes:
+        return None
+    seen_hashes.add(digest)
+    return {
+        "id": make_incident_id(source, excerpt),
+        "hash": digest,
+        "kind": kind,
+        "detected_at": utc_now(),
+        "source": str(source.resolve()),
+        "excerpt": excerpt,
+        "status": "new",
+    }
+
+
+def load_json_file(path: Path) -> Any:
+    return json.loads(path.read_text(encoding="utf-8-sig"))
+
+
+def validate_trpg_required_content() -> list[str]:
+    issues: list[str] = []
+    for label, filename in REQUIRED_TRPG_CONTENT.items():
+        path = TRPG_DATA_DIR / filename
+        if not path.exists():
+            issues.append(f"{filename} missing")
+            continue
+        try:
+            data = load_json_file(path)
+        except Exception as exc:
+            issues.append(f"{filename} invalid JSON: {exc.__class__.__name__}: {exc}")
+            continue
+        if not isinstance(data, dict) or len(data) <= 0:
+            issues.append(f"{filename} loaded 0 {label}")
+    return issues
+
+
+def validate_sqlite_integrity() -> list[str]:
+    if not PLAYERS_DB_PATH.exists():
+        return [f"{PLAYERS_DB_PATH.name} missing"]
+    try:
+        with sqlite3.connect(PLAYERS_DB_PATH) as conn:
+            rows = [row[0] for row in conn.execute("PRAGMA integrity_check")]
+    except Exception as exc:
+        return [f"SQLite integrity_check failed to run: {exc.__class__.__name__}: {exc}"]
+    if rows != ["ok"]:
+        return ["SQLite integrity_check failed: " + "; ".join(map(str, rows[:5]))]
+    return []
+
+
+def validate_gateway_status(running: bool) -> list[str]:
+    if not running:
+        return ["Discord gateway status failed: bababot process is not running"]
+    logs = candidate_logs()
+    if not logs:
+        return ["Discord gateway status unknown: no startup logs found"]
+    latest = logs[0]
+    try:
+        text = latest.read_text(encoding="utf-8", errors="replace")[-12000:].lower()
+    except Exception as exc:
+        return [f"Discord gateway status unknown: cannot read {latest.name}: {exc}"]
+    if "has connected to gateway" not in text:
+        return [f"Discord gateway status unknown: {latest.name} lacks connected marker"]
+    return []
+
+
+def collect_health_events(running: bool, seen_hashes: set[str]) -> list[dict[str, Any]]:
+    try:
+        health = load_health_module()
+        results = health.run_checks("live", monitor_max_age_seconds=600)
+        # 確保 results 是 CheckResult 物件列表，如果 health check 傳回 None，處理它
+        if results is None:
+            issues = ["health checker returned None"]
+        else:
+            issues = [f"{result.name}: {result.detail}" for result in results if not result.ok]
+    except Exception as exc:
+        issues = [f"health checker failed: {exc.__class__.__name__}: {exc}"]
+
+    if not issues:
+        return []
+    excerpt = "Bababot health check failed:\n" + "\n".join(f"- {issue}" for issue in issues)
+    event = build_event(REPO_ROOT / "scripts" / "monitor_bababot.py", excerpt, seen_hashes, kind="health")
+    return [] if event is None else [event]
+
+
 def collect_new_events(state: dict[str, Any]) -> list[dict[str, Any]]:
     offsets = state.setdefault("offsets", {})
     seen_hashes = set(state.get("seen_hashes", []))
@@ -218,20 +334,11 @@ def collect_new_events(state: dict[str, Any]) -> list[dict[str, Any]]:
     previous_running = state.get("bot_running")
     if previous_running is True and not running:
         excerpt = "Bababot main.py process is no longer running. The bot may be offline."
-        digest = hashlib.sha256(excerpt.encode("utf-8")).hexdigest()
-        if digest not in seen_hashes:
-            seen_hashes.add(digest)
-            events.append(
-                {
-                    "id": make_incident_id(MAIN_PATH, excerpt),
-                    "hash": digest,
-                    "detected_at": utc_now(),
-                    "source": str(MAIN_PATH),
-                    "excerpt": excerpt,
-                    "status": "new",
-                }
-            )
+        event = build_event(MAIN_PATH, excerpt, seen_hashes, kind="process")
+        if event:
+            events.append(event)
     state["bot_running"] = running
+    events.extend(collect_health_events(running, seen_hashes))
 
     for path in candidate_logs():
         resolved = str(path.resolve())

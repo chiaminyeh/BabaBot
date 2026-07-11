@@ -5,6 +5,9 @@ from trpg.i18n import t, tf
 class MainMenuLayout:
     @staticmethod
     def build_main_menu(view):
+        if getattr(view, "in_battle", False) and getattr(view, "monster_slots", None):
+            view.build_battle_menu()
+            return
         view.clear_items()
         view.in_battle = False
         view.monster_slots = []

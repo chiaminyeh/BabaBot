@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -86,50 +85,19 @@ def main() -> int:
     if not incident_id:
         return 0
 
-    mark_status(incident_id, status="in_progress", field_name="started_at")
-
-    prompt = build_prompt(incident)
-    command = [
-        "hermes",
-        "--yolo",
-        "-s",
-        "bababot-dev",
-        "chat",
-        "-q",
-        prompt,
-        "-t",
-        "terminal,file,skills",
-    ]
-    result = subprocess.run(
-        command,
-        cwd=str(REPO_ROOT),
-        text=True,
-        capture_output=True,
-        encoding="utf-8",
-        errors="replace",
-    )
-
-    output = (result.stdout or "").strip()
-    error_output = (result.stderr or "").strip()
-
-    if result.returncode != 0:
-        incidents = load_incidents()
-        for item in incidents:
-            if item.get("id") == incident_id and item.get("status") == "in_progress":
-                item["status"] = "blocked"
-                item["blocked_at"] = utc_now()
-                item["blocker_summary"] = f"Hermes fixer subprocess exited {result.returncode}: {(error_output or output)[:500]}"
-                break
-        save_incidents(incidents)
-        message = output or error_output or f"Hermes fixer subprocess exited {result.returncode}."
-        print(message)
-        return 1
-
-    if output:
-        print(output)
-    elif error_output:
-        print(error_output)
-    return 0
+    incidents = load_incidents()
+    for item in incidents:
+        if item.get("id") == incident_id:
+            item["status"] = "blocked"
+            item["blocked_at"] = utc_now()
+            item["blocker_summary"] = (
+                "Unattended Hermes --yolo code fixing is disabled. "
+                "Incident excerpts are untrusted data and require human-reviewed repair."
+            )
+            break
+    save_incidents(incidents)
+    print("Unattended Hermes --yolo code fixing is disabled; incident marked blocked for review.")
+    return 1
 
 
 if __name__ == "__main__":

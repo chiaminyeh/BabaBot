@@ -1,0 +1,81 @@
+{
+    "poison": {
+        "name": "中毒",
+        "emoji": "☠️",
+        "dot_ratio": 0.05,
+        "cure_item": "antidote_herb",
+        "desc": "每回合損失 5% 最大 HP",
+        "name_en": "Poison",
+        "desc_en": "Lose 5% of max HP each turn"
+    },
+    "burn": {
+        "name": "燃燒",
+        "emoji": "🔥",
+        "tick_ratio": 0.04,
+        "max_stacks": 5,
+        "cure_item": "burn_salve",
+        "desc": "每回合受到灼燒傷害，隨持續時間遞增（4%→8%→12%→16%→20% 最大HP）",
+        "name_en": "Burn",
+        "desc_en": "Takes scorching damage each turn, increasing the longer it lasts (4%→8%→12%→16%→20% max HP)"
+    },
+    "freeze": {
+        "name": "冰凍",
+        "emoji": "🧊",
+        "spd_mult": 0.5,
+        "cure_item": "thaw_herb",
+        "desc": "身體被寒氣凍結，速度大幅下降（行動變慢），持續數回合",
+        "name_en": "Freeze",
+        "desc_en": "Your body is frozen by intense cold, greatly reducing speed (acting less often) for several turns"
+    },
+    "paralysis": {
+        "name": "麻痺",
+        "emoji": "⚡",
+        "skip_chance": 0.4,
+        "atk_mult": 0.7,
+        "cure_item": "paralyze_cure",
+        "desc": "有機率無法行動，且攻擊/魔攻永久下降",
+        "name_en": "Paralysis",
+        "desc_en": "Chance to be unable to act, with a permanent reduction to Attack/Magic Attack"
+    },
+    "sleep": {
+        "name": "睡眠",
+        "emoji": "💤",
+        "cure_item": "alarm_bell",
+        "desc": "100% 無法行動，但只要受到傷害就會立刻清醒",
+        "name_en": "Sleep",
+        "desc_en": "Completely unable to act, but wakes up immediately upon taking damage"
+    },
+    "berserk": {
+        "name": "狂暴",
+        "emoji": "😡",
+        "atk_mult": 1.6,
+        "cure_item": "calming_incense",
+        "desc": "陷入瘋狂，只能使用普通攻擊，但攻擊力大幅提升",
+        "name_en": "Berserk",
+        "desc_en": "Driven into a frenzy, can only use basic attacks, but Attack is greatly increased"
+    },
+    "corrosion": {
+        "name": "腐蝕",
+        "desc": "地下城專屬：每層每回合造成固定傷害，會持續累積（有層數上限）",
+        "emoji": "🧪",
+        "name_en": "Corrosion",
+        "desc_en": "Dungeon-only: each stack deals flat damage every turn and keeps accumulating (up to a stack cap)",
+        "jester_immune": false
+    },
+    "silence": {
+        "name": "沉默",
+        "emoji": "🤐",
+        "cure_item": "echo_herb",
+        "desc": "無法施放任何技能（普通攻擊、防禦與道具不受影響）",
+        "name_en": "Silence",
+        "desc_en": "Cannot cast any skills (basic attacks, defending, and items are unaffected)"
+    },
+    "intangible": {
+        "name": "無實體",
+        "emoji": "👻",
+        "desc": "化為虛影，期間受到的任何一次傷害至多只有 1 點",
+        "name_en": "Intangible",
+        "desc_en": "Fades into a phantom — every instance of damage taken is reduced to at most 1",
+        "jester_immune": false
+    }
+}

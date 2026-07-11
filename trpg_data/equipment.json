@@ -1,0 +1,14 @@
+{
+    "wooden_sword": {
+        "name": "朽木劍",
+        "type": "weapon",
+        "atk_bonus": 3,
+        "price": 50
+    },
+    "rusty_dagger": {
+        "name": "生鏽的匕首",
+        "type": "weapon",
+        "atk_bonus": 5,
+        "price": 100
+    }
+}

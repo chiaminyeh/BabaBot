@@ -18,7 +18,10 @@ STARTUP_WAIT_SECONDS = 6
 SMOKE_TIMEOUT_SECONDS = 25
 SUCCESS_MARKERS = (
     "has connected to gateway",
+    "extensions loaded:",
+    "slash commands synced:",
     "is now running!",
+    "trpg loaded:",
 )
 FAILURE_MARKERS = (
     "traceback (most recent call last)",
@@ -26,6 +29,7 @@ FAILURE_MARKERS = (
     "failed to load extension",
     "modulenotfounderror",
     "extensionfailed",
+    "trpg startup validation failed",
 )
 
 
@@ -215,7 +219,25 @@ def run_smoke_check(pid: int, log_path: Path, timeout_seconds: int = SMOKE_TIMEO
                 return False, f"startup log contains failure marker: {marker}"
 
         if all(marker in lowered_log for marker in SUCCESS_MARKERS):
-            return True, "process alive and startup markers observed"
+            ext_match = re.search(r"extensions loaded:\s*(\d+)/(\d+)", lowered_log)
+            if not ext_match:
+                return False, "extension readiness marker has unexpected format"
+            if int(ext_match.group(1)) != int(ext_match.group(2)):
+                return False, f"extension readiness marker is not complete: {ext_match.group(0)}"
+
+            sync_match = re.search(r"slash commands synced:\s*(\d+)", lowered_log)
+            if not sync_match:
+                return False, "slash-command readiness marker has unexpected format"
+
+            match = re.search(
+                r"trpg loaded:\s*(\d+) areas,\s*(\d+) monsters,\s*(\d+) items,\s*(\d+) skills",
+                lowered_log,
+            )
+            if not match:
+                return False, "TRPG readiness marker has unexpected format"
+            if any(int(value) <= 0 for value in match.groups()):
+                return False, f"TRPG readiness marker has zero count(s): {match.group(0)}"
+            return True, f"process alive and startup markers observed; {ext_match.group(0)}; slash commands synced: {sync_match.group(1)}; {match.group(0)}"
 
         time.sleep(1)
 

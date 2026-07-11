@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt || \
+          python -m pip install 'discord.py[voice]>=2.4.0' python-dotenv google-genai psutil numpy matplotlib scipy python-chess pygame PyNaCl
+
+      - name: Compile Python files
+        run: python -m compileall -q .
+
+      - name: Run unit tests
+        run: python -m unittest discover tests
+
+      - name: Audit translations
+        run: python check_translations.py
+
+      - name: Required content and secret scan
+        run: python scripts/check_bababot_health.py --mode ci
+
+      - name: Validate JSON references
+        run: python scripts/validate_json_references.py
+
+      - name: Check whitespace/conflict markers
+        run: git diff --check

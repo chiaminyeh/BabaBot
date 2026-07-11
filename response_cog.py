@@ -112,12 +112,7 @@ class response_cog(commands.Cog):
         
         # 判斷 DM（私訊）
         if isinstance(message.channel, discord.DMChannel):
-            if username != 'best0516': 
-                try:
-                    chiamin = await self.bot.fetch_user(295288056276189185)
-                    await chiamin.send(f"[DM 攔截] {username} 說: '{user_message}'")
-                except Exception as e:
-                    print(f"轉發 DM 失敗: {e}")
+            print(f"DM received from user_id={message.author.id}; content is not forwarded for privacy.")
         else:
             print(f"{username} said: '{user_message}' (#{message.channel})")
 
@@ -208,12 +203,16 @@ class response_cog(commands.Cog):
         if user != self.bot.user:
             if str(reaction.emoji) == "📌":
                 await reaction.message.reply("```Noted```")
-                self.user_memory[user.name] = reaction.message.content  # ✨ 修正：使用 user_memory 字典
-                print(f"Memory updated: {self.user_memory}")
+                self.user_memory[str(user.id)] = reaction.message.content
+                print(f"Memory updated for user_id={user.id}")
 
     @commands.command(name='memory', help="read baba's mind")
     async def memory(self, ctx):
-        await ctx.send(f"```{self.user_memory}```")  # ✨ 修正：印出 user_memory 字典
+        value = self.user_memory.get(str(ctx.author.id))
+        if not value:
+            await ctx.send("```No memory saved for you.```")
+            return
+        await ctx.send(f"```{value}```")
 
     def get_response(self, message) -> str:
         msg = message.lower()

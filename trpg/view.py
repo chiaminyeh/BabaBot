@@ -1,5 +1,6 @@
 """TRPGGameView — the button-driven adventure panel and all menu/combat handlers."""
 
+import asyncio
 import discord
 import random
 from datetime import datetime
@@ -30,6 +31,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.cog = cog
         self.user_id = str(user_id)
         self.player = RoguePlayerWrapper(cog.get_player(user_id))
+        self.mutation_lock = asyncio.Lock()
         if self._refresh_daily_stamina():
             self.cog.save_players(player=self.player)
         self.message = None
@@ -99,19 +101,26 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
     def _refresh_daily_stamina(self) -> bool:
         real = getattr(self.player, "real_player", self.player)
         max_stamina = max(1, int(getattr(real, "max_stamina", 200) or 200))
+        today = self._today_str()
         changed = False
         if not isinstance(getattr(real, "daily_boss_kills", None), dict):
             real.daily_boss_kills = {}
             changed = True
-        elif getattr(real, "daily_boss_kills", None):
-            real.daily_boss_kills = {}
-            changed = True
+        else:
+            kept = {
+                area_id: date
+                for area_id, date in real.daily_boss_kills.items()
+                if date == today
+            }
+            if kept != real.daily_boss_kills:
+                real.daily_boss_kills = kept
+                changed = True
         if getattr(real, "max_stamina", None) != max_stamina:
             real.max_stamina = max_stamina
             changed = True
-        if getattr(real, "last_stamina_refresh", "") != self._today_str():
+        if getattr(real, "last_stamina_refresh", "") != today:
             real.stamina = max_stamina
-            real.last_stamina_refresh = self._today_str()
+            real.last_stamina_refresh = today
             changed = True
         elif getattr(real, "stamina", None) is None:
             real.stamina = max_stamina
@@ -330,6 +339,18 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "b_atk", "b_def", "b_dod", "b_fle",
     }
     _WORLD_ACTION_PREFIXES = ("move_to_", "subarea_", "skill_", "use_item_")
+    _BATTLE_ALLOWED_IDS = {
+        "b_atk", "b_def", "b_dod", "b_fle", "b_ski", "b_itm",
+        "btn_back_battle", "btn_status", "b_sta", "btn_combat_history",
+    }
+    _BATTLE_ALLOWED_PREFIXES = ("skill_", "use_item_")
+
+    def _blocked_during_battle(self, custom_id: str) -> bool:
+        if not getattr(self, "in_battle", False) or not getattr(self, "monster_slots", None):
+            return False
+        if custom_id in self._BATTLE_ALLOWED_IDS:
+            return False
+        return not custom_id.startswith(self._BATTLE_ALLOWED_PREFIXES)
 
     async def _run_route(self, spec, interaction, custom_id, prefix=None) -> bool:
         """Execute a matched route spec. Returns False if a battle guard blocked it."""
@@ -366,6 +387,18 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             return await interaction.response.send_modal(StatPointModal(self, stat_key, stat_key.upper()))
 
         await interaction.response.defer()
+        async with self.mutation_lock:
+            await self._global_callback_after_defer(interaction, custom_id)
+
+    async def _global_callback_after_defer(self, interaction: discord.Interaction, custom_id: str):
+        if self._blocked_during_battle(custom_id):
+            self.log_message = t(self.player.language, "battle.action_blocked", "⚔️ 戰鬥正在進行中，請先結束這場戰鬥。")
+            self.build_battle_menu()
+            try:
+                await interaction.message.edit(embed=self.generate_embed(), view=self)
+            except Exception as e:
+                print(f"戰鬥中阻擋舊按鈕後更新失敗: {e}")
+            return
 
         # Routes with bespoke logic that doesn't fit the declarative table.
         if custom_id == "btn_back_main":
@@ -876,6 +909,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         """區域解鎖條件：requires_flag（例如傳說洞窟）、requires_boss（必須先在
         player.killed_bosses 裡有指定區域的首殺紀錄），或 requires_boss_count
         （累計首殺過 N 個不同區域 BOSS——給修羅鬥技場這種「集齊戰功才受邀」的隱藏區域用）。"""
+        if not area:
+            return False
         requires_flag = area.get("requires_flag")
         if requires_flag and not getattr(self.player, requires_flag, False):
             return False
@@ -943,6 +978,14 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
 
         if not boss_data:
             self.log_message = t(lang, "menu.no_boss_here", "📍 這個區域似乎沒有盤踞任何 BOSS...")
+            return
+        today_str = self._today_str()
+        real = getattr(self.player, "real_player", self.player)
+        if not isinstance(getattr(real, "daily_boss_kills", None), dict):
+            real.daily_boss_kills = {}
+        if real.daily_boss_kills.get(self.player.current_area) == today_str:
+            self.log_message = t(lang, "menu.boss_already_defeated_today", "✅ 今天已經討伐過這個區域的 BOSS 了，請明天再來挑戰。")
+            self.build_main_menu()
             return
         if not self._spend_stamina(20):
             return
@@ -2334,8 +2377,12 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
 
     async def handle_move_execute(self, custom_id):
         lang = self.player.language
-        target_area = custom_id.replace("move_to_", "")
-        area_data = self.cog.areas.get(target_area, {})
+        target_area = custom_id[len("move_to_"):] if custom_id.startswith("move_to_") else custom_id
+        area_data = self.cog.areas.get(target_area)
+        if not area_data:
+            self.log_message = t(lang, "menu.move_missing_area", "❌ 目的地資料不存在，已留在原區域。")
+            self.build_main_menu()
+            return
         if not self._area_unlocked(area_data):
             self.log_message = t(lang, "menu.move_blocked_generic", "You can't travel to this area yet.")
             self.build_main_menu()
@@ -2345,7 +2392,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         real.current_area = target_area
         real.current_subarea = None
         self.cog.save_players(player=self.player)
-        area_name = tf(self.cog.areas[target_area], "area_name", lang)
+        area_name = tf(area_data, "area_name", lang)
         self.log_message = t(
             lang, "explore.arrived_at_area",
             "You successfully arrived at {area_name}.",

@@ -10,15 +10,46 @@ from discord import app_commands
 from discord.ext import commands,tasks
 from discord import DMChannel
 from datetime import datetime, timedelta
-import os, asyncio, json
+import logging
+import os, asyncio, json, tempfile, threading
+from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
 import random
 load_dotenv()
 
+LOG_DIR = "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+
+
+class IncidentIdFilter(logging.Filter):
+    def filter(self, record):
+        if not hasattr(record, "incident_id"):
+            record.incident_id = "-"
+        return True
+
+
+log_formatter = logging.Formatter(
+    "%(asctime)s %(levelname)s %(name)s incident=%(incident_id)s module=%(module)s %(message)s"
+)
+log_handlers = [
+    RotatingFileHandler(os.path.join(LOG_DIR, "bababot.log"), maxBytes=2_000_000, backupCount=5, encoding="utf-8"),
+    logging.StreamHandler(sys.stdout),
+]
+for handler in log_handlers:
+    handler.setFormatter(log_formatter)
+    handler.addFilter(IncidentIdFilter())
+
+logging.basicConfig(
+    level=logging.INFO,
+    handlers=log_handlers,
+)
+logging.getLogger("discord").setLevel(logging.INFO)
+logger = logging.LoggerAdapter(logging.getLogger("bababot"), {"incident_id": "-"})
+
 intents = discord.Intents.all()
 intents.voice_states  = True 
 bot = commands.Bot(command_prefix=["baba ","BABA ","Baba "], intents=intents)
-# bot.remove_command('help')
+bot.remove_command('help')
 # bot = commands.Bot(command_prefix=["baba ","BABA ","Baba "], intents=discord.Intents.all())
 
 # @bot.command()
@@ -35,6 +66,7 @@ DAILY_REWARD = 100
 
 class Baba():
     def __init__(self):
+        self.bank_lock = threading.RLock()
         self.bank = {}          # {uid(int): (money(int), claimed_bool)}  ← 保持元組格式，相容其他 cog
         self.daily_claims = {}  # {uid(int): "YYYY-MM-DD"}  ← 依日期判斷每日簽到，重載/重啟都安全
         self.load_bank()
@@ -56,7 +88,7 @@ class Baba():
                     self.bank[int(uid)] = (money, claimed)
                 return
             except Exception as e:
-                print(f"bank.json load failed: {e}")
+                logger.exception("bank.json load failed")
         # 遷移舊格式 bank.txt
         try:
             with open("bank.txt", "r") as file:
@@ -68,14 +100,24 @@ class Baba():
                     claimed = (parts[2].lower() == "true") if len(parts) > 2 else False
                     self.bank[int(uid)] = (int(money), claimed)
             self.refresh_bank_file()  # 存成 JSON
-            print("Migrated bank.txt -> bank.json")
+            logger.info("Migrated bank.txt -> bank.json")
         except FileNotFoundError:
-            print("bank file not found")
+            logger.warning("bank file not found")
 
     def refresh_bank_file(self):
-        with open(BANK_FILE, "w", encoding="utf-8") as f:
-            json.dump({str(uid): [money, claimed] for uid, (money, claimed) in self.bank.items()},
-                      f, ensure_ascii=False, indent=2)
+        with self.bank_lock:
+            payload = {str(uid): [money, claimed] for uid, (money, claimed) in self.bank.items()}
+            directory = os.path.dirname(os.path.abspath(BANK_FILE)) or "."
+            fd, tmp_path = tempfile.mkstemp(prefix="bank.", suffix=".tmp", dir=directory, text=True)
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(payload, f, ensure_ascii=False, indent=2)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp_path, BANK_FILE)
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
 
     def load_daily_claims(self):
         if os.path.exists(DAILY_FILE):
@@ -83,32 +125,35 @@ class Baba():
                 with open(DAILY_FILE, "r", encoding="utf-8") as f:
                     self.daily_claims = {int(k): v for k, v in json.load(f).items()}
             except Exception as e:
-                print(f"daily.json load failed: {e}")
+                logger.exception("daily.json load failed")
 
     def save_daily_claims(self):
         with open(DAILY_FILE, "w", encoding="utf-8") as f:
             json.dump({str(k): v for k, v in self.daily_claims.items()}, f, ensure_ascii=False, indent=2)
 
     def get_money(self, uid: int) -> int:
-        val = self.bank.get(int(uid))
-        return val[0] if val else 0
+        with self.bank_lock:
+            val = self.bank.get(int(uid))
+            return val[0] if val else 0
 
     def add_money(self, uid: int, amount: int):
-        uid = int(uid)
-        money, claimed = self.bank.get(uid, (0, False))
-        self.bank[uid] = (max(0, money + amount), claimed)
-        self.refresh_bank_file()
+        with self.bank_lock:
+            uid = int(uid)
+            money, claimed = self.bank.get(uid, (0, False))
+            self.bank[uid] = (max(0, money + amount), claimed)
+            self.refresh_bank_file()
 
     def claim_daily(self, uid: int, reward: int = DAILY_REWARD):
         """依日期判斷每日簽到。回傳 (是否成功, 領取金額, 目前總額)。今天已領則成功=False。"""
-        uid = int(uid)
-        today = datetime.now().strftime("%Y-%m-%d")
-        if self.daily_claims.get(uid) == today:
-            return False, 0, self.get_money(uid)
-        self.daily_claims[uid] = today
-        self.save_daily_claims()
-        self.add_money(uid, reward)
-        return True, reward, self.get_money(uid)
+        with self.bank_lock:
+            uid = int(uid)
+            today = datetime.now().strftime("%Y-%m-%d")
+            if self.daily_claims.get(uid) == today:
+                return False, 0, self.get_money(uid)
+            self.daily_claims[uid] = today
+            self.save_daily_claims()
+            self.add_money(uid, reward)
+            return True, reward, self.get_money(uid)
     
 
 
@@ -119,11 +164,54 @@ baba = Baba()
 
 bot.baba = baba
 
+EXTENSIONS = [
+    'music_cog',
+    'schedule_cog',
+    'blackjack_cog',
+    'poker_cog',
+    # 'bomb_cog',
+    'response_cog',
+    'trpg_cog',
+    'wordle_cog',
+    'lottery_cog',
+    'help_cog',
+    'monitor_cog'
+]
+
+
+async def setup_hook():
+    loaded_extensions = []
+    for ext in EXTENSIONS:
+        try:
+            await bot.load_extension(ext)
+            loaded_extensions.append(ext)
+        except Exception as e:
+            logger.exception("Failed to load extension %s", ext)
+
+    marker = f"Extensions loaded: {len(loaded_extensions)}/{len(EXTENSIONS)} ({', '.join(loaded_extensions)})"
+    print(marker)
+    logger.info(marker)
+
+    if not reset_daily.is_running():
+        reset_daily.start()
+
+    try:
+        synced = await bot.tree.sync()
+        marker = f"Slash commands synced: {len(synced)}"
+        print(marker)
+        logger.info(marker)
+    except Exception as e:
+        logger.exception("Slash command sync failed")
+
+
+bot.setup_hook = setup_hook
+
 @tasks.loop(hours=24)
 async def reset_daily():
-    for user_id, (money, claimed) in baba.bank.items():
-        baba.bank[user_id] = (money, False)
-    baba.refresh_bank_file()
+    with baba.bank_lock:
+        for user_id, (money, claimed) in list(baba.bank.items()):
+            baba.bank[user_id] = (money, False)
+        baba.refresh_bank_file()
     print("Daily reset completed")
     
     # Notify the bot owner
@@ -160,28 +248,26 @@ async def give_money(ctx, target: discord.Member, amount: int):
     sender_id = ctx.author.id
     target_id = target.id
 
-    if sender_id not in baba.bank:
-        await ctx.send("You don't have any money to give.")
+    transfer_error = None
+    with baba.bank_lock:
+        if sender_id not in baba.bank:
+            transfer_error = "You don't have any money to give."
+        else:
+            sender_money, sender_claimed = baba.bank[sender_id]
+            if sender_money < amount:
+                transfer_error = "You don't have enough money to give that amount."
+            else:
+                baba.bank[sender_id] = (sender_money - amount, sender_claimed)
+                if target_id in baba.bank:
+                    target_money, target_claimed = baba.bank[target_id]
+                    baba.bank[target_id] = (target_money + amount, target_claimed)
+                else:
+                    baba.bank[target_id] = (amount, False)
+                baba.refresh_bank_file()
+
+    if transfer_error:
+        await ctx.send(transfer_error)
         return
-
-    sender_money, sender_claimed = baba.bank[sender_id]
-
-    if sender_money < amount:
-        await ctx.send("You don't have enough money to give that amount.")
-        return
-
-    # Deduct the amount from the sender
-    baba.bank[sender_id] = (sender_money - amount, sender_claimed)
-
-    # Add the amount to the target user
-    if target_id in baba.bank:
-        target_money, target_claimed = baba.bank[target_id]
-        baba.bank[target_id] = (target_money + amount, target_claimed)
-    else:
-        baba.bank[target_id] = (amount, False)
-
-    baba.refresh_bank_file()
-
     await ctx.send(f"{ctx.author.name} has given {amount} {baba.money_name} to {target.name}.")
 
 @bot.command(name='balance', aliases=['amount', 'money', 'bababucks', 'coins'])
@@ -190,12 +276,19 @@ async def balance(ctx, user: discord.Member = None):
         if user is None:
             user = ctx.author
         user_id = user.id
-        if user_id in baba.bank:
-            await ctx.send(f"{user.name} has {baba.bank[user_id][0]} {baba.money_name}")
-        else:
-            baba.bank[user_id] = (0, False)
-            baba.refresh_bank_file()
+        with baba.bank_lock:
+            if user_id in baba.bank:
+                balance_amount = baba.bank[user_id][0]
+                missing = False
+            else:
+                baba.bank[user_id] = (0, False)
+                baba.refresh_bank_file()
+                balance_amount = 0
+                missing = True
+        if missing:
             await ctx.send(f"{user.name} doesn't have any {baba.money_name}")
+        else:
+            await ctx.send(f"{user.name} has {balance_amount} {baba.money_name}")
     except:
         print("something in balance went wrong")
 
@@ -286,12 +379,15 @@ async def dm(ctx, person, *, message):
         print(e)
 
 @bot.command(name="say")
+@commands.is_owner()
 async def say(ctx, c, *msg):
     try:
-        print(msg)
         roster = {"general" : 1216934133771534427, "ball" : 1234182535840272455, "monek":1234631351215591494}
+        if c not in roster:
+            await ctx.reply("Unknown channel.")
+            return
         channel = bot.get_channel(roster[c])
-        await channel.send(msg)
+        await channel.send(" ".join(msg))
         await ctx.add_reaction("👌")
 
     except Exception as e:
@@ -333,6 +429,9 @@ async def info(ctx, command, *data):
             return
             
         if command == 'add':
+            if not await bot.is_owner(ctx.author):
+                await ctx.reply("Owner only.")
+                return
             if len(data) < 2:
                 await ctx.send("Please provide both key and value.")
                 return
@@ -343,6 +442,9 @@ async def info(ctx, command, *data):
             await ctx.send("Information added successfully!")
 
         elif command == 'remove':
+            if not await bot.is_owner(ctx.author):
+                await ctx.reply("Owner only.")
+                return
             if len(data) < 1:
                 await ctx.send("Please provide the key to remove.")
                 return
@@ -401,31 +503,6 @@ async def info(ctx, command, *data):
 @bot.event
 async def on_ready():
     print(f"{bot.user} is now running!")
-    # metabolism.start()
-    reset_daily.start()
-    
-    extensions = [
-        'music_cog',
-        'schedule_cog',
-        'blackjack_cog',
-        'poker_cog',
-        # 'bomb_cog',
-        'response_cog',
-        'trpg_cog',
-        'wordle_cog',
-        'lottery_cog'
-    ]
-    for ext in extensions:
-        try:
-            await bot.load_extension(ext)
-        except Exception as e:
-            print(f"Failed to load extension {ext}: {e}")
-
-    try:
-        synced = await bot.tree.sync()
-        print(f"synced {len(synced)} command(s)!")
-    except Exception as e:
-        print(e)
 
     # await bot.add_cog(help_cog(bot))
 
@@ -458,6 +535,7 @@ async def reload(ctx):
         await bot.reload_extension("blackjack_cog")
         await bot.reload_extension("lottery_cog")
         await bot.reload_extension("trpg_cog")
+        await bot.reload_extension("help_cog")
 
         # await bot.reload_extension("listen_cog")
         await ctx.send("reloaded")

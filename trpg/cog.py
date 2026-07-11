@@ -13,7 +13,19 @@ from trpg.player_db import PlayerDatabase
 from trpg.player import TRPGPlayer
 from trpg.view import TRPGGameView
 
-DATA_DIR = "trpg_data"
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(PROJECT_ROOT, "trpg_data")
+
+AREA_ID_MIGRATIONS = {
+    "area_forest": "area_05forest",
+}
+
+REQUIRED_CONTENT = (
+    ("areas", "areas.json"),
+    ("items", "items.json"),
+    ("skills", "skills.json"),
+    ("monsters", "monsters.json"),
+)
 
 
 class TRPGCog(commands.Cog):
@@ -87,6 +99,32 @@ class TRPGCog(commands.Cog):
                 return json.load(f)
         return default
 
+    def _validate_startup_content(self, flat_monsters: dict) -> None:
+        counts = {
+            "areas": len(self.areas),
+            "items": len(self.items),
+            "skills": len(self.skills),
+            "monsters": len(flat_monsters),
+        }
+        missing = []
+        for name, filename in REQUIRED_CONTENT:
+            path = os.path.join(DATA_DIR, filename)
+            if not os.path.exists(path):
+                missing.append(f"{filename} missing")
+            elif counts[name] <= 0:
+                missing.append(f"{filename} loaded 0 {name}")
+
+        if missing:
+            raise RuntimeError("TRPG startup validation failed: " + "; ".join(missing))
+
+        print(
+            "TRPG loaded: "
+            f"{counts['areas']} areas, "
+            f"{counts['monsters']} monsters, "
+            f"{counts['items']} items, "
+            f"{counts['skills']} skills"
+        )
+
     def load_all_config(self):
         os.makedirs(DATA_DIR, exist_ok=True)
 
@@ -110,6 +148,7 @@ class TRPGCog(commands.Cog):
         # 讀取並動態水合區域設定
         flat_monsters = self._load_json("monsters.json", {})
         self.areas = self._load_json("areas.json", {})
+        self._validate_startup_content(flat_monsters)
         for area_id, area_data in self.areas.items():
             # 水合 monsters 欄位
             if "monsters" in area_data and isinstance(area_data["monsters"], dict):
@@ -164,6 +203,7 @@ class TRPGCog(commands.Cog):
             v["character_slot"] = slot
             player_key = f"{uid}_{slot}"
             self.players[player_key] = TRPGPlayer.from_dict(v)
+            self._normalize_player_location(self.players[player_key])
             migrate_player_stats(self.players[player_key], self.items, self.skills)
             prune_unqualified_skills(self.players[player_key], self.skills)
 
@@ -188,6 +228,29 @@ class TRPGCog(commands.Cog):
     @staticmethod
     def _unwrap_player(player):
         return getattr(player, "real_player", player)
+
+    def _normalize_player_location(self, player) -> bool:
+        """Migrate stale area ids and rescue players from invalid saved locations.
+
+        Returns True when the player was changed and should be persisted.
+        """
+        if not self.areas:
+            return False
+
+        changed = False
+        current_area = getattr(player, "current_area", "area_00village") or "area_00village"
+        migrated_area = AREA_ID_MIGRATIONS.get(current_area, current_area)
+        if migrated_area != current_area:
+            player.current_area = migrated_area
+            current_area = migrated_area
+            changed = True
+
+        if current_area not in self.areas:
+            player.current_area = "area_00village" if "area_00village" in self.areas else next(iter(self.areas))
+            player.current_subarea = None
+            changed = True
+
+        return changed
 
     def mark_player_dirty(self, player=None, player_key=None):
         if player_key is None:
@@ -264,11 +327,12 @@ class TRPGCog(commands.Cog):
             self.players[player_key] = player
             self.save_players(player=player, active_slot_user_id=uid)
         else:
+            location_changed = self._normalize_player_location(self.players[player_key])
             removed = len(migrate_player_stats(self.players[player_key], self.items, self.skills))
             removed += len(prune_unqualified_skills(self.players[player_key], self.skills))
             if not hasattr(self.players[player_key], "character_slot"):
                 self.players[player_key].character_slot = slot
-            if removed:
+            if removed or location_changed:
                 self.save_players(player=self.players[player_key])
         return self.players[player_key]
     
