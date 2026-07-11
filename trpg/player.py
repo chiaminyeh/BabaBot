@@ -21,9 +21,6 @@ _SCALAR_DEFAULTS = {
     "base_res": 0,
     "max_mp": 25,
     "current_mp": 25,
-    "max_stamina": 200,
-    "stamina": 200,
-    "last_stamina_refresh": "",
     "weapon": None,
     "armor": None,
     "accessory": None,
@@ -62,8 +59,7 @@ def _fresh_containers() -> dict:
         "shop_items": [],  # 已淘汰（改用 shop_state 依區域分開存），留著只為了舊存檔相容
         "weapon_upgrades": {},  # {item_id: level} — 強化跟著「這把武器」走，換武器不會繼承等級
         "armor_upgrades": {},   # {item_id: level}
-        "shop_state": {},  # {area_id: {"items":[...], "last_refresh":"YYYY-MM-DD", "refresh_count":0,
-                            #            "mystery_date":"...", "mystery_active":False, "mystery_items":[...]}}
+        "shop_state": {},  # {area_id: {"items":[...], "mystery_active":False, "mystery_items":[...]} }
         "stats": {"monsters_killed": 0, "total_deaths": 0, "money_spent": 0},
         "achievements": [],          # 已解鎖成就 ID
         "active_quests": {},         # {"quest_001": {"progress": 2}}

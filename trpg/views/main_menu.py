@@ -12,7 +12,7 @@ class MainMenuLayout:
         view.in_battle = False
         view.monster_slots = []
         view.viewing_leaderboard = False
-        if view._refresh_daily_stamina():
+        if view._refresh_daily_state():
             view.cog.save_players(player=view.player)
 
         # Route to dungeon if in dungeon

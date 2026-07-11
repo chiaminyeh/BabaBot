@@ -94,7 +94,7 @@ class BattleLayout:
         for item_id, count in view.player.inventory.items():
             if count > 0:
                 item = view.cog.items.get(item_id)
-                if item and item.get("type") in ("potion", "cure", "buff_item", "stamina_potion"):
+                if item and item.get("type") in ("potion", "cure", "buff_item"):
                     usable.append(item_id)
 
         total_items = len(usable)

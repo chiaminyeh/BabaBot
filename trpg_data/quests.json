@@ -339,25 +339,6 @@
         "accept_prompt_en": "You are Militia Captain Ryan of the village, upright and hot-blooded. In one sentence, no more than 30 words, challenge the player to reach Lv.{count} to prove they're worthy. Respond in English, staying in character.",
         "turn_in_prompt_en": "You are Militia Captain Ryan of the village, upright and hot-blooded. The player completed the quest. In one sentence, no more than 30 words, thank them warmly and hand over the reward. Respond in English, staying in character."
     },
-    "explore_the_forest": {
-        "title": "前往迷霧森林",
-        "title_en": "Venture to the Misty Forest",
-        "npc_name": "民兵隊長萊恩",
-        "npc_name_en": "Militia Captain Ryan",
-        "quest_type": "reach_area",
-        "target_area": "area_05forest",
-        "target_count": 1,
-        "req_level": 5,
-        "reward_exp": 300,
-        "reward_money": 150,
-        "quest_line": "side",
-        "board": true,
-        "npc_offer": false,
-        "accept_prompt": "你是駐守新手村的民兵隊長萊恩。請用一句話、不超過 30 個字，請玩家親自前往迷霧森林偵查情況。",
-        "turn_in_prompt": "你是駐守新手村的民兵隊長萊恩。玩家完成了委託。請用一句話、不超過 30 個字，開心地道謝並把獎勵交給他。",
-        "accept_prompt_en": "You are Militia Captain Ryan of the village. In one sentence, no more than 30 words, ask the player to scout the Misty Forest in person. Respond in English, staying in character.",
-        "turn_in_prompt_en": "You are Militia Captain Ryan of the village. The player completed the quest. In one sentence, no more than 30 words, thank them warmly and hand over the reward. Respond in English, staying in character."
-    },
     "big_spender": {
         "title": "揮金如土",
         "title_en": "Big Spender",
@@ -388,7 +369,7 @@
         "quest_type": "kill",
         "target_monster": "cave_rat",
         "target_count": 10,
-        "req_level": 3,
+        "req_level": 5,
         "reward_exp": 400,
         "reward_money": 200,
         "quest_line": "main",
@@ -535,7 +516,7 @@
         "quest_type": "boss_kill",
         "target_monster": "goblin_chief",
         "target_count": 1,
-        "req_level": 4,
+        "req_level": 5,
         "reward_exp": 700,
         "reward_money": 350,
         "reward_items": {
@@ -552,7 +533,7 @@
     },
     "quest_find_cat": {
         "title": "尋找走失的貓",
-        "req_level": 1,
+        "req_level": 5,
         "npc_name": "村口老人",
         "target_item": "lost_cat",
         "quest_type": "collect",

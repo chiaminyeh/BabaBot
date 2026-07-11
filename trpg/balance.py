@@ -16,14 +16,6 @@ STAT_POINTS_PER_LEVEL = 2
 # layers secondary derived bonuses (HP/DEF/MP/etc.) on top of these anchors.
 ALLOC_BONUS = {"knight": 2, "rogue": 3, "mage": 1, "warlock": 1, "luck": 1}
 
-# --- Stamina ---------------------------------------------------------------
-STAMINA_MAX = 200
-STAMINA_COST_EXPLORE = 4
-STAMINA_COST_BOSS = 20
-STAMINA_COST_TOWER = 20
-STAMINA_COST_DUNGEON = 20
-STAMINA_POTION_RESTORE = 50
-
 # --- Prestige / rebirth -----------------------------------------------------
 # Every prestige level multiplies all base stats by (1 + this).
 PRESTIGE_BONUS_PER_LEVEL = 0.10
@@ -148,36 +140,61 @@ SET_BONUSES = {
 }
 
 # --- Per-area shops ----------------------------------------------------------
-# Each overworld area gets its OWN daily shop stock instead of one global shop,
-# so a high-level character standing in the starting village doesn't get offered
-# end-game gear just because their own level qualifies for it. "gear_range" caps
-# which weapon/armor/accessory exclusive_level values that area's shop can roll
-# (materials/scrolls/cures are unaffected — those stay available everywhere).
-# "potion_tier" swaps the always-in-stock health/mana potion for a stronger
-# version in higher areas (no new weapon tiers exist above 25, so later areas
-# differentiate mainly through better potions, per design).
-AREA_SHOP_TIERS = {
-    "area_00village":      {"gear_range": (0, 4),   "potion_tier": "basic"},
-    "area_01grassland":    {"gear_range": (0, 4),   "potion_tier": "basic"},
-    "area_05forest":       {"gear_range": (5, 9),   "potion_tier": "basic"},
-    "area_10deep_forest":  {"gear_range": (10, 15), "potion_tier": "medium"},
-    "area_20lab":          {"gear_range": (16, 25), "potion_tier": "medium"},
-    # With the lv55/lv70 areas now filling the 40-80 gap, each late area sells a
-    # sliding band instead of graveyard dumping the entire 16-80 range: you shop
-    # where you adventure. The 4 true mythic items stay out of the shop entirely
-    # (shop_weight 0) — those are forge-only, see trpg/recipes.py.
-    "area_30graveyard":       {"gear_range": (20, 40), "potion_tier": "high"},
-    "area_40vampire_castle":  {"gear_range": (35, 50), "potion_tier": "high"},
-    "area_55dragon_valley":   {"gear_range": (50, 65), "potion_tier": "high"},
-    "area_70void_rift":       {"gear_range": (65, 75), "potion_tier": "high"},
-    "area_99demon_castle":    {"gear_range": (75, 80), "potion_tier": "high"},
+# Overworld shops are fixed and named per area so players can remember where a
+# given shop is. Exploration can still surface a wandering mystery merchant.
+MYSTERY_MERCHANT_STOCK_COUNT = 5
+MYSTERY_MERCHANT_CHANCE = 0.08
+
+AREA_FIXED_SHOPS = {
+    "area_00village": {
+        "name_zh": "鈴蘭雜貨舖", "name_en": "Lilybell General Store",
+        "items": ["health_potion", "mana_potion", "antidote_herb", "rusty_dagger", "wooden_sword", "leather_armor", "scroll_heal_light"],
+    },
+    "area_01grassland": {
+        "name_zh": "風車補給站", "name_en": "Windmill Supply Post",
+        "items": ["health_potion", "mana_potion", "burn_salve", "rusty_shortbow", "hunting_knife", "novice_wand", "travelers_charm"],
+    },
+    "area_05forest": {
+        "name_zh": "霧葉小舖", "name_en": "Mistleaf Outfitters",
+        "items": ["health_potion", "mana_potion", "thaw_herb", "bronze_sword", "apprentice_staff", "wolf_fang_dagger", "swift_boots", "hide_armor"],
+    },
+    "area_10deep_forest": {
+        "name_zh": "樹心行囊屋", "name_en": "Heartwood Packhouse",
+        "items": ["medium_health_potion", "medium_mana_potion", "paralyze_cure", "iron_sword", "mage_staff", "ranger_bow", "ember_wand", "windrunner_pendant"],
+    },
+    "area_20lab": {
+        "name_zh": "試管黑市", "name_en": "Test-Tube Black Market",
+        "items": ["medium_health_potion", "medium_mana_potion", "elixir_of_cleansing", "guardian_hammer", "archmage_staff", "experimental_blade", "hazmat_plate", "neural_amplifier"],
+    },
+    "area_30graveyard": {
+        "name_zh": "墓燈當舖", "name_en": "Gravelamp Pawnshop",
+        "items": ["high_health_potion", "high_mana_potion", "calming_incense", "bone_reaper_scythe", "spectral_shroud", "grave_charm", "soul_reaper_wand"],
+    },
+    "area_40vampire_castle": {
+        "name_zh": "紅月裁縫館", "name_en": "Redmoon Atelier",
+        "items": ["high_health_potion", "high_mana_potion", "echo_herb", "crimson_rapier", "noble_vampire_coat", "blood_ring", "vampiric_wand"],
+    },
+    "area_55dragon_valley": {
+        "name_zh": "龍脊軍需庫", "name_en": "Dragonspine Armory",
+        "items": ["high_health_potion", "high_mana_potion", "elixir_of_cleansing", "titan_warhammer", "aegis_of_ages", "sage_ring", "dragon_scale_shield"],
+    },
+    "area_70void_rift": {
+        "name_zh": "裂隙旅商棚", "name_en": "Riftway Trader Tent",
+        "items": ["high_health_potion", "high_mana_potion", "mystery_elixir", "voidwalker_glaive", "voidwalker_plate", "voidwalker_band", "void_orb"],
+    },
+    "area_99demon_castle": {
+        "name_zh": "終焉補給所", "name_en": "Final Bastion Provisioner",
+        "items": ["high_health_potion", "high_mana_potion", "mystery_mana_elixir", "netherblade", "netherplate", "nethercrown", "abyss_scepter"],
+    },
 }
-# (min_hp_potion, min_mp_potion) shop-slot item ids per potion_tier.
-SHOP_POTION_TIERS = {
-    "basic": ("health_potion", "mana_potion"),
-    "medium": ("medium_health_potion", "medium_mana_potion"),
-    "high": ("high_health_potion", "high_mana_potion"),
-}
+
+
+def area_shop_config(area_id: str) -> dict:
+    return AREA_FIXED_SHOPS.get(area_id, AREA_FIXED_SHOPS["area_00village"])
+
+
+def area_shop_stock(area_id: str) -> list[str]:
+    return list(area_shop_config(area_id).get("items", []))
 
 # --- Dungeon (roguelike mode) ----------------------------------------------
 DUNGEON_MAX_FLOOR = 15

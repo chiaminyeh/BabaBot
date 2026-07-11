@@ -1,9 +1,7 @@
 import random
-from datetime import datetime
-
 import discord
 
-from trpg.balance import AREA_SHOP_TIERS, SHOP_POTION_TIERS
+from trpg.balance import MYSTERY_MERCHANT_STOCK_COUNT, area_shop_config, area_shop_stock
 from trpg.combat import get_sell_price
 from trpg.i18n import t, tf
 from trpg.player import _item_shop_level_ok
@@ -41,7 +39,7 @@ class ShopMixin:
         return line
 
     def _shop_area_config(self, area_id: str) -> dict:
-        return AREA_SHOP_TIERS.get(area_id, {"gear_range": (0, 4), "potion_tier": "basic"})
+        return area_shop_config(area_id)
 
     def _shop_state(self) -> dict:
         if not isinstance(getattr(self.player, "shop_state", None), dict):
@@ -49,53 +47,32 @@ class ShopMixin:
         return self.player.shop_state.setdefault(self.player.current_area, {})
 
     def _roll_shop_stock(self):
-        area_id = self.player.current_area
-        cfg = self._shop_area_config(area_id)
-        gear_min, gear_max = cfg.get("gear_range", (0, 4))
-        hp_potion, mp_potion = SHOP_POTION_TIERS.get(cfg.get("potion_tier", "basic"), SHOP_POTION_TIERS["basic"])
+        """Area shops are fixed; keep the player state as a cache for UI/buy flow."""
         state = self._shop_state()
-        today_str = datetime.today().strftime("%Y-%m-%d")
-
-        if state.get("last_refresh") != today_str:
-            state["last_refresh"] = today_str
-            state["refresh_count"] = 0
-            state["items"] = []
-
-        if not state.get("items"):
-            pool = []
-            weights = []
-            for item_id, item in self.cog.items.items():
-                w = item.get("shop_weight", 0)
-                if w <= 0:
-                    continue
-                if item_id in (hp_potion, mp_potion, "stamina_potion"):
-                    continue
-                if item.get("type") in ("weapon", "armor", "accessory"):
-                    req = item.get("exclusive_level", 0)
-                    if not (gear_min <= req <= gear_max):
-                        continue
-                if not _item_shop_level_ok(self.player, item_id, item, self.cog.skills):
-                    continue
-                pool.append(item_id)
-                weights.append(w)
-
-            picks = []
-            if pool:
-                for _ in range(5):
-                    if not pool:
-                        break
-                    choice = random.choices(pool, weights=weights, k=1)[0]
-                    picks.append(choice)
-                    idx = pool.index(choice)
-                    pool.pop(idx)
-                    weights.pop(idx)
-
-            stock = [hp_potion, mp_potion]
-            if "stamina_potion" in self.cog.items:
-                stock.append("stamina_potion")
-            stock.extend(picks)
-            state["items"] = [item_id for item_id in stock if item_id in self.cog.items]
+        fixed_stock = [item_id for item_id in area_shop_stock(self.player.current_area) if item_id in self.cog.items]
+        if state.get("items") != fixed_stock:
+            state["items"] = fixed_stock
             self.cog.save_players(player=self.player)
+
+    def _mystery_merchant_pool(self) -> list[str]:
+        pool = []
+        for item_id, item in self.cog.items.items():
+            if item.get("shop_weight", 0) <= 0:
+                continue
+            if not _item_shop_level_ok(self.player, item_id, item, self.cog.skills):
+                continue
+            pool.append(item_id)
+        return pool
+
+    def _roll_mystery_merchant_stock(self, force: bool = False) -> list[str]:
+        state = self._shop_state()
+        if force or not state.get("mystery_items"):
+            pool = self._mystery_merchant_pool()
+            count = min(MYSTERY_MERCHANT_STOCK_COUNT, len(pool))
+            state["mystery_items"] = random.sample(pool, count) if count else []
+            state["mystery_active"] = True
+            self.cog.save_players(player=self.player)
+        return [item_id for item_id in state.get("mystery_items", []) if item_id in self.cog.items]
 
     async def handle_shop_menu(self, notice=""):
         self._roll_shop_stock()
@@ -103,14 +80,13 @@ class ShopMixin:
         lang = self.player.language
         area_id = self.player.current_area
         state = self._shop_state()
+        area_cfg = self._shop_area_config(area_id)
         is_village = self.cog.areas.get(area_id, {}).get("is_village", False)
-        area_name = tf(self.cog.areas.get(area_id, {}), "area_name", lang) or area_id
+        shop_name = area_cfg.get("name_en" if lang == "en" else "name_zh") or area_id
 
         self.clear_items()
         prefix = notice + "\n\n" if notice else ""
-        title_key = "shop.village_store_title" if is_village else "shop.area_store_title"
-        title_fallback = "🛒 【村莊商店】今日貨架：" if is_village else "🛒 【{area}商店】今日貨架："
-        lines = [prefix + t(lang, title_key, title_fallback, area=area_name)]
+        lines = [prefix + t(lang, "shop.fixed_store_title", "🛒 【{shop_name}】固定貨架：", shop_name=shop_name)]
 
         options = []
         for item_id in state.get("items", []):
@@ -140,29 +116,51 @@ class ShopMixin:
         if options:
             self.add_action_select(t(lang, "shop.select_buy_placeholder", "🛒 選擇要購買的物品"), options, row=0, custom_id="sel_buy_item")
 
-        refresh_cost = 100 * (2 ** state.get("refresh_count", 0))
-        self.add_action_button(label=t(lang, "shop.btn_refresh_shop", "刷新商店 ({cost}$)", cost=refresh_cost), style=discord.ButtonStyle.danger, custom_id="btn_shop_refresh", emoji="🔄")
         self.add_action_button(label=t(lang, "shop.btn_sell_items", "出售物品"), style=discord.ButtonStyle.success, custom_id="btn_shop_sell", emoji="💰")
         back_label = t(lang, "menu.btn_back_village", "返回村莊") if is_village else t(lang, "char.btn_back", "返回")
         self.add_action_button(label=back_label, style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
     async def handle_shop_refresh(self):
-        state = self._shop_state()
-        count = state.get("refresh_count", 0)
-        cost = 100 * (2 ** count)
+        await self.handle_shop_menu(t(self.player.language, "shop.fixed_no_refresh", "📌 這間店的貨架是固定的，不需要刷新。"))
 
-        if not self.cog.try_spend(self.user_id, self.player, cost):
-            await self.handle_shop_menu(t(self.player.language, "shop.refresh_insufficient_gold", "❌ 金幣不足！刷新商店需要 {cost}$。", cost=cost))
-            return
-
-        state["refresh_count"] = count + 1
-        state["items"] = []
-        self.cog.save_players(player=self.player)
-        await self.handle_shop_menu(t(self.player.language, "shop.refresh_success", "🔄 商店已重新進貨。"))
+    async def handle_mystery_merchant(self, notice=""):
+        self.current_menu_state = "mystery_merchant"
+        lang = self.player.language
+        items = self._roll_mystery_merchant_stock()
+        self.clear_items()
+        prefix = notice + "\n\n" if notice else ""
+        lines = [prefix + t(lang, "shop.mystery_merchant_title", "🎭 【神秘商人】只賣這次遇到的 5 件貨")]
+        options = []
+        if not items:
+            lines.append(t(lang, "shop.mystery_no_stock", "（他翻了翻行囊，今天似乎沒有能賣的東西。）"))
+        for item_id in items:
+            item = self.cog.items.get(item_id)
+            if not item:
+                continue
+            lines.append(self._format_shop_item_line(item_id))
+            comp_str = self._get_equipment_comparison_string(item) if item.get("type") in ("weapon", "armor", "accessory") else ""
+            comp_suffix = f" {comp_str}" if comp_str else ""
+            item_name = f"{item_emoji(item)} {tf(item, 'name', lang)}"
+            label_text = t(
+                lang,
+                "shop.btn_buy_mystery_item",
+                "🎭 {name} ({price}$){comp_suffix}",
+                name=item_name,
+                price=item.get("price", 0),
+                comp_suffix=comp_suffix,
+            )
+            options.append((label_text[:100], f"buy_{item_id}", (tf(item, "desc", lang) or "")[:100], item_emoji(item)))
+        self.log_message = "\n".join(lines)
+        if options:
+            self.add_action_select(t(lang, "shop.select_buy_placeholder", "🛒 選擇要購買的物品"), options, row=0, custom_id="sel_buy_item")
+        self.add_action_button(label=t(lang, "shop.btn_sell_items", "出售物品"), style=discord.ButtonStyle.success, custom_id="btn_shop_sell", emoji="💰")
+        self.add_action_button(label=t(lang, "char.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
     async def _refresh_buy_menu(self, notice: str):
         if getattr(self, "current_menu_state", None) == "tower_merchant":
             await self.handle_tower_merchant(notice)
+        elif getattr(self, "current_menu_state", None) == "mystery_merchant":
+            await self.handle_mystery_merchant(notice)
         else:
             await self.handle_shop_menu(notice)
 

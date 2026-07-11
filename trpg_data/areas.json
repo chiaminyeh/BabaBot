@@ -3,14 +3,10 @@
         "area_name": "新手村",
         "area_name_en": "Beginner's Village",
         "is_village": true,
-        "events": [
-            "village_old_man_cat"
-        ],
+        "events": [],
         "subareas": [
             {
-                "events": [
-                    "village_old_man_cat"
-                ],
+                "events": [],
                 "name": "村口廣場",
                 "id": "village_square",
                 "desc": "公告欄、馬車與旅人往來的中心。",

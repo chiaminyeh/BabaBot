@@ -2289,17 +2289,6 @@
             "atk": 18
         }
     },
-    "stamina_potion": {
-        "name": "體力藥水",
-        "type": "stamina_potion",
-        "stamina_restore": 50,
-        "price": 80,
-        "sell_price": 30,
-        "shop_weight": 0,
-        "desc": "恢復 50 點體力。",
-        "name_en": "Stamina Potion",
-        "desc_en": "Restores 50 stamina."
-    },
     "lost_cat": {
         "name": "走失的貓",
         "type": "quest_item",

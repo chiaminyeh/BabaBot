@@ -427,11 +427,6 @@ class TestMultiCharacter(unittest.TestCase):
         player = cog.get_player("778899")
         player.onboarding_done = True
         player.current_area = "area_00village"
-        today = cog.players["778899_0"].last_stamina_refresh
-        player.daily_boss_kills = {
-            "area_00village": today,
-            "area_old": "1999-01-01",
-        }
         view = TRPGGameView(cog, "778899")
         today = view._today_str()
         player.daily_boss_kills = {
@@ -439,7 +434,7 @@ class TestMultiCharacter(unittest.TestCase):
             "area_old": "1999-01-01",
         }
 
-        changed = view._refresh_daily_stamina()
+        changed = view._refresh_daily_state()
 
         self.assertTrue(changed)
         self.assertEqual(player.daily_boss_kills, {"area_00village": today})

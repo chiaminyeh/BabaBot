@@ -8,7 +8,6 @@ ITEM_TYPE_EMOJI = {
     "armor": "🛡️",
     "accessory": "💍",
     "potion": "🧪",
-    "stamina_potion": "🧪",
     "cure": "💊",
     "buff_item": "⏳",
     "skill_scroll": "📜",

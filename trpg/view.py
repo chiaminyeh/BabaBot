@@ -21,6 +21,7 @@ from trpg.view_shop import ShopMixin
 from trpg.view_dungeon import DungeonMixin
 from trpg.view_tutorial import TutorialMixin
 from trpg.views.main_menu import MainMenuLayout
+from trpg.balance import MYSTERY_MERCHANT_CHANCE
 from trpg.views.battle import BattleLayout
 from trpg.views.char import CharLayout
 
@@ -32,7 +33,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.user_id = str(user_id)
         self.player = RoguePlayerWrapper(cog.get_player(user_id))
         self.mutation_lock = asyncio.Lock()
-        if self._refresh_daily_stamina():
+        if self._refresh_daily_state():
             self.cog.save_players(player=self.player)
         self.message = None
 
@@ -98,9 +99,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
     def _today_str(self) -> str:
         return datetime.today().strftime("%Y-%m-%d")
 
-    def _refresh_daily_stamina(self) -> bool:
+    def _refresh_daily_state(self) -> bool:
         real = getattr(self.player, "real_player", self.player)
-        max_stamina = max(1, int(getattr(real, "max_stamina", 200) or 200))
         today = self._today_str()
         changed = False
         if not isinstance(getattr(real, "daily_boss_kills", None), dict):
@@ -115,37 +115,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             if kept != real.daily_boss_kills:
                 real.daily_boss_kills = kept
                 changed = True
-        if getattr(real, "max_stamina", None) != max_stamina:
-            real.max_stamina = max_stamina
-            changed = True
-        if getattr(real, "last_stamina_refresh", "") != today:
-            real.stamina = max_stamina
-            real.last_stamina_refresh = today
-            changed = True
-        elif getattr(real, "stamina", None) is None:
-            real.stamina = max_stamina
-            changed = True
         return changed
-
-    def _spend_stamina(self, cost: int) -> bool:
-        self._refresh_daily_stamina()
-        real = getattr(self.player, "real_player", self.player)
-        current = max(0, int(getattr(real, "stamina", 0) or 0))
-        max_stamina = max(1, int(getattr(real, "max_stamina", 200) or 200))
-        if current < cost:
-            self.log_message = t(
-                self.player.language,
-                "stamina.not_enough",
-                "❌ Not enough stamina. You have {current}/{max_stamina}, but this action needs {cost}.",
-                current=current,
-                max_stamina=max_stamina,
-                cost=cost,
-            )
-            self.build_main_menu()
-            return False
-        real.stamina = current - cost
-        self.cog.save_players(player=self.player)
-        return True
 
     @property
     def monster_hp(self):
@@ -262,6 +232,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "btn_shop_menu": {"m": "handle_shop_menu"},
         "btn_shop_refresh": {"m": "handle_shop_refresh"},
         "btn_shop_sell": {"m": "handle_sell_menu"},
+        "btn_mystery_merchant": {"m": "handle_mystery_merchant"},
         "btn_equip_menu": {"m": "handle_equip_menu"},
         "btn_dung_next": {"m": "handle_dung_next"},
         "btn_boss_explore": {"m": "handle_boss_explore"},
@@ -615,10 +586,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             if achv_id in unlocked_ids:
                 continue
             any_locked = True
-            achv_type = info.get("type")
-            threshold = info.get("threshold", 0)
-            current_val = self._achievement_progress_value(achv_type)
-            lines.append(f"🔒 {tf(info, 'name', lang)} — {tf(info, 'desc', lang)} ({min(current_val, threshold)}/{threshold})")
+            lines.append(f"🔒 {tf(info, 'name', lang)} — {tf(info, 'desc', lang)}")
         if not any_locked:
             lines.append(t(lang, "achievements.all_unlocked", "🎉 已解鎖所有成就！"))
 
@@ -987,9 +955,6 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.log_message = t(lang, "menu.boss_already_defeated_today", "✅ 今天已經討伐過這個區域的 BOSS 了，請明天再來挑戰。")
             self.build_main_menu()
             return
-        if not self._spend_stamina(20):
-            return
-
        # 遭遇 BOSS，複製數值進入戰鬥
         boss_instance = dict(boss_data)
         boss_instance.setdefault("id", "boss")
@@ -1233,8 +1198,6 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 self.log_message = self.combat.use_buff_item(item_id)
             else:
                 self.log_message = t(lang, "battle.buff_item_battle_only", "❌ 這個道具只能在戰鬥中使用。")
-        elif item.get("type") == "stamina_potion":
-            self.log_message = self.use_stamina_potion(item_id)
         else:
             self.log_message = t(lang, "battle.cannot_use_item", "❌ 無法使用此物品。")
 
@@ -1243,31 +1206,6 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.build_battle_menu()
         else:
             self.build_main_menu()
-
-    def use_stamina_potion(self, item_id: str) -> str:
-        lang = self.player.language
-        if self.in_battle:
-            return t(lang, "stamina.battle_only_block", "❌ You can't restore stamina during battle.")
-        if self.player.inventory.get(item_id, 0) <= 0:
-            item_name = tf(self.cog.items.get(item_id, {}), "name", lang) or t(lang, "battle.potion_fallback_name", "potion")
-            return t(lang, "battle.no_item_left", "❌ You're out of {item_name}!", item_name=item_name)
-
-        self._refresh_daily_stamina()
-        real = getattr(self.player, "real_player", self.player)
-        current = max(0, int(getattr(real, "stamina", 0) or 0))
-        max_stamina = max(1, int(getattr(real, "max_stamina", 200) or 200))
-        if current >= max_stamina:
-            return t(lang, "stamina.already_full", "❌ Your stamina is already full.")
-
-        item_data = self.cog.items.get(item_id, {})
-        restore = max(0, int(item_data.get("stamina_restore", 0) or 0))
-        self.player.inventory[item_id] -= 1
-        if self.player.inventory[item_id] <= 0:
-            del self.player.inventory[item_id]
-
-        real.stamina = min(max_stamina, current + restore)
-        self.cog.save_players(player=self.player)
-        return t(lang, "stamina.potion_used", "⚡ You drink a stamina potion and restore {gain} stamina.", gain=real.stamina - current)
 
     def use_potion_out_of_battle(self, item_id: str):
         """戰鬥外的藥水邏輯"""
@@ -1395,9 +1333,6 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         p_magic = get_player_magic(p, self.cog.items, self.cog.status_effects)
         p_spd = get_player_spd(p)
         p_res = getattr(p, "base_res", 0)
-        self._refresh_daily_stamina()
-        current_stamina = max(0, int(getattr(getattr(p, "real_player", p), "stamina", 0) or 0))
-        max_stamina = max(1, int(getattr(getattr(p, "real_player", p), "max_stamina", 200) or 200))
         unspent = get_unspent_points(p)
 
         # 配合 trpg_combat.py 的設定，抓取 player_av
@@ -1426,15 +1361,10 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             header_line = t(lang, "battle.header_line", "**Lv.{level} 冒險者**", level=p.level)
         else:
             header_line = t(lang, "battle.adventurer_status_line", "**Lv.{level} 冒險者** | 💰 {balance} {money_name}", level=p.level, balance=user_bal, money_name=self.cog.bot.baba.money_name)
-        stamina_line = ""
-        if not self.in_battle:
-            stamina_line = f"{t(lang, 'stamina.line', '⚡ 體力: `{current}/{max_stamina}`', current=current_stamina, max_stamina=max_stamina)}\n"
-
         player_desc = (
             f"{header_line}\n"
             f"❤️ HP: `{p.current_hp:03d}/{p.max_hp:03d}`\n"
             f"💧 MP: `{p.current_mp:03d}/{p.max_mp:03d}`\n"
-            f"{stamina_line}"
             f"⚔️ ATK: `{p_atk}` | 🛡️ DEF: `{p_def}` | 🚀 SPD: `{p_spd}`\n"
             f"✨ MAG: `{p_magic}` | 🔰 RES: `{p_res}`\n"
         )
@@ -2258,6 +2188,14 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.log_message = t(lang, "explore.monster_appeared", "⚔️ 野外出現了【{monster_name}】！", monster_name=tf(monster_instance, "name", lang))
         self.build_battle_menu()
 
+    def _maybe_spawn_mystery_merchant(self) -> bool:
+        if self.player.current_area in {"area_tower", "area_dungeon", "area_legend_cave"}:
+            return False
+        if random.random() >= MYSTERY_MERCHANT_CHANCE:
+            return False
+        self._roll_mystery_merchant_stock(force=True)
+        return True
+
     async def handle_explore(self):
         lang = self.player.language
         if self.player.current_hp <= 0:
@@ -2278,7 +2216,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 return
             self.build_subarea_menu()
             return
-        if not self._spend_stamina(4):
+
+        if self._maybe_spawn_mystery_merchant():
+            await self.handle_mystery_merchant(t(lang, "shop.mystery_found", "🎭 你在探索途中遇見了神秘商人。"))
             return
 
         event_chance = area_data.get("event_chance", 0.2)
@@ -2300,10 +2240,12 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.log_message = t(lang, "explore.already_fallen", "❌ 你已經倒下了，請先去旅館休息療傷！")
             return
 
-        if not self._spend_stamina(4):
-            return
         getattr(self.player, "real_player", self.player).current_subarea = subarea_id
         self.cog.save_players(player=self.player)
+
+        if self._maybe_spawn_mystery_merchant():
+            await self.handle_mystery_merchant(t(lang, "shop.mystery_found", "🎭 你在探索途中遇見了神秘商人。"))
+            return
 
         event_chance = subarea.get("event_chance", area_data.get("event_chance", 0.2))
         if random.random() < event_chance and self.cog.events:
@@ -2404,11 +2346,6 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         p = self.player
         lang = p.language
         user_bal = self.cog.get_bank_balance(self.user_id)
-        self._refresh_daily_stamina()
-        real = getattr(p, "real_player", p)
-        current_stamina = max(0, int(getattr(real, "stamina", 0) or 0))
-        max_stamina = max(1, int(getattr(real, "max_stamina", 200) or 200))
-
         status_embed = discord.Embed(title=t(lang, "char.status_title", "📜 {user} 的詳細冒險狀態", user=interaction.user.name), color=discord.Color.blue())
         status_embed.add_field(name=t(lang, "char.level_exp", "等級與經驗"), value=f"Lv.{p.level} (EXP: {p.exp}/{exp_to_next_level(p.level)})", inline=True)
         status_embed.add_field(name=t(lang, "char.wallet_balance", "錢包餘額"), value=f"{user_bal} {self.cog.bot.baba.money_name}", inline=True)
@@ -2429,7 +2366,6 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             value=(
                 f"❤️ HP: {p.current_hp}/{p.max_hp}\n"
                 f"💧 MP: {p.current_mp}/{p.max_mp}\n"
-                f"⚡ {'體力' if lang != 'en' else 'Stamina'}: {current_stamina}/{max_stamina}\n"
                 f"⚔️ ATK: {get_player_atk(p, self.cog.items, self.cog.status_effects)} | 🛡️ DEF: {get_player_def(p, self.cog.items)}\n"
                 f"✨ MAG: {get_player_magic(p, self.cog.items, self.cog.status_effects)} | 🚀 SPD: {get_player_spd(p)}\n"
                 f"🍀 LUCK: {getattr(p, 'base_luck', 0)}\n"
