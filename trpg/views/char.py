@@ -135,7 +135,7 @@ class CharLayout:
         reset_label = (t(lang, "char.btn_reset_stats_paid", "重置所有屬性點（{cost}$）", cost=reset_cost) if reset_cost > 0
                        else t(lang, "char.btn_reset_stats", "重置所有屬性點"))
         view.add_action_button(label=reset_label, style=discord.ButtonStyle.danger, custom_id="btn_stat_reset", row=last_row, emoji="🔄")
-        view.add_action_button(label=t(lang, "char.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", row=last_row, emoji="🔙")
+        view.add_action_button(label=t(lang, "char.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", row=last_row, emoji="🔙")
 
     @staticmethod
     def handle_prestige_menu(view, notice=""):
@@ -214,7 +214,7 @@ class CharLayout:
             else:
                 view.log_message += "\n\n" + t(lang, "skill.all_scrolls_learned", "（背包裡卷軸的技能都已學會）")
 
-        view.add_action_button(label=t(lang, "skill.btn_back_to_church", "返回教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", emoji="🔙")
+        view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_school_menu", emoji="🔙")
 
     @staticmethod
     def handle_skill_equip_menu(view, notice="", paging=False):
@@ -279,4 +279,91 @@ class CharLayout:
         view.log_message = "\n".join(lines)
         if len(unequipped_list) > per_page:
             view._add_pagination_buttons(len(unequipped_list), per_page)
-        view.add_action_button(label=t(lang, "skill.btn_back_to_church", "返回教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", emoji="🔙", row=4)
+        view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_school_menu", emoji="🔙", row=4)
+
+    @staticmethod
+    def build_skill_codex_menu(view):
+        view.clear_items()
+        view.current_menu_state = "skill_codex_index"
+        lang = view.player.language
+        view.log_message = t(lang, "skill.codex_prompt", "📖 【冒險者技能圖鑑】\n在這裡你可以查看世界上所有已知的魔法與技能，以及學會它們所需的等級與流派點數。")
+        
+        view.add_action_button(label=t(lang, "skill.codex_knight", "🛡️ 騎士技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_knight", row=0)
+        view.add_action_button(label=t(lang, "skill.codex_rogue", "🚀 盜賊技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_rogue", row=0)
+        view.add_action_button(label=t(lang, "skill.codex_mage", "🔮 法師技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_mage", row=0)
+        view.add_action_button(label=t(lang, "skill.codex_warlock", "🌑 術士技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_warlock", row=1)
+        view.add_action_button(label=t(lang, "skill.codex_luck", "🍀 幸運技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_luck", row=1)
+        view.add_action_button(label=t(lang, "skill.codex_common", "📜 通用技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_common", row=1)
+        
+        view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_school_menu", row=2, emoji="🔙")
+
+    @staticmethod
+    def handle_skill_codex_category(view, category: str):
+        view.clear_items()
+        view.current_menu_state = f"skill_codex_{category}"
+        lang = view.player.language
+        
+        categories = get_skills_by_category(view.cog.skills)
+        skills = categories.get(category, [])
+        
+        cat_names = {
+            "knight": t(lang, "skill.codex_knight", "🛡️ 騎士技能"),
+            "rogue": t(lang, "skill.codex_rogue", "🚀 盜賊技能"),
+            "mage": t(lang, "skill.codex_mage", "🔮 法師技能"),
+            "warlock": t(lang, "skill.codex_warlock", "🌑 術士技能"),
+            "luck": t(lang, "skill.codex_luck", "🍀 幸運技能"),
+            "common": t(lang, "skill.codex_common", "📜 通用技能")
+        }
+        cat_name = cat_names.get(category, category)
+        
+        lines = [f"📖 【{cat_name}】\n"]
+        
+        for skill_id, skill in skills:
+            name = tf(skill, "name", lang)
+            desc = tf(skill, "desc", lang)
+            req_lv = skill.get("req_level", 1)
+            req_pts = skill.get("req_points", {})
+            
+            req_parts = [f"Lv.{req_lv}"]
+            for stat, val in req_pts.items():
+                req_parts.append(f"{stat_display_name(stat, lang)} {val}")
+                
+            req_text = " + ".join(req_parts)
+            lines.append(f"• **{name}** ({req_text})")
+            lines.append(f"  *{desc}*\n")
+            
+        view.log_message = "\n".join(lines)[:1800]
+        
+        view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_skill_codex", emoji="🔙")
+
+def get_skills_by_category(skills_data: dict) -> dict[str, list[tuple[str, dict]]]:
+    categories = {
+        "knight": [],
+        "rogue": [],
+        "mage": [],
+        "warlock": [],
+        "luck": [],
+        "common": []
+    }
+    for skill_id, skill in skills_data.items():
+        req_pts = skill.get("req_points", {})
+        if "knight" in req_pts:
+            categories["knight"].append((skill_id, skill))
+        elif "rogue" in req_pts:
+            categories["rogue"].append((skill_id, skill))
+        elif "mage" in req_pts:
+            categories["mage"].append((skill_id, skill))
+        elif "warlock" in req_pts:
+            categories["warlock"].append((skill_id, skill))
+        elif "luck" in req_pts:
+            categories["luck"].append((skill_id, skill))
+        else:
+            categories["common"].append((skill_id, skill))
+            
+    # Sort each category by level requirement or point requirement
+    for cat in categories:
+        categories[cat].sort(key=lambda x: (
+            list(x[1].get("req_points", {}).values())[0] if x[1].get("req_points") else 0,
+            x[1].get("req_level", 1)
+        ))
+    return categories

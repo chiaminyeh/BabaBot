@@ -261,6 +261,12 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
     atk = _POWER_STAT_GETTERS.get(power_stat, _POWER_STAT_GETTERS["atk"])(caster)
     magic = caster.magic
 
+    player_obj = getattr(caster, "player", None)
+    relic_crit = 0.0
+    if player_obj is not None:
+        relic_effects = getattr(player_obj, "dungeon_relic_effects", None) or {}
+        relic_crit = relic_effects.get("crit_bonus", 0.0)
+
     total_dmg = 0
     target_blocks = []
 
@@ -303,7 +309,7 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
                 dmg = max(1, int(dmg * status_synergy))
 
             # 物理跟 HP 獻祭流都可以暴擊，魔法傷害不會
-            if skill_type != "magic" and random.random() < (SKILL_CRIT_CHANCE + crit_bonus + luck_crit_bonus(caster.luck)):
+            if skill_type != "magic" and random.random() < (SKILL_CRIT_CHANCE + crit_bonus + relic_crit + luck_crit_bonus(caster.luck)):
                 dmg = int(dmg * 1.5)
                 hit_logs.append(t(target.lang, "combat.skill_hit_crit", "  第{n}擊暴擊 {dmg} 點！", n=i + 1, dmg=dmg))
             else:

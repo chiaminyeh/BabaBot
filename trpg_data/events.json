@@ -147,7 +147,8 @@
             },
             "gold": 20
         },
-        "message_en": "You find the missing cat hiding in the bushes, hungry but safe."
+        "message_en": "You find the missing cat hiding in the bushes, hungry but safe.",
+        "once_hint": "quest_find_cat"
     },
     "forest_herb_patch": {
         "category": "good",

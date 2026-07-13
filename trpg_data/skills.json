@@ -363,7 +363,7 @@
     },
     "void_eruption": {
         "name": "🔮🌑 虛空爆發",
-        "desc": "造成 500 點基礎暗屬性傷害，且無視 80% 防禦（CD: 6，需 Lv.25）",
+        "desc": "造成 500 點基礎暗屬性傷害，且無視 80% 防禦（CD: 6，需 Lv.25、術士 25）",
         "type": "magic",
         "element": "dark",
         "mp_cost": 80,
@@ -373,9 +373,9 @@
         "base_power": 500,
         "magic_scaling": 2.5,
         "name_en": "🔮🌑 Void Eruption",
-        "desc_en": "Deals 500 base dark damage, ignoring 80% of defense (CD: 6, requires Lv.25)",
+        "desc_en": "Deals 500 base dark damage, ignoring 80% of defense (CD: 6, requires Lv.25, Warlock 25)",
         "req_points": {
-            "warlock": 30
+            "warlock": 25
         }
     },
     "venom_cloud": {
@@ -422,7 +422,7 @@
     },
     "meteor_swarm": {
         "name": "🔮🔥 隕石風暴",
-        "desc": "對全體敵人造成 400 點基礎火屬性巨大傷害，70% 機率強力燃燒 3 回合（CD: 6，需 Lv.25）",
+        "desc": "對全體敵人造成 400 點基礎火屬性巨大傷害，70% 機率強力燃燒 3 回合（CD: 6，需 Lv.25、法師 25）",
         "type": "magic",
         "element": "fire",
         "mp_cost": 90,
@@ -436,9 +436,9 @@
         "base_power": 400,
         "magic_scaling": 2.5,
         "name_en": "🔮🔥 Meteor Swarm",
-        "desc_en": "Deals massive 400 base fire damage to all enemies, with a 70% chance to inflict intense Burn for 3 turns (CD: 6, requires Lv.25)",
+        "desc_en": "Deals massive 400 base fire damage to all enemies, with a 70% chance to inflict intense Burn for 3 turns (CD: 6, requires Lv.25, Mage 25)",
         "req_points": {
-            "mage": 30
+            "mage": 25
         }
     },
     "earthquake": {
@@ -552,16 +552,19 @@
     },
     "status_hunter": {
         "name": "☠️ 獵異追擊",
-        "desc": "被動：攻擊帶有異常狀態的目標時，額外造成 45% 傷害（需 Lv.25）",
+        "desc": "被動：攻擊帶有異常狀態的目標時，額外造成 45% 傷害（需 Lv.25、幸運 25）",
         "type": "passive",
         "req_level": 25,
         "status_target_damage_mult": 1.45,
         "name_en": "☠️ Status Hunter",
-        "desc_en": "Passive: deal 45% extra damage to targets already afflicted by a status ailment (requires Lv.25)"
+        "desc_en": "Passive: deal 45% extra damage to targets already afflicted by a status ailment (requires Lv.25, Luck 25)",
+        "req_points": {
+            "luck": 25
+        }
     },
     "blood_awakening": {
         "name": "🩸 血醒儀式",
-        "desc": "喚醒血族本能：4 回合內攻擊力 +45%、速度 +20%，並每回合回復 5% 最大 HP（CD: 6，需 Lv.40）",
+        "desc": "喚醒血族本能：4 回合內攻擊力 +45%、速度 +20%，並每回合回復 5% 最大 HP（CD: 6，需 Lv.40、術士 50）",
         "type": "support",
         "buff": {
             "atk_mult": 1.45,
@@ -576,11 +579,14 @@
         "cd": 6,
         "req_level": 40,
         "name_en": "🩸 Blood Awakening",
-        "desc_en": "Awaken vampiric instincts: for 4 turns, ATK +45%, SPD +20%, and restore 5% max HP each turn (CD: 6, requires Lv.40)"
+        "desc_en": "Awaken vampiric instincts: for 4 turns, ATK +45%, SPD +20%, and restore 5% max HP each turn (CD: 6, requires Lv.40, Warlock 50)",
+        "req_points": {
+            "warlock": 50
+        }
     },
     "titan_crash": {
         "name": "🛡️💥 泰坦鎮擊",
-        "desc": "以防禦力猛烈撞擊敵人，造成 1.55 倍土屬性傷害，並讓敵人攻擊力下降 20%（2 回合，CD: 4，需 Lv.50）",
+        "desc": "以防禦力猛烈撞擊敵人，造成 1.55 倍土屬性傷害，並讓敵人攻擊力下降 20%（2 回合，CD: 4，需 Lv.50、騎士 50）",
         "type": "physical",
         "element": "earth",
         "power_stat": "def",
@@ -594,11 +600,14 @@
         "cd": 4,
         "req_level": 50,
         "name_en": "🛡️💥 Titan Crash",
-        "desc_en": "Crash into the enemy with your defense, dealing 1.55x earth damage and lowering their ATK by 20% for 2 turns (CD: 4, requires Lv.50)"
+        "desc_en": "Crash into the enemy with your defense, dealing 1.55x earth damage and lowering their ATK by 20% for 2 turns (CD: 4, requires Lv.50, Knight 50)",
+        "req_points": {
+            "knight": 50
+        }
     },
     "phoenix_rite": {
         "name": "🔥🕊️ 鳳凰儀式",
-        "desc": "以不滅之火重整戰線：清除自身異常，回復 18% 最大 HP，接著 3 回合每回合再回復 8% 最大 HP（CD: 6，需 Lv.60）",
+        "desc": "以不滅之火重整戰線：清除自身異常，回復 18% 最大 HP，接著 3 回合每回合再回復 8% 最大 HP（CD: 6，需 Lv.60、法師 50）",
         "type": "support",
         "cleanse": true,
         "heal_percent": 0.18,
@@ -610,11 +619,14 @@
         "cd": 6,
         "req_level": 60,
         "name_en": "🔥🕊️ Phoenix Rite",
-        "desc_en": "Rekindle yourself in undying flame: cleanse all ailments, restore 18% max HP, then recover 8% max HP each turn for 3 turns (CD: 6, requires Lv.60)"
+        "desc_en": "Rekindle yourself in undying flame: cleanse all ailments, restore 18% max HP, then recover 8% max HP each turn for 3 turns (CD: 6, requires Lv.60, Mage 50)",
+        "req_points": {
+            "mage": 50
+        }
     },
     "rift_strike": {
         "name": "🌌⚔️ 裂隙突襲",
-        "desc": "以速度撕開空間，連擊 2 次，每擊造成 0.9 倍暗屬性傷害，並有 45% 機率使敵人麻痺 2 回合（CD: 4，需 Lv.70）",
+        "desc": "以速度撕開空間，連擊 2 次，每擊造成 0.9 倍暗屬性傷害，並有 45% 機率使敵人麻痺 2 回合（CD: 4，需 Lv.70、盜賊 80）",
         "type": "physical",
         "element": "dark",
         "power_stat": "spd",
@@ -627,11 +639,14 @@
         "cd": 4,
         "req_level": 70,
         "name_en": "🌌⚔️ Rift Strike",
-        "desc_en": "Rip through space with pure speed, striking twice for 0.9x dark damage each and giving each hit a 45% chance to inflict Paralysis for 2 turns (CD: 4, requires Lv.70)"
+        "desc_en": "Rip through space with pure speed, striking twice for 0.9x dark damage each and giving each hit a 45% chance to inflict Paralysis for 2 turns (CD: 4, requires Lv.70, Rogue 80)",
+        "req_points": {
+            "rogue": 80
+        }
     },
     "abyssal_requiem": {
         "name": "🌑🎼 深淵安魂曲",
-        "desc": "對全體敵人降下深淵樂章：造成 520 點基礎暗屬性傷害，65% 機率使其沉默 2 回合，並無視 70% 防禦（CD: 7，需 Lv.80）",
+        "desc": "對全體敵人降下深淵樂章：造成 520 點基礎暗屬性傷害，65% 機率使其沉默 2 回合，並無視 70% 防禦（CD: 7，需 Lv.80、術士 80）",
         "type": "magic",
         "element": "dark",
         "target_type": "all",
@@ -645,7 +660,10 @@
         "cd": 7,
         "req_level": 80,
         "name_en": "🌑🎼 Abyssal Requiem",
-        "desc_en": "Unleash a funeral hymn from the abyss on all enemies: 520 base dark damage, 65% chance to inflict Silence for 2 turns, and ignores 70% defense (CD: 7, requires Lv.80)"
+        "desc_en": "Unleash a funeral hymn from the abyss on all enemies: 520 base dark damage, 65% chance to inflict Silence for 2 turns, and ignores 70% defense (CD: 7, requires Lv.80, Warlock 80)",
+        "req_points": {
+            "warlock": 80
+        }
     },
     "shield_bash": {
         "name": "🛡️ 盾擊",

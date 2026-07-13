@@ -242,6 +242,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "btn_artisan_menu": {"m": "build_artisan_menu", "await": False},
         "btn_guild_menu": {"m": "build_guild_menu", "await": False},
         "btn_church_menu": {"m": "build_church_menu", "await": False},
+        "btn_school_menu": {"m": "build_school_menu", "await": False},
+        "btn_skill_codex": {"m": "handle_skill_codex_menu"},
         "btn_skill_equip": {"m": "handle_skill_equip_menu"},
         "btn_tower_safe_room": {"m": "handle_tower_safe_room", "k": {"revisit": True}},
         "btn_tower_merchant": {"m": "handle_tower_merchant"},
@@ -272,6 +274,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
     # gets passed: "suffix" = custom_id after the prefix, "full" = whole
     # custom_id, "int_tail" = int of the last underscore segment.
     _PREFIX_ROUTES = [
+        ("codex_cat_", {"m": "handle_skill_codex_category", "arg": "suffix"}),
         ("char_switch_", {"m": "handle_char_switch", "arg": "suffix"}),
         ("char_create_", {"m": "handle_char_create", "arg": "suffix"}),
         ("char_delete_ask_", {"m": "handle_char_delete_ask", "arg": "suffix"}),
@@ -618,6 +621,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
 
     def build_church_menu(self):
         MainMenuLayout.build_church_menu(self)
+    def build_school_menu(self):
+        MainMenuLayout.build_school_menu(self)
     def process_death(self, log: str, reason: str = None) -> str:
         """統一處理死亡邏輯，回傳組合好的 log 訊息"""
         lang = self.player.language
@@ -1332,7 +1337,6 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         p_def = get_player_def(p, self.cog.items)
         p_magic = get_player_magic(p, self.cog.items, self.cog.status_effects)
         p_spd = get_player_spd(p)
-        p_res = getattr(p, "base_res", 0)
         unspent = get_unspent_points(p)
 
         # 配合 trpg_combat.py 的設定，抓取 player_av
@@ -1366,7 +1370,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             f"❤️ HP: `{p.current_hp:03d}/{p.max_hp:03d}`\n"
             f"💧 MP: `{p.current_mp:03d}/{p.max_mp:03d}`\n"
             f"⚔️ ATK: `{p_atk}` | 🛡️ DEF: `{p_def}` | 🚀 SPD: `{p_spd}`\n"
-            f"✨ MAG: `{p_magic}` | 🔰 RES: `{p_res}`\n"
+            f"✨ MAG: `{p_magic}`\n"
         )
 
         status_line = t(lang, "battle.status_line", "📜 狀態：{status_text}", status_text=status_text)
@@ -1514,6 +1518,10 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         BattleLayout.handle_skill_menu(self)
     async def handle_learn_skill_menu(self, notice=""):
         CharLayout.handle_learn_skill_menu(self, notice)
+    async def handle_skill_codex_menu(self):
+        CharLayout.build_skill_codex_menu(self)
+    async def handle_skill_codex_category(self, category: str):
+        CharLayout.handle_skill_codex_category(self, category)
     async def handle_skill_equip_menu(self, notice="", paging=False):
         CharLayout.handle_skill_equip_menu(self, notice, paging)
     async def handle_skill_equip_action(self, skill_id: str, equip: bool):
@@ -1664,8 +1672,14 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         if not getattr(self.player, "stat_alloc", None):
             self.player.stat_alloc = default_stat_alloc()
 
-        add_amount = min(amount, unspent)
-        self.player.stat_alloc[stat_key] = self.player.stat_alloc.get(stat_key, 0) + add_amount
+        current = self.player.stat_alloc.get(stat_key, 0)
+        allowed = max(0, 99 - current)
+        if allowed <= 0:
+            await self.handle_stat_alloc_menu(t(lang, "char.stat_maxed", "❌ 該屬性點數已達上限 99 點！") if lang == "zh" else "❌ This attribute is already maxed at 99 points!")
+            return
+
+        add_amount = min(amount, unspent, allowed)
+        self.player.stat_alloc[stat_key] = current + add_amount
         recalc_player_stats(self.player, self.cog.items, heal_full=False)
         self.cog.save_players(player=self.player)
         await self.handle_stat_alloc_menu(t(lang, "char.points_invested", "✅ 已將 {add_amount} 點投入【{stat_key}】。", add_amount=add_amount, stat_key=stat_display_name(stat_key, lang)))
@@ -2267,6 +2281,20 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             event_pool = [e for e in area_data["events"] if e in self.cog.events]
         else:
             event_pool = list(self.cog.events.keys())
+
+        if not event_pool:
+            self.log_message = t(lang, "explore.nothing_happened", "🌫️ 四周靜悄悄的，什麼也沒發生。")
+            self.build_main_menu()
+            return
+
+        real = getattr(self.player, "real_player", self.player)
+        active_quests = getattr(real, "active_quests", {}) or {}
+        completed_quests = set(getattr(real, "completed_quests", []) or [])
+        inventory = getattr(real, "inventory", {}) or {}
+        if "quest_find_cat" in completed_quests or inventory.get("lost_cat", 0) > 0 or "quest_find_cat" not in active_quests:
+            event_pool = [eid for eid in event_pool if eid != "forest_cat_found"]
+        if "quest_find_cat" in completed_quests or "quest_find_cat" in active_quests:
+            event_pool = [eid for eid in event_pool if eid != "village_old_man_cat"]
 
         if not event_pool:
             self.log_message = t(lang, "explore.nothing_happened", "🌫️ 四周靜悄悄的，什麼也沒發生。")

@@ -1,7 +1,7 @@
 {
     "area_00village": {
-        "area_name": "新手村",
-        "area_name_en": "Beginner's Village",
+        "area_name": "米酥村",
+        "area_name_en": "MISO town",
         "is_village": true,
         "events": [],
         "subareas": [
@@ -32,7 +32,7 @@
         ]
     },
     "area_01grassland": {
-        "area_name": "新手村郊外",
+        "area_name": "米酥村郊外",
         "monsters": {
             "slime": {
                 "spawn_rate": 0.5

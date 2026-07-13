@@ -143,16 +143,12 @@ def prune_unqualified_skills(player, skills_data: dict) -> list[str]:
     learned = list(dict.fromkeys(getattr(player, "skills", []) or []))
     equipped = list(dict.fromkeys(getattr(player, "equipped_skills", []) or []))
     removed = []
-    kept_skills = []
-    for skill_id in learned:
+    for skill_id in equipped:
         skill = skills_data.get(skill_id, {})
         ok, _, _ = meets_skill_requirements(player, skill)
-        if ok:
-            kept_skills.append(skill_id)
-        else:
+        if not ok:
             removed.append(skill_id)
-    player.skills = kept_skills
-    player.equipped_skills = [skill_id for skill_id in equipped if skill_id in kept_skills]
+    player.equipped_skills = [skill_id for skill_id in equipped if skill_id not in removed]
     return removed
 
 
@@ -266,7 +262,6 @@ def recalc_player_stats(player, items: dict = None, heal_full: bool = False):
 
     base_spd = 10 + level + rogue * ALLOC_BONUS["rogue"] + mage * 0.3 + eq["spd"]
     player.base_spd = int(base_spd * prestige_mult)
-    player.base_res = int((warlock * 0.8 + knight * 0.3) * prestige_mult)
 
     base_luck = luck * ALLOC_BONUS["luck"] + rogue * 0.2 + eq["luck"]
     player.base_luck = int(base_luck * prestige_mult)
@@ -295,8 +290,6 @@ def migrate_player_stats(player, items: dict, skills_data: dict | None = None):
 
     if not hasattr(player, "base_int"):
         player.base_int = getattr(player, "base_magic", 0)
-    if not hasattr(player, "base_res"):
-        player.base_res = 0
     if not hasattr(player, "base_spd"):
         player.base_spd = 5 + player.level
     if not hasattr(player, "base_mdef"):

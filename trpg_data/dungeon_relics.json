@@ -166,13 +166,13 @@
     "relic_blessed_ward": {
         "name": "祝福結界",
         "name_en": "Blessed Ward",
-        "desc": "每回合回復8%最大HP、抗性+10、擊殺回復10%最大HP",
-        "desc_en": "Regen 8% Max HP/turn, +10 RES, heal 10% Max HP on kill",
+        "desc": "每回合回復8%最大HP、魔防+10、擊殺回復10%最大HP",
+        "desc_en": "Regen 8% Max HP/turn, +10 MDEF, heal 10% Max HP on kill",
         "rarity": "rare",
         "build": "support",
         "effects": {
             "regen_pct": 0.08,
-            "res": 10,
+            "mdef": 10,
             "on_kill_heal_pct": 0.1
         }
     },

@@ -29,7 +29,7 @@ from trpg.monster_pool import pick_tier_for_floor
 # dungeon_state 裡屬於「封印臨時角色」的欄位（RoguePlayerWrapper 會把這些轉址過去）。
 SEALED_FIELDS = [
     "level", "exp", "max_hp", "current_hp", "max_mp", "current_mp",
-    "base_atk", "base_def", "base_mdef", "base_spd", "base_magic", "base_int", "base_res",
+    "base_atk", "base_def", "base_mdef", "base_spd", "base_magic", "base_int",
     "inventory", "skills", "equipped_skills",
     "weapon", "armor", "accessory", "status_effects", "combat_debuffs", "combat_buffs",
 ]
@@ -75,7 +75,7 @@ def apply_archetype(player, d_state: dict, cog, archetype_id: str) -> bool:
     return True
 
 # 彙整時：直接加到基礎數值的平面欄位 / 每層成長 / 倍率 / 戰鬥 hook
-_FLAT_KEYS = {"atk", "def", "mdef", "hp", "magic", "res", "spd", "mp"}
+_FLAT_KEYS = {"atk", "def", "mdef", "hp", "magic", "spd", "mp"}
 _PER_FLOOR_KEYS = {"hp_per_floor", "def_per_floor", "atk_per_floor"}
 _MULT_KEYS = {"atk_mult", "def_mult", "magic_mult"}
 _HOOK_KEYS = {"crit_bonus", "lifesteal", "on_kill_heal_pct", "regen_pct",
@@ -83,7 +83,7 @@ _HOOK_KEYS = {"crit_bonus", "lifesteal", "on_kill_heal_pct", "regen_pct",
 # 裝備上的數值欄位 -> 彙整鍵
 _ITEM_STAT_FIELDS = {
     "atk_bonus": "atk", "def_bonus": "def", "mdef_bonus": "mdef", "hp_bonus": "hp",
-    "magic_bonus": "magic", "res_bonus": "res", "spd_bonus": "spd", "mp_bonus": "mp",
+    "magic_bonus": "magic", "spd_bonus": "spd", "mp_bonus": "mp",
 }
 
 
@@ -101,7 +101,7 @@ def start_run(d_state: dict):
         "max_hp": s["max_hp"], "current_hp": s["max_hp"],
         "max_mp": s["max_mp"], "current_mp": s["max_mp"],
         "base_atk": s["base_atk"], "base_def": s["base_def"], "base_mdef": s["base_mdef"], "base_spd": s["base_spd"],
-        "base_magic": s["base_magic"], "base_int": s["base_magic"], "base_res": s["base_res"],
+        "base_magic": s["base_magic"], "base_int": s["base_magic"],
         "inventory": {}, "skills": [], "equipped_skills": [],
         "weapon": None, "armor": None, "accessory": None,
         "status_effects": {}, "combat_debuffs": {}, "combat_buffs": {},
@@ -187,7 +187,6 @@ def recompute_loadout(player, d_state: dict, cog):
     max_mp = s["max_mp"] + flat["mp"]
     base_int = s["base_magic"] + flat["magic"]
     base_spd = s["base_spd"] + flat["spd"]
-    base_res = s["base_res"] + flat["res"]
 
     d_state["base_atk"] = max(1, base_atk)
     d_state["base_def"] = max(0, base_def)
@@ -197,7 +196,6 @@ def recompute_loadout(player, d_state: dict, cog):
     d_state["base_magic"] = max(0, base_int)
     d_state["base_int"] = max(0, base_int)
     d_state["base_spd"] = max(1, base_spd)
-    d_state["base_res"] = max(0, base_res)
     d_state["current_hp"] = min(d_state.get("current_hp", d_state["max_hp"]), d_state["max_hp"])
     d_state["current_mp"] = min(d_state.get("current_mp", d_state["max_mp"]), d_state["max_mp"])
 

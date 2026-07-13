@@ -7,9 +7,9 @@
         "price": 20,
         "sell_price": 8,
         "shop_weight": 0,
-        "desc": "商店必定販售，回復 25% 最大 HP",
+        "desc": "回復 25% 最大 HP",
         "name_en": "Health Potion",
-        "desc_en": "Always available in the shop. Restores 25% of max HP."
+        "desc_en": "Restores 25% of max HP."
     },
     "mana_potion": {
         "name": "魔力藥水",
@@ -19,9 +19,9 @@
         "price": 20,
         "sell_price": 8,
         "shop_weight": 0,
-        "desc": "商店必定販售，回復 25% 最大 MP",
+        "desc": "回復 25% 最大 MP",
         "name_en": "Mana Potion",
-        "desc_en": "Always available in the shop. Restores 25% of max MP."
+        "desc_en": "Restores 25% of max MP."
     },
     "medium_health_potion": {
         "name": "中級生命藥水",
@@ -1049,18 +1049,18 @@
     },
     "forbidden_blood_chalice": {
         "name": "禁忌血之聖杯",
-        "desc": "裝滿鮮血的聖杯，能大幅增幅體能，但會降低對魔法的抵抗能力。",
+        "desc": "裝滿鮮血的聖杯，能大幅增幅體能，但會降低魔法防禦力。",
         "type": "accessory",
         "price": 0,
         "sell_price": 60000,
         "rank": "mythic",
         "emoji": "🍷",
         "name_en": "Forbidden Chalice of Blood",
-        "desc_en": "A chalice brimming with blood that greatly enhances physical prowess, but lowers resistance to magic.",
+        "desc_en": "A chalice brimming with blood that greatly enhances physical prowess, but lowers magic defense.",
         "hp_bonus": 500,
         "atk_bonus": 100,
         "magic_bonus": 100,
-        "res_bonus": -100,
+        "mdef_bonus": -50,
         "shop_weight": 0,
         "mystery_only": false
     },
@@ -1144,9 +1144,9 @@
             "vit": 10,
             "atk": 8
         },
-        "desc": "【史詩・守護者套裝】沉重而可靠。套裝：2件+防禦/HP，3件再+攻擊/抗性",
+        "desc": "【史詩・守護者套裝】沉重而可靠。套裝：2件+防禦/HP，3件再+攻擊/魔防",
         "name_en": "Guardian Warhammer",
-        "desc_en": "[Epic - Guardian Set] Heavy and dependable. Set: 2pc +DEF/HP, 3pc adds ATK/RES."
+        "desc_en": "[Epic - Guardian Set] Heavy and dependable. Set: 2pc +DEF/HP, 3pc adds ATK/MDEF."
     },
     "guardian_plate": {
         "name": "守護者鎧甲",
@@ -1162,14 +1162,14 @@
         "stat_requirements": {
             "vit": 12
         },
-        "desc": "【史詩・守護者套裝】厚重的全身板甲。套裝：2件+防禦/HP，3件再+攻擊/抗性",
+        "desc": "【史詩・守護者套裝】厚重的全身板甲。套裝：2件+防禦/HP，3件再+攻擊/魔防",
         "name_en": "Guardian Plate",
-        "desc_en": "[Epic - Guardian Set] Heavy full plate. Set: 2pc +DEF/HP, 3pc adds ATK/RES."
+        "desc_en": "[Epic - Guardian Set] Heavy full plate. Set: 2pc +DEF/HP, 3pc adds ATK/MDEF."
     },
     "guardian_charm": {
         "name": "守護者護符",
         "type": "accessory",
-        "res_bonus": 10,
+        "mdef_bonus": 10,
         "hp_bonus": 100,
         "set": "guardian",
         "rarity": "epic",
@@ -1180,9 +1180,9 @@
         "stat_requirements": {
             "vit": 8
         },
-        "desc": "【史詩・守護者套裝】溫暖的守護之力。套裝：2件+防禦/HP，3件再+攻擊/抗性",
+        "desc": "【史詩・守護者套裝】溫暖的守護之力。套裝：2件+防禦/HP，3件再+攻擊/魔防",
         "name_en": "Guardian Charm",
-        "desc_en": "[Epic - Guardian Set] A warm, protective aura. Set: 2pc +DEF/HP, 3pc adds ATK/RES."
+        "desc_en": "[Epic - Guardian Set] A warm, protective aura. Set: 2pc +DEF/HP, 3pc adds ATK/MDEF."
     },
     "archmage_staff": {
         "name": "大法師法杖",
@@ -1425,7 +1425,7 @@
         "desc": "讓人意志堅定的戒指",
         "desc_en": "A ring that steels the wearer's resolve.",
         "hp_bonus": 30,
-        "res_bonus": 10
+        "mdef_bonus": 10
     },
     "lucky_clover_charm": {
         "name": "幸運四葉草",
@@ -1517,10 +1517,10 @@
         "stat_requirements": {
             "vit": 10
         },
-        "desc": "專為抵抗異常狀態設計的鋼甲",
-        "desc_en": "Plate armor designed to resist status ailments.",
+        "desc": "專為抵抗異常狀態與魔防設計的鋼甲",
+        "desc_en": "Plate armor designed to resist status ailments and magic damage.",
         "def_bonus": 33,
-        "res_bonus": 15
+        "mdef_bonus": 15
     },
     "neural_amplifier": {
         "name": "神經增幅器",
@@ -1631,7 +1631,7 @@
         "desc": "從古老墓穴中挖出的護符",
         "desc_en": "A charm unearthed from an ancient tomb.",
         "magic_bonus": 25,
-        "res_bonus": 12,
+        "mdef_bonus": 12,
         "set": "necromancer"
     },
     "soul_reaper_wand": {
@@ -1820,7 +1820,7 @@
         "desc": "以龍鱗打造的護盾式鎧甲",
         "desc_en": "Shield-armor forged from dragon scales.",
         "def_bonus": 74,
-        "res_bonus": 20
+        "mdef_bonus": 20
     },
     "phoenix_blade": {
         "name": "鳳凰之刃",
@@ -1904,7 +1904,7 @@
         "desc": "刻滿古代符文的臂環",
         "desc_en": "An armband etched with ancient runes.",
         "magic_bonus": 35,
-        "res_bonus": 20
+        "mdef_bonus": 20
     },
     "voidwalker_glaive": {
         "name": "虛空行者長槍",
@@ -2266,7 +2266,7 @@
         "exclusive_level": 55,
         "def_bonus": 80,
         "hp_bonus": 340,
-        "res_bonus": 12,
+        "mdef_bonus": 12,
         "desc": "以遠古炎龍的鱗片鍛成的重甲，僅能由工坊鍛造",
         "name_en": "Wyrmscale Barrier",
         "desc_en": "Heavy armor forged from an ancient dragon's scales. Craftable only at the workshop."

@@ -126,7 +126,7 @@ SET_BONUSES = {
         3: {"atk": 60, "spd": 35, "hp": 480},
     },
     "phoenix": {      # 鳳凰 / Phoenix — lvl60 rebirth hybrid set
-        2: {"atk": 35, "magic": 45, "res": 15},
+        2: {"atk": 35, "magic": 45, "mdef": 15},
         3: {"atk": 90, "magic": 100, "hp": 420, "spd": 20},
     },
     "voidwalker": {   # 虛空行者 / Voidwalker — lvl70 speed/tempo set
@@ -147,7 +147,7 @@ MYSTERY_MERCHANT_CHANCE = 0.08
 
 AREA_FIXED_SHOPS = {
     "area_00village": {
-        "name_zh": "鈴蘭雜貨舖", "name_en": "Lilybell General Store",
+        "name_zh": "鈴蘭小舖", "name_en": "Lilybell Shop",
         "items": ["health_potion", "mana_potion", "antidote_herb", "rusty_dagger", "wooden_sword", "leather_armor", "scroll_heal_light"],
     },
     "area_01grassland": {
@@ -205,7 +205,7 @@ DUNGEON_MINIBOSS_FLOORS = (5,10)
 # Sealed level-1 starting character for a dungeon run.
 DUNGEON_START_STATS = {
     "max_hp": 60, "base_atk": 12, "base_def": 5, "base_mdef": 3,
-    "base_spd": 10, "base_magic": 8, "base_res": 0, "max_mp": 30,
+    "base_spd": 10, "base_magic": 8, "max_mp": 30,
 }
 # Sealed character's "level" is fixed (no in-run leveling) — set high enough that
 # dungeon-pool skills up to req_level 10 are always usable once picked up.

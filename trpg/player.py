@@ -18,7 +18,6 @@ _SCALAR_DEFAULTS = {
     "base_def": 4,
     "base_mdef": 2,
     "base_magic": 0,
-    "base_res": 0,
     "max_mp": 25,
     "current_mp": 25,
     "weapon": None,
@@ -116,6 +115,10 @@ class TRPGPlayer:
         leveled_up = False
 
         while self.exp >= needed:
+            if self.level >= 99:
+                self.level = 99
+                self.exp = 0
+                break
             self.exp -= needed
             self.level += 1
             needed = exp_to_next_level(self.level)
@@ -154,6 +157,13 @@ class TRPGPlayer:
         # 才會讓 onboarding_done 維持預設的 False。
         if "onboarding_done" not in data:
             player.onboarding_done = True
+        if player.level > 99:
+            player.level = 99
+            player.exp = 0
+        if getattr(player, "stat_alloc", None):
+            for k in list(player.stat_alloc.keys()):
+                if player.stat_alloc[k] > 99:
+                    player.stat_alloc[k] = 99
         player.schema_version = SCHEMA_VERSION
         return player
 

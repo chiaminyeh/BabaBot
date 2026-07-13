@@ -69,13 +69,13 @@
     "d_stone_amulet": {
         "name": "磐石護符",
         "name_en": "Stone Amulet",
-        "desc": "HP+160、抗性+6、擊殺回血",
-        "desc_en": "+160 HP, +6 RES, heal on kill",
+        "desc": "HP+160、魔防+6、擊殺回血",
+        "desc_en": "+160 HP, +6 MDEF, heal on kill",
         "type": "accessory",
         "rarity": "epic",
         "build": "stable",
         "hp_bonus": 160,
-        "res_bonus": 6,
+        "mdef_bonus": 6,
         "on_kill_heal_pct": 0.08
     },
     "d_assassin_dagger": {

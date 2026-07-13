@@ -103,9 +103,7 @@ class Combatant:
     def spd(self) -> int:
         raise NotImplementedError
 
-    @property
-    def res(self) -> int:
-        raise NotImplementedError
+
 
     @property
     def luck(self) -> int:
@@ -193,9 +191,7 @@ class PlayerCombatant(Combatant):
         from trpg.combat import get_player_spd
         return get_player_spd(self.player)
 
-    @property
-    def res(self) -> int:
-        return getattr(self.player, "base_res", 0)
+
 
     @property
     def luck(self) -> int:
@@ -295,9 +291,7 @@ class MonsterCombatant(Combatant):
     def spd(self) -> int:
         return self.monster_dict.get("spd", 10)
 
-    @property
-    def res(self) -> int:
-        return self.monster_dict.get("res", 0)
+
 
     @property
     def luck(self) -> int:

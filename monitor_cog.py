@@ -5,12 +5,16 @@ import contextlib
 import io
 import logging
 import os
+import datetime
 from pathlib import Path
 
 import discord
 from discord.ext import commands, tasks
 
 from scripts import monitor_bababot
+
+# Define the log/incident file path
+INCIDENT_FILE = Path(__file__).parent / "logs" / "incident_sync.txt"
 
 OWNER_ID = 295288056276189185
 MONITOR_INTERVAL_MINUTES = 2
@@ -30,6 +34,8 @@ class MonitorCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self._lock = asyncio.Lock()
+        # Ensure log directory exists
+        INCIDENT_FILE.parent.mkdir(parents=True, exist_ok=True)
         self.monitor_checker.start()
 
     def cog_unload(self):
@@ -40,6 +46,14 @@ class MonitorCog(commands.Cog):
         if not text:
             return
 
+        # 1. Sync to incident file for Hermes
+        try:
+            with open(INCIDENT_FILE, "a", encoding="utf-8") as f:
+                f.write(f"[{datetime.datetime.now().isoformat()}]\n{text}\n\n")
+        except Exception:
+            logger.exception("Failed to sync monitor output to incident file")
+
+        # 2. Existing Discord notification logic
         channel_id = os.getenv("BABABOT_MONITOR_CHANNEL_ID") or os.getenv("DISCORD_HOME_CHANNEL")
         destination = None
         if channel_id:

@@ -101,24 +101,19 @@ class ShopMixin:
                 comp_str = self._get_equipment_comparison_string(item)
             comp_suffix = f" {comp_str}" if comp_str else ""
             item_name = f"{item_emoji(item)} {tf(item, 'name', lang)}"
-            label_text = t(
-                lang,
-                "shop.btn_buy_item",
-                "買 {name}{req_label} ({price}$){comp_suffix}",
-                name=item_name,
-                req_label=req_label,
-                price=item.get("price", 0),
-                comp_suffix=comp_suffix,
-            )
-            options.append((label_text[:100], f"buy_{item_id}", (tf(item, "desc", lang) or "")[:100], item_emoji(item)))
+            label_text = item_name
+            desc_text = (tf(item, "desc", lang) or "")
+            if comp_str:
+                desc_text = f"[{comp_str}] {desc_text}"
+            options.append((label_text[:100], f"buy_{item_id}", desc_text[:100], item_emoji(item)))
 
         self.log_message = "\n".join(lines)
         if options:
             self.add_action_select(t(lang, "shop.select_buy_placeholder", "🛒 選擇要購買的物品"), options, row=0, custom_id="sel_buy_item")
 
-        self.add_action_button(label=t(lang, "shop.btn_sell_items", "出售物品"), style=discord.ButtonStyle.success, custom_id="btn_shop_sell", emoji="💰")
+        self.add_action_button(label=t(lang, "shop.btn_sell_items", "出售物品"), style=discord.ButtonStyle.primary, custom_id="btn_shop_sell", emoji="💰", row=4)
         back_label = t(lang, "menu.btn_back_village", "返回村莊") if is_village else t(lang, "char.btn_back", "返回")
-        self.add_action_button(label=back_label, style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
+        self.add_action_button(label=back_label, style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙", row=4)
 
     async def handle_shop_refresh(self):
         await self.handle_shop_menu(t(self.player.language, "shop.fixed_no_refresh", "📌 這間店的貨架是固定的，不需要刷新。"))
@@ -184,11 +179,10 @@ class ShopMixin:
         self.player.inventory[item_id] = self.player.inventory.get(item_id, 0) + amount
         self.cog.save_players(player=self.player)
         achv_text = self.check_achievements()
-        notice_text = t(lang, "shop.buy_success", "✅ 購買了 {amount} 個【{name}】！", amount=amount, name=item_name)
+        notice_text = t(lang, "shop.buy_success", "✅ 購買了 {amount} 個【{name}】！", amount=amount, name=item_name, total_cost=total_cost)
         if achv_text:
             notice_text += achv_text
         await self._refresh_buy_menu(notice_text)
-
     async def execute_sell(self, item_id: str, amount: int):
         item = self.cog.items.get(item_id)
         lang = self.player.language
