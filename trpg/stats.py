@@ -143,12 +143,16 @@ def prune_unqualified_skills(player, skills_data: dict) -> list[str]:
     learned = list(dict.fromkeys(getattr(player, "skills", []) or []))
     equipped = list(dict.fromkeys(getattr(player, "equipped_skills", []) or []))
     removed = []
-    for skill_id in equipped:
+    kept_skills = []
+    for skill_id in learned:
         skill = skills_data.get(skill_id, {})
         ok, _, _ = meets_skill_requirements(player, skill)
-        if not ok:
+        if ok:
+            kept_skills.append(skill_id)
+        else:
             removed.append(skill_id)
-    player.equipped_skills = [skill_id for skill_id in equipped if skill_id not in removed]
+    player.skills = kept_skills
+    player.equipped_skills = [skill_id for skill_id in equipped if skill_id in kept_skills]
     return removed
 
 

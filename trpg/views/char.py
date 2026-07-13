@@ -132,8 +132,11 @@ class CharLayout:
 
         last_row = 4 if unspent > 0 else 0
         reset_cost = view._stat_reset_cost()
-        reset_label = (t(lang, "char.btn_reset_stats_paid", "重置所有屬性點（{cost}$）", cost=reset_cost) if reset_cost > 0
-                       else t(lang, "char.btn_reset_stats", "重置所有屬性點"))
+        if view._has_balance_respec():
+            reset_label = t(lang, "char.btn_balance_respec", "免費流派重置")
+        else:
+            reset_label = (t(lang, "char.btn_reset_stats_paid", "重置所有屬性點（{cost}$）", cost=reset_cost) if reset_cost > 0
+                           else t(lang, "char.btn_reset_stats", "重置所有屬性點"))
         view.add_action_button(label=reset_label, style=discord.ButtonStyle.danger, custom_id="btn_stat_reset", row=last_row, emoji="🔄")
         view.add_action_button(label=t(lang, "char.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", row=last_row, emoji="🔙")
 
@@ -292,7 +295,7 @@ class CharLayout:
         view.add_action_button(label=t(lang, "skill.codex_rogue", "🚀 盜賊技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_rogue", row=0)
         view.add_action_button(label=t(lang, "skill.codex_mage", "🔮 法師技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_mage", row=0)
         view.add_action_button(label=t(lang, "skill.codex_warlock", "🌑 術士技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_warlock", row=1)
-        view.add_action_button(label=t(lang, "skill.codex_luck", "🍀 幸運技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_luck", row=1)
+        view.add_action_button(label=t(lang, "skill.codex_luck", "🍀 幸運收益"), style=discord.ButtonStyle.primary, custom_id="codex_cat_luck", row=1)
         view.add_action_button(label=t(lang, "skill.codex_common", "📜 通用技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_common", row=1)
         
         view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_school_menu", row=2, emoji="🔙")
@@ -311,12 +314,38 @@ class CharLayout:
             "rogue": t(lang, "skill.codex_rogue", "🚀 盜賊技能"),
             "mage": t(lang, "skill.codex_mage", "🔮 法師技能"),
             "warlock": t(lang, "skill.codex_warlock", "🌑 術士技能"),
-            "luck": t(lang, "skill.codex_luck", "🍀 幸運技能"),
+            "luck": t(lang, "skill.codex_luck", "🍀 幸運收益"),
             "common": t(lang, "skill.codex_common", "📜 通用技能")
         }
         cat_name = cat_names.get(category, category)
         
         lines = [f"📖 【{cat_name}】\n"]
+
+        if category == "luck":
+            from trpg.balance import (
+                LUCK_CRIT_BONUS_PER_POINT,
+                LUCK_DROP_RATE_BONUS_PER_POINT,
+                LUCK_EXP_BONUS_PER_POINT,
+                LUCK_GOLD_BONUS_PER_POINT,
+            )
+            effective_luck = max(0, int(getattr(view.player, "base_luck", 0) or 0))
+            lines.append(t(
+                lang,
+                "skill.luck_benefits",
+                "幸運不解鎖戰鬥技能，而是把流派點數換成長期成長與經濟收益。\n\n"
+                "每 1 點有效 LUCK：暴擊 +{crit_each:.1f}%｜掉落率 +{drop_each:.1f}%｜經驗 +{exp_each:.1f}%｜金幣 +{gold_each:.1f}%\n\n"
+                "目前有效 LUCK：{luck}\n"
+                "總收益：暴擊 +{crit_total:.1f}%｜掉落率 +{drop_total:.1f}%｜經驗 +{exp_total:.1f}%｜金幣 +{gold_total:.1f}%",
+                crit_each=LUCK_CRIT_BONUS_PER_POINT * 100,
+                drop_each=LUCK_DROP_RATE_BONUS_PER_POINT * 100,
+                exp_each=LUCK_EXP_BONUS_PER_POINT * 100,
+                gold_each=LUCK_GOLD_BONUS_PER_POINT * 100,
+                luck=effective_luck,
+                crit_total=effective_luck * LUCK_CRIT_BONUS_PER_POINT * 100,
+                drop_total=effective_luck * LUCK_DROP_RATE_BONUS_PER_POINT * 100,
+                exp_total=effective_luck * LUCK_EXP_BONUS_PER_POINT * 100,
+                gold_total=effective_luck * LUCK_GOLD_BONUS_PER_POINT * 100,
+            ))
         
         for skill_id, skill in skills:
             name = tf(skill, "name", lang)

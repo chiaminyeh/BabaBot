@@ -40,7 +40,7 @@
             "turns": 3
         },
         "cd": 5,
-        "req_level": 3,
+        "req_level": 5,
         "dungeon_pool": true,
         "name_en": "💪 Battle Focus",
         "desc_en": "Rally your fighting spirit: for the next 3 turns, ATK +25% and SPD +15% (CD: 5)",
@@ -68,7 +68,7 @@
         "power_multiplier": 0.75,
         "hits": 2,
         "cd": 2,
-        "req_level": 1,
+        "req_level": 5,
         "name_en": "⚔️✖️2 Rapid Slash Combo",
         "desc_en": "Swiftly strikes twice in succession, each hit dealing 0.75x damage (CD: 2)",
         "dungeon_pool": true,
@@ -84,7 +84,7 @@
         "power_multiplier": 0.7,
         "hits": 2,
         "cd": 3,
-        "req_level": 1,
+        "req_level": 5,
         "apply_status": "poison",
         "apply_status_chance": 0.7,
         "status_turns": 2,
@@ -97,13 +97,13 @@
     },
     "combo_attack": {
         "name": "🔄⚔️ 連續攻擊",
-        "desc": "被動：普攻額外攻擊一次（0.75 倍傷害）；若目標帶有異常狀態，這次與追加打擊都會再提高 25% 傷害（需 Lv.8）",
+        "desc": "被動：普攻額外攻擊一次（0.75 倍傷害）；若目標帶有異常狀態，這次與追加打擊都會再提高 25% 傷害（需 Lv.10、盜賊 18）",
         "type": "passive",
-        "req_level": 8,
+        "req_level": 10,
         "extra_attack_multiplier": 0.75,
         "status_target_damage_mult": 1.25,
         "name_en": "🔄⚔️ Combo Strike",
-        "desc_en": "Passive: basic attacks strike one extra time (0.75x damage). If the target is already afflicted by a status ailment, both hits deal 25% more damage (requires Lv.8)",
+        "desc_en": "Passive: basic attacks strike one extra time (0.75x damage). If the target is already afflicted by a status ailment, both hits deal 25% more damage (requires Lv.10, Rogue 18)",
         "dungeon_pool": true,
         "req_points": {
             "rogue": 18
@@ -111,7 +111,7 @@
     },
     "shadow_step": {
         "name": "💨 暗影步",
-        "desc": "消耗 15 MP，立即進入【無實體】2 回合，並提升速度 35% 2 回合（CD: 4，需 Lv.5）",
+        "desc": "消耗 15 MP，立即進入【無實體】2 回合，並提升速度 35% 2 回合（CD: 4，需 Lv.10、盜賊 18）",
         "type": "support",
         "self_status": "intangible",
         "self_status_turns": 2,
@@ -121,24 +121,24 @@
         },
         "mp_cost": 15,
         "cd": 4,
-        "req_level": 5,
+        "req_level": 10,
         "name_en": "💨 Shadow Step",
-        "desc_en": "Costs 15 MP to become Intangible for 2 turns and gain 35% SPD for 2 turns (CD: 4, requires Lv.5)",
+        "desc_en": "Costs 15 MP to become Intangible for 2 turns and gain 35% SPD for 2 turns (CD: 4, requires Lv.10, Rogue 18)",
         "req_points": {
-            "rogue": 10
+            "rogue": 18
         }
     },
     "blood_strike": {
         "name": "🩸🌑 血之獻祭",
-        "desc": "消耗 20% 最大 HP，並根據獻祭的血量造成 2.5 倍暗屬性真實傷害（CD: 4，需 Lv.10）",
+        "desc": "消耗 20% 最大 HP，並根據獻祭的血量造成 2.5 倍暗屬性真實傷害（CD: 4，需 Lv.5、術士 10）",
         "type": "physical",
         "element": "dark",
         "hp_cost_percent": 0.2,
         "hp_scaling_multiplier": 2.5,
         "cd": 4,
-        "req_level": 10,
+        "req_level": 5,
         "name_en": "🩸🌑 Blood Sacrifice",
-        "desc_en": "Costs 20% max HP, dealing true dark damage equal to 2.5x the HP sacrificed (CD: 4, requires Lv.10)",
+        "desc_en": "Costs 20% max HP, dealing true dark damage equal to 2.5x the HP sacrificed (CD: 4, requires Lv.5, Warlock 10)",
         "dungeon_pool": true,
         "req_points": {
             "warlock": 10
@@ -155,7 +155,7 @@
         "apply_status": "burn",
         "apply_status_chance": 0.7,
         "status_turns": 2,
-        "req_level": 1,
+        "req_level": 5,
         "base_power": 60,
         "magic_scaling": 0.8,
         "name_en": "🔮🔥 Fireball",
@@ -176,7 +176,7 @@
         "apply_status": "freeze",
         "apply_status_chance": 0.65,
         "status_turns": 1,
-        "req_level": 1,
+        "req_level": 5,
         "base_power": 50,
         "magic_scaling": 0.8,
         "name_en": "🔮❄️ Ice Spear",
@@ -188,7 +188,7 @@
     },
     "thunder_strike": {
         "name": "🔮⚡ 落雷術",
-        "desc": "造成 80 點基礎雷屬性傷害，75% 機率附帶麻痺效果 2 回合（CD: 5，需 Lv.5）",
+        "desc": "造成 80 點基礎雷屬性傷害，75% 機率附帶麻痺效果 2 回合（CD: 5，需 Lv.10、法師 18）",
         "type": "magic",
         "element": "thunder",
         "mp_cost": 35,
@@ -197,14 +197,14 @@
         "apply_status": "paralysis",
         "apply_status_chance": 0.75,
         "status_turns": 2,
-        "req_level": 5,
+        "req_level": 10,
         "base_power": 80,
         "magic_scaling": 0.8,
         "name_en": "🔮⚡ Lightning Bolt",
-        "desc_en": "Deals 80 base thunder damage, with a 75% chance to inflict Paralysis for 2 turns (CD: 5, requires Lv.5)",
+        "desc_en": "Deals 80 base thunder damage, with a 75% chance to inflict Paralysis for 2 turns (CD: 5, requires Lv.10, Mage 18)",
         "dungeon_pool": true,
         "req_points": {
-            "mage": 16
+            "mage": 18
         }
     },
     "water_ball": {
@@ -216,53 +216,51 @@
         "mp_cost": 25,
         "def_pierce": 0.2,
         "cd": 3,
-        "req_level": 5,
+        "req_level": 10,
         "target_type": "back",
         "base_power": 40,
         "magic_scaling": 0.8,
         "name_en": "🔮💧✖️2 Water Ball",
         "desc_en": "Deals 40 base water damage, hitting twice and able to reach backline enemies (CD: 3)",
         "req_points": {
-            "mage": 16
-        }
-    },
-    "stone_spike": {
-        "name": "🔮🌍 岩刺術",
-        "desc": "造成 100 點基礎土屬性傷害，無視 60% 防禦（CD: 4）",
-        "type": "magic",
-        "element": "earth",
-        "mp_cost": 30,
-        "def_pierce": 0.6,
-        "cd": 4,
-        "req_level": 8,
-        "base_power": 100,
-        "magic_scaling": 1.2,
-        "name_en": "🔮🌍 Rock Spike",
-        "desc_en": "Deals 100 base earth damage, ignoring 60% of defense (CD: 4)",
-        "req_points": {
             "mage": 18
         }
     },
-    "holy_smash": {
-        "name": "🔮✨ 神聖制裁",
-        "desc": "造成 150 點基礎光屬性傷害，專剋不死生物（CD: 5，需 Lv.12）",
-        "type": "magic",
-        "element": "holy",
-        "mp_cost": 40,
-        "def_pierce": 0.5,
-        "cd": 5,
-        "req_level": 12,
-        "base_power": 150,
-        "magic_scaling": 1.8,
-        "name_en": "🔮✨ Holy Judgment",
-        "desc_en": "Deals 150 base holy damage, especially devastating against undead (CD: 5, requires Lv.12)",
+    "stone_spike": {
+        "name": "🛡️🌍 堡壘岩刺",
+        "desc": "以防禦力喚起岩刺，造成 1.25 倍土屬性傷害（CD: 4，需 Lv.20、騎士 25）",
+        "type": "physical",
+        "element": "earth",
+        "power_stat": "def",
+        "power_multiplier": 1.25,
+        "mp_cost": 22,
+        "cd": 4,
+        "req_level": 20,
+        "name_en": "🛡️🌍 Fortress Spike",
+        "desc_en": "Raise a rock spike powered by DEF, dealing 1.25x earth damage (CD: 4, requires Lv.20, Knight 25)",
         "req_points": {
-            "mage": 22
+            "knight": 25
+        }
+    },
+    "holy_smash": {
+        "name": "🛡️✨ 神聖制裁",
+        "desc": "將守護之力化為聖光重擊，以防禦力造成 1.6 倍光屬性傷害（CD: 5，需 Lv.20、騎士 25）",
+        "type": "physical",
+        "element": "holy",
+        "power_stat": "def",
+        "power_multiplier": 1.6,
+        "mp_cost": 30,
+        "cd": 5,
+        "req_level": 20,
+        "name_en": "🛡️✨ Holy Judgment",
+        "desc_en": "Turn your guard into a holy blow, dealing 1.6x DEF-scaled holy damage (CD: 5, requires Lv.20, Knight 25)",
+        "req_points": {
+            "knight": 25
         }
     },
     "dark_orb": {
         "name": "🔮🌑☠️ 暗影球",
-        "desc": "造成 130 點基礎暗屬性傷害，70% 機率造成中毒（CD: 4，需 Lv.10）",
+        "desc": "造成 70 點基礎暗屬性傷害，70% 機率造成中毒（CD: 4，需 Lv.5、術士 10）",
         "type": "magic",
         "element": "dark",
         "mp_cost": 35,
@@ -271,18 +269,18 @@
         "apply_status": "poison",
         "apply_status_chance": 0.7,
         "status_turns": 3,
-        "req_level": 10,
-        "base_power": 130,
-        "magic_scaling": 1.2,
+        "req_level": 5,
+        "base_power": 70,
+        "magic_scaling": 0.9,
         "name_en": "🔮🌑☠️ Shadow Orb",
-        "desc_en": "Deals 130 base dark damage, with a 70% chance to inflict Poison (CD: 4, requires Lv.10)",
+        "desc_en": "Deals 70 base dark damage, with a 70% chance to inflict Poison (CD: 4, requires Lv.5, Warlock 10)",
         "req_points": {
-            "warlock": 16
+            "warlock": 10
         }
     },
     "hypnotic_gaze": {
         "name": "🔮🌑💤 魅惑安眠",
-        "desc": "造成 90 點基礎暗屬性傷害，40% 機率使敵人陷入睡眠（CD: 5，需 Lv.15）",
+        "desc": "造成 90 點基礎暗屬性傷害，40% 機率使敵人陷入睡眠（CD: 5，需 Lv.10、術士 18）",
         "type": "magic",
         "element": "dark",
         "mp_cost": 30,
@@ -291,18 +289,18 @@
         "apply_status": "sleep",
         "apply_status_chance": 0.4,
         "status_turns": 3,
-        "req_level": 15,
+        "req_level": 10,
         "base_power": 90,
         "magic_scaling": 1.0,
         "name_en": "🔮🌑💤 Charming Slumber",
-        "desc_en": "Deals 90 base dark damage, with a 40% chance to lull the enemy into Sleep (CD: 5, requires Lv.15)",
+        "desc_en": "Deals 90 base dark damage, with a 40% chance to lull the enemy into Sleep (CD: 5, requires Lv.10, Warlock 18)",
         "req_points": {
-            "warlock": 20
+            "warlock": 18
         }
     },
     "inferno": {
         "name": "🔮🔥 煉獄火",
-        "desc": "造成 180 點基礎火屬性傷害，70% 機率強力燃燒 3 回合（CD: 5，需 Lv.15）",
+        "desc": "召來煉獄之火，造成 180 點基礎火屬性傷害，70% 機率燃燒 3 回合（CD: 5，需 Lv.20、術士 25）",
         "type": "magic",
         "element": "fire",
         "mp_cost": 45,
@@ -311,18 +309,18 @@
         "apply_status": "burn",
         "apply_status_chance": 0.7,
         "status_turns": 3,
-        "req_level": 15,
+        "req_level": 20,
         "base_power": 180,
         "magic_scaling": 1.8,
         "name_en": "🔮🔥 Inferno",
-        "desc_en": "Deals 180 base fire damage, with a 70% chance to inflict intense Burn for 3 turns (CD: 5, requires Lv.15)",
+        "desc_en": "Call up infernal flame for 180 base fire damage, with a 70% chance to Burn for 3 turns (CD: 5, requires Lv.20, Warlock 25)",
         "req_points": {
-            "mage": 24
+            "warlock": 25
         }
     },
     "blizzard": {
         "name": "🔮❄️ 暴風雪",
-        "desc": "造成 140 點基礎冰屬性傷害，65% 機率凍結敵人 2 回合（CD: 5，需 Lv.12）",
+        "desc": "造成 140 點基礎冰屬性傷害，65% 機率凍結敵人 2 回合（CD: 5，需 Lv.20、法師 25）",
         "type": "magic",
         "element": "ice",
         "mp_cost": 40,
@@ -331,56 +329,56 @@
         "apply_status": "freeze",
         "apply_status_chance": 0.65,
         "status_turns": 2,
-        "req_level": 12,
+        "req_level": 20,
         "base_power": 140,
         "magic_scaling": 1.2,
         "name_en": "🔮❄️ Blizzard",
-        "desc_en": "Deals 140 base ice damage, with a 65% chance to Freeze the enemy for 2 turns (CD: 5, requires Lv.12)",
+        "desc_en": "Deals 140 base ice damage, with a 65% chance to Freeze for 2 turns (CD: 5, requires Lv.20, Mage 25)",
         "req_points": {
-            "mage": 22
+            "mage": 25
         }
     },
     "divine_thunder": {
         "name": "🔮⚡ 神聖落雷",
-        "desc": "對全體敵人造成 170 點基礎雷屬性傷害，75% 機率麻痺 3 回合，範圍換取較低的單體傷害（CD: 6，需 Lv.18）",
+        "desc": "對全體敵人造成 170 點基礎雷屬性傷害，45% 機率麻痺 1 回合（CD: 6，需 Lv.20、法師 25）",
         "type": "magic",
         "element": "thunder",
         "mp_cost": 55,
         "def_pierce": 0.7,
         "cd": 6,
         "apply_status": "paralysis",
-        "apply_status_chance": 0.75,
-        "status_turns": 3,
-        "req_level": 18,
+        "apply_status_chance": 0.45,
+        "status_turns": 1,
+        "req_level": 20,
         "target_type": "all",
         "base_power": 170,
         "magic_scaling": 1.2,
         "name_en": "🔮⚡ Divine Thunder",
-        "desc_en": "Deals 170 base thunder damage to all enemies with a 75% chance to inflict Paralysis for 3 turns, trading lower single-target damage for area coverage (CD: 6, requires Lv.18)",
+        "desc_en": "Deals 170 base thunder damage to all enemies with a 45% chance to inflict Paralysis for 1 turn (CD: 6, requires Lv.20, Mage 25)",
         "req_points": {
-            "mage": 28
+            "mage": 25
         }
     },
     "void_eruption": {
         "name": "🔮🌑 虛空爆發",
-        "desc": "造成 500 點基礎暗屬性傷害，且無視 80% 防禦（CD: 6，需 Lv.25、術士 25）",
+        "desc": "造成 220 點基礎暗屬性傷害，且無視 60% 防禦（CD: 6，需 Lv.20、術士 25）",
         "type": "magic",
         "element": "dark",
         "mp_cost": 80,
-        "def_pierce": 0.8,
+        "def_pierce": 0.6,
         "cd": 6,
-        "req_level": 25,
-        "base_power": 500,
-        "magic_scaling": 2.5,
+        "req_level": 20,
+        "base_power": 220,
+        "magic_scaling": 1.8,
         "name_en": "🔮🌑 Void Eruption",
-        "desc_en": "Deals 500 base dark damage, ignoring 80% of defense (CD: 6, requires Lv.25, Warlock 25)",
+        "desc_en": "Deals 220 base dark damage, ignoring 60% of defense (CD: 6, requires Lv.20, Warlock 25)",
         "req_points": {
             "warlock": 25
         }
     },
     "venom_cloud": {
         "name": "🔮🌑☠️ 劇毒之雲",
-        "desc": "對全體敵人造成 90 點基礎暗屬性傷害，70% 機率使敵人陷入中毒（CD: 4，需 Lv.15）",
+        "desc": "對全體敵人造成 90 點基礎暗屬性傷害，70% 機率使敵人陷入中毒（CD: 4，需 Lv.10、術士 18）",
         "type": "magic",
         "element": "dark",
         "mp_cost": 40,
@@ -389,40 +387,39 @@
         "apply_status": "poison",
         "apply_status_chance": 0.7,
         "status_turns": 3,
-        "req_level": 15,
+        "req_level": 10,
         "target_type": "all",
         "base_power": 90,
         "magic_scaling": 0.8,
         "name_en": "🔮🌑☠️ Venom Cloud",
-        "desc_en": "Deals 90 base dark damage to all enemies, with a 70% chance to inflict Poison (CD: 4, requires Lv.15)",
+        "desc_en": "Deals 90 base dark damage to all enemies, with a 70% chance to inflict Poison (CD: 4, requires Lv.10, Warlock 18)",
         "req_points": {
-            "warlock": 24
+            "warlock": 18
         }
     },
     "frost_nova": {
-        "name": "🔮❄️ 冰霜新星",
-        "desc": "對全體敵人造成 170 點基礎冰屬性傷害，65% 機率凍結敵人 2 回合（CD: 5，需 Lv.18）",
-        "type": "magic",
+        "name": "🗡️❄️ 冰霜陷阱",
+        "desc": "以速度引爆冰霜陷阱，對全體造成 0.75 倍冰屬性傷害，45% 機率凍結 1 回合（CD: 5，需 Lv.50、盜賊 50）",
+        "type": "physical",
         "element": "ice",
-        "mp_cost": 55,
-        "def_pierce": 0.4,
+        "power_stat": "spd",
+        "power_multiplier": 0.75,
+        "mp_cost": 35,
         "cd": 5,
         "apply_status": "freeze",
-        "apply_status_chance": 0.65,
-        "status_turns": 2,
-        "req_level": 18,
+        "apply_status_chance": 0.45,
+        "status_turns": 1,
+        "req_level": 50,
         "target_type": "all",
-        "base_power": 170,
-        "magic_scaling": 1.2,
-        "name_en": "🔮❄️ Frost Nova",
-        "desc_en": "Deals 170 base ice damage to all enemies, with a 65% chance to Freeze them for 2 turns (CD: 5, requires Lv.18)",
+        "name_en": "🗡️❄️ Frost Trap",
+        "desc_en": "Detonate a SPD-scaled frost trap for 0.75x ice damage to all enemies, with a 45% chance to Freeze for 1 turn (CD: 5, requires Lv.50, Rogue 50)",
         "req_points": {
-            "mage": 28
+            "rogue": 50
         }
     },
     "meteor_swarm": {
         "name": "🔮🔥 隕石風暴",
-        "desc": "對全體敵人造成 400 點基礎火屬性巨大傷害，70% 機率強力燃燒 3 回合（CD: 6，需 Lv.25、法師 25）",
+        "desc": "對全體敵人造成 400 點基礎火屬性巨大傷害，70% 機率強力燃燒 3 回合（CD: 6，需 Lv.80、法師 80）",
         "type": "magic",
         "element": "fire",
         "mp_cost": 90,
@@ -431,33 +428,35 @@
         "apply_status": "burn",
         "apply_status_chance": 0.7,
         "status_turns": 3,
-        "req_level": 25,
+        "req_level": 80,
         "target_type": "all",
         "base_power": 400,
         "magic_scaling": 2.5,
         "name_en": "🔮🔥 Meteor Swarm",
-        "desc_en": "Deals massive 400 base fire damage to all enemies, with a 70% chance to inflict intense Burn for 3 turns (CD: 6, requires Lv.25, Mage 25)",
+        "desc_en": "Deals massive 400 base fire damage to all enemies, with a 70% chance to inflict intense Burn for 3 turns (CD: 6, requires Lv.80, Mage 80)",
         "req_points": {
-            "mage": 25
+            "mage": 80
         }
     },
     "earthquake": {
-        "name": "🔮🌍💫 大地震擊",
-        "desc": "對全體敵人造成 250 點基礎土屬性傷害，且無視 70% 防禦，75% 機率附加麻痺（CD: 5，需 Lv.20）",
-        "type": "magic",
+        "name": "🛡️🌍💫 大地震擊",
+        "desc": "以防禦力震裂大地，對全體造成 0.9 倍土屬性傷害，45% 機率麻痺 1 回合（CD: 6，需 Lv.80、騎士 80）",
+        "type": "physical",
         "element": "earth",
-        "mp_cost": 65,
-        "def_pierce": 0.7,
-        "cd": 5,
+        "power_stat": "def",
+        "power_multiplier": 0.9,
+        "mp_cost": 50,
+        "cd": 6,
         "apply_status": "paralysis",
-        "apply_status_chance": 0.75,
-        "status_turns": 2,
-        "req_level": 20,
+        "apply_status_chance": 0.45,
+        "status_turns": 1,
+        "req_level": 80,
         "target_type": "all",
-        "base_power": 250,
-        "magic_scaling": 2.5,
-        "name_en": "🔮🌍💫 Earthquake",
-        "desc_en": "Deals 250 base earth damage to all enemies, ignoring 70% of defense, with a 75% chance to inflict Paralysis (CD: 5, requires Lv.20)"
+        "name_en": "🛡️🌍💫 Earthshaker",
+        "desc_en": "Rupture the ground with DEF, dealing 0.9x earth damage to all enemies with a 45% chance to Paralyze for 1 turn (CD: 6, requires Lv.80, Knight 80)",
+        "req_points": {
+            "knight": 80
+        }
     },
     "iron_skin": {
         "name": "💪 鋼鐵之軀",
@@ -473,10 +472,13 @@
         },
         "mp_cost": 20,
         "cd": 4,
-        "req_level": 5,
+        "req_level": 10,
         "name_en": "💪 Iron Skin",
         "desc_en": "Doubles your defense and restores 4% max HP each turn for 3 turns (CD: 4).",
-        "dungeon_pool": true
+        "dungeon_pool": true,
+        "req_points": {
+            "knight": 18
+        }
     },
     "battle_cry": {
         "name": "💪 戰吼",
@@ -489,10 +491,13 @@
         },
         "mp_cost": 25,
         "cd": 5,
-        "req_level": 8,
+        "req_level": 10,
         "name_en": "💪 Battle Cry",
         "desc_en": "Raises your ATK by 40% and SPD by 20% for 3 turns (CD: 5).",
-        "dungeon_pool": true
+        "dungeon_pool": true,
+        "req_points": {
+            "knight": 18
+        }
     },
     "regeneration": {
         "name": "🌿 再生術",
@@ -544,27 +549,30 @@
         "crit_bonus": 0.1,
         "mp_cost": 18,
         "cd": 3,
-        "req_level": 9,
+        "req_level": 20,
         "target_type": "front",
         "name_en": "⚔️✖️3 Blade Dance",
         "desc_en": "Strikes the front target 3 times for 0.6x physical damage each, with bonus crit chance (CD: 3).",
-        "dungeon_pool": true
+        "dungeon_pool": true,
+        "req_points": {
+            "rogue": 25
+        }
     },
     "status_hunter": {
         "name": "☠️ 獵異追擊",
-        "desc": "被動：攻擊帶有異常狀態的目標時，額外造成 45% 傷害（需 Lv.25、幸運 25）",
+        "desc": "被動：攻擊帶有異常狀態的目標時，額外造成 45% 傷害（需 Lv.20、盜賊 25）",
         "type": "passive",
-        "req_level": 25,
+        "req_level": 20,
         "status_target_damage_mult": 1.45,
         "name_en": "☠️ Status Hunter",
-        "desc_en": "Passive: deal 45% extra damage to targets already afflicted by a status ailment (requires Lv.25, Luck 25)",
+        "desc_en": "Passive: deal 45% extra damage to targets already afflicted by a status ailment (requires Lv.20, Rogue 25)",
         "req_points": {
-            "luck": 25
+            "rogue": 25
         }
     },
     "blood_awakening": {
         "name": "🩸 血醒儀式",
-        "desc": "喚醒血族本能：4 回合內攻擊力 +45%、速度 +20%，並每回合回復 5% 最大 HP（CD: 6，需 Lv.40、術士 50）",
+        "desc": "喚醒血族本能：4 回合內攻擊力 +45%、速度 +20%，並每回合回復 5% 最大 HP（CD: 6，需 Lv.50、術士 50）",
         "type": "support",
         "buff": {
             "atk_mult": 1.45,
@@ -577,9 +585,9 @@
         },
         "mp_cost": 32,
         "cd": 6,
-        "req_level": 40,
+        "req_level": 50,
         "name_en": "🩸 Blood Awakening",
-        "desc_en": "Awaken vampiric instincts: for 4 turns, ATK +45%, SPD +20%, and restore 5% max HP each turn (CD: 6, requires Lv.40, Warlock 50)",
+        "desc_en": "Awaken vampiric instincts: for 4 turns, ATK +45%, SPD +20%, and restore 5% max HP each turn (CD: 6, requires Lv.50, Warlock 50)",
         "req_points": {
             "warlock": 50
         }
@@ -607,7 +615,7 @@
     },
     "phoenix_rite": {
         "name": "🔥🕊️ 鳳凰儀式",
-        "desc": "以不滅之火重整戰線：清除自身異常，回復 18% 最大 HP，接著 3 回合每回合再回復 8% 最大 HP（CD: 6，需 Lv.60、法師 50）",
+        "desc": "以不滅之火重整戰線：清除自身異常，回復 18% 最大 HP，接著 3 回合每回合再回復 8% 最大 HP（CD: 6，需 Lv.50、法師 50）",
         "type": "support",
         "cleanse": true,
         "heal_percent": 0.18,
@@ -617,16 +625,16 @@
         },
         "mp_cost": 36,
         "cd": 6,
-        "req_level": 60,
+        "req_level": 50,
         "name_en": "🔥🕊️ Phoenix Rite",
-        "desc_en": "Rekindle yourself in undying flame: cleanse all ailments, restore 18% max HP, then recover 8% max HP each turn for 3 turns (CD: 6, requires Lv.60, Mage 50)",
+        "desc_en": "Rekindle yourself in undying flame: cleanse all ailments, restore 18% max HP, then recover 8% max HP each turn for 3 turns (CD: 6, requires Lv.50, Mage 50)",
         "req_points": {
             "mage": 50
         }
     },
     "rift_strike": {
         "name": "🌌⚔️ 裂隙突襲",
-        "desc": "以速度撕開空間，連擊 2 次，每擊造成 0.9 倍暗屬性傷害，並有 45% 機率使敵人麻痺 2 回合（CD: 4，需 Lv.70、盜賊 80）",
+        "desc": "以速度撕開空間，連擊 2 次，每擊造成 0.9 倍暗屬性傷害，並有 45% 機率使敵人麻痺 2 回合（CD: 4，需 Lv.80、盜賊 80）",
         "type": "physical",
         "element": "dark",
         "power_stat": "spd",
@@ -637,9 +645,9 @@
         "status_turns": 2,
         "mp_cost": 24,
         "cd": 4,
-        "req_level": 70,
+        "req_level": 80,
         "name_en": "🌌⚔️ Rift Strike",
-        "desc_en": "Rip through space with pure speed, striking twice for 0.9x dark damage each and giving each hit a 45% chance to inflict Paralysis for 2 turns (CD: 4, requires Lv.70, Rogue 80)",
+        "desc_en": "Rip through space with pure speed, striking twice for 0.9x dark damage each and giving each hit a 45% chance to inflict Paralysis for 2 turns (CD: 4, requires Lv.80, Rogue 80)",
         "req_points": {
             "rogue": 80
         }
@@ -676,7 +684,7 @@
         "power_stat": "def",
         "power_multiplier": 1.0,
         "cd": 2,
-        "req_level": 2,
+        "req_level": 5,
         "dungeon_pool": true,
         "req_points": {
             "knight": 10

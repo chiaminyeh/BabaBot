@@ -2,11 +2,12 @@
 
 from trpg.stats import default_stat_alloc, recalc_player_stats, meets_skill_requirements
 from trpg.combat import exp_to_next_level
+from trpg.balance import ARCHETYPE_BALANCE_VERSION
 from trpg.dungeon import SEALED_FIELDS
 
 # Bump this when you change the save schema in a way that needs real migration
 # logic (not just a new defaulted field). Stored on every player save.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # Immutable scalar defaults (safe to share — never mutated in place).
 _SCALAR_DEFAULTS = {
@@ -48,6 +49,8 @@ _SCALAR_DEFAULTS = {
     # （走 TRPGPlayer(uid) 這條全新建立路徑）用的；from_dict 對舊存檔會另外把這個欄位
     # 補回 True（見下方 from_dict），不然既有玩家下次登入會被誤判成新手，重新看一次教學。
     "onboarding_done": False,
+    # 新角色直接使用目前平衡版本；舊存檔在 from_dict 會被標成 0，取得一次免費重置。
+    "archetype_balance_version": ARCHETYPE_BALANCE_VERSION,
 }
 
 
@@ -157,6 +160,8 @@ class TRPGPlayer:
         # 才會讓 onboarding_done 維持預設的 False。
         if "onboarding_done" not in data:
             player.onboarding_done = True
+        if "archetype_balance_version" not in data:
+            player.archetype_balance_version = 0
         if player.level > 99:
             player.level = 99
             player.exp = 0

@@ -11,6 +11,9 @@ XP_CURVE_EXP = 1.8
 # Stat points granted to the player per level.
 STAT_POINTS_PER_LEVEL = 2
 
+# 提升此版本可讓更新前已存在的角色各獲得一次免費流派重置。
+ARCHETYPE_BALANCE_VERSION = 1
+
 # --- Archetype point allocation ---------------------------------------------
 # These are the direct headline payoffs for each invested point. stats.py also
 # layers secondary derived bonuses (HP/DEF/MP/etc.) on top of these anchors.
@@ -32,7 +35,7 @@ SKILL_CRIT_CHANCE = 0.12      # physical/HP-sacrifice skills (magic can't crit)
 
 # Luck stat payoff: passive-only bonuses. No active skill unlocks hang off Luck.
 # See combat.luck_crit_bonus / luck_drop_rate_mult / luck_exp_mult / luck_gold_mult.
-LUCK_CRIT_BONUS_PER_POINT = 0.002        # +0.2% crit chance per luck point
+LUCK_CRIT_BONUS_PER_POINT = 0.001        # +0.1% crit chance per luck point（風味收益，主軸仍是成長與經濟）
 LUCK_DROP_RATE_BONUS_PER_POINT = 0.01    # +1% relative boost to every drop rate per luck point
 LUCK_EXP_BONUS_PER_POINT = 0.005         # +0.5% experience gain per luck point
 LUCK_GOLD_BONUS_PER_POINT = 0.005        # +0.5% gold gain per luck point

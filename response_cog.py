@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types  # 新版 Google GenAI SDK 的設定型態
+from trpg.view_shared import BABA_EMOJI_TEXT
 
 # ==========================================
 # LM Studio Config
@@ -16,11 +17,11 @@ LM_STUDIO_URL = 'http://localhost:1234/v1/chat/completions'
 MODEL_NAME = 'qwen3.5:9b'  # Must match the model name loaded in LM Studio
 SYSTEM_PROMPT = '''You are a discord bot called babasama and try to keep your responds short. 
 But when we ask for explanations or word meanings, you give detailed answers. 
-You may sometimes add <:baba:1422080743886291025> as an emote in your messages. 如果有中文的問題請使用中文回答。
+You may sometimes add {baba_emoji} as an emote in your messages. 如果有中文的問題請使用中文回答。
 Now respond to a user. Here is what the user {username} sent: {user_message}
 You are a discord bot called babasama and try to keep your responds short. 
 But when we ask for explanations or word meanings, you give detailed answers. 
-You may sometimes add <:baba:1422080743886291025> as an emote in your messages. 如果有中文的問題請使用中文回答。'''
+You may sometimes add {baba_emoji} as an emote in your messages. 如果有中文的問題請使用中文回答。'''
 
 async def is_lm_studio_running() -> bool:
     """Ping LM Studio's /v1/models endpoint to check if it's up."""
@@ -42,7 +43,7 @@ async def lm_studio_chat(username: str, user_message: str) -> str:
         'messages': [
             {
                 'role': 'system',
-                'content': SYSTEM_PROMPT.format(username=username, user_message=user_message)
+                'content': SYSTEM_PROMPT.format(username=username, user_message=user_message, baba_emoji=BABA_EMOJI_TEXT)
             },
             {
                 'role': 'user',
@@ -103,28 +104,33 @@ class response_cog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        # 避免 Bot 讀自己的訊息無限迴圈
-        if message.author == self.bot.user:
+        # 避免 Bot 讀自己/其他 bot 訊息造成回音或無限迴圈
+        if message.author.bot:
             return
 
         username = str(message.author.display_name)
         user_message = str(message.content)
+        is_dm = isinstance(message.channel, discord.DMChannel)
+        is_mentioned = self.bot.user in getattr(message, "mentions", [])
+        stripped_message = user_message.strip()
+        lowered_message = stripped_message.lower()
         
         # 判斷 DM（私訊）
-        if isinstance(message.channel, discord.DMChannel):
+        if is_dm:
             print(f"DM received from user_id={message.author.id}; content is not forwarded for privacy.")
         else:
             print(f"{username} said: '{user_message}' (#{message.channel})")
 
         # ==========================================
         # Baba AI (LM Studio Local Model)
+        # Only answer when explicitly addressed. Plain group chat should not make
+        # Baba repeat/interject with canned replies.
         # ==========================================
-        if user_message.lower().startswith('babasama'):
+        if lowered_message.startswith('babasama') or is_mentioned:
             async with message.channel.typing():
                 sys_prompt = "You are a discord bot called babasama and try to keep your responds short. " \
                              "But when we ask for explanations or word meanings, you give detailed answers. " \
-                             "You may sometimes add <:baba:1422080743886291025> as an emote in your messages. 如果有中文的問題請使用中文回答。"
-                
+                             f"You may sometimes add {BABA_EMOJI_TEXT} as an emote in your messages. 如果有中文的問題請使用中文回答。"
                 prompt = f"Now respond to a user. Here is what the user {username} sent: {user_message}"
 
                 if not await is_lm_studio_running():
@@ -147,21 +153,26 @@ class response_cog(commands.Cog):
         reactions = {
             'lol' : '💀',
             'nice' : '👍',
-            'baba' : '<:baba:1422080743886291025>'
+            'baba' : BABA_EMOJI_TEXT
         }
         for key, value in reactions.items():
-            if key in user_message.lower():
+            if key in lowered_message:
                 await message.add_reaction(value)
-        
-        # ? 前綴判斷 (自動轉私訊)
-        if user_message.startswith("?"):
-            if user_message == "?":
-                await self.send_message(message, user_message, is_private=False)
+
+        # In group chats, do not proactively send canned replies or DM users from
+        # other people's messages. This prevents Baba from repeating/interjecting
+        # in normal conversation.
+        if not is_dm:
+            return
+
+        # DM-only canned response compatibility.
+        if stripped_message.startswith("?"):
+            if stripped_message == "?":
+                await self.send_message(message, stripped_message, is_private=False)
             else:
-                user_message = user_message[1:]
-                await self.send_message(message, user_message, is_private=True)
+                await self.send_message(message, stripped_message[1:], is_private=True)
         else:
-            await self.send_message(message, user_message, is_private=False)
+            await self.send_message(message, stripped_message, is_private=False)
         
     async def _call_gemini_with_fallback(self, prompt: str, system_instruction: str = None) -> str:
         """核心優化：嘗試清單中的所有 Gemini 模型，直到成功為止"""

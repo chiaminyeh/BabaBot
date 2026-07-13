@@ -14,6 +14,20 @@ ITEM_TYPE_EMOJI = {
     "etc": "📦",
 }
 
+# Baba 的伺服器專屬 emoji。介面會優先從 bot cache 取得真正的 CustomEmoji；
+# 若目前所在伺服器無法使用它，才退回一般 emoji，避免整個 Discord 元件送出失敗。
+BABA_EMOJI_ID = 1422080743886291025
+BABA_EMOJI_TEXT = f"<:baba:{BABA_EMOJI_ID}>"
+
+
+def baba_emoji(bot=None):
+    custom = bot.get_emoji(BABA_EMOJI_ID) if bot and hasattr(bot, "get_emoji") else None
+    return custom or "✨"
+
+
+def baba_emoji_text(bot=None) -> str:
+    return str(baba_emoji(bot))
+
 
 def item_emoji(item: dict) -> str:
     return ITEM_TYPE_EMOJI.get((item or {}).get("type"), "📦")

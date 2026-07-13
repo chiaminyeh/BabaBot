@@ -3,12 +3,13 @@
 import discord
 
 from trpg.i18n import t
+from trpg.view_shared import BABA_EMOJI_TEXT, baba_emoji_text
 
 
 class ElderChiefModal(discord.ui.Modal):
     def __init__(self, game_view):
         lang = getattr(game_view.player, "language", "zh")
-        super().__init__(title=t(lang, "modal.elder_chief_title", "請教小精靈baba"))
+        super().__init__(title=t(lang, "modal.elder_chief_title", "詢問 Baba"))
         self.game_view = game_view
         self.question = discord.ui.TextInput(
             label=t(lang, "modal.elder_chief_question_label", "你想問什麼？"),
@@ -27,27 +28,27 @@ class ElderChiefModal(discord.ui.Modal):
         context = build_grounding_context(self.game_view.cog, self.game_view.player, self.question.value, lang)
         if lang == "en":
             prompt = (
-                "You are the helpful pixie Baba, a guide sent to MISO town by the Creator to assist new adventurers. "
-                "You are cute, energetic, and highly knowledgeable about the monsters, items, and dungeons because "
+                "You are Baba, a helpful guide sent to MISO town by the Creator to assist new adventurers. "
+                "You are energetic, friendly, and highly knowledgeable about the monsters, items, and dungeons because "
                 "you were created by the Creator of this world. Answer the adventurer's question briefly and in character "
-                "as Pixie Baba, using a friendly and magical tone (use a few emoji like ✨ or 🧚). "
+                f"as Baba, using a friendly tone. You may occasionally use Baba's custom emoji {BABA_EMOJI_TEXT}. "
                 f"Here is some world knowledge:\n{context}\n\n"
                 f'The adventurer asks: "{self.question.value}" '
                 "Answer in 60 words or fewer, and where relevant give a useful gameplay tip. Respond in English only."
             )
         else:
             prompt = (
-                "你是小精靈baba，是由創世神派來米酥村（MISO town）引導新冒險者的嚮導。你個性活潑可愛、熱心助人，"
+                "你是 Baba，是由創世神派來米酥村（MISO town）引導新冒險者的嚮導。你個性活潑、親切、熱心助人，"
                 "因為是創世神創造的，所以對這個世界的所有怪物、道具、技能與地下城瞭若指掌。請用簡短、親切且帶有魔法感的方式"
-                "回答冒險者的問題（可以加一些 ✨、🧚 等可愛表情符號）。\n\n"
+                f"回答冒險者的問題（偶爾可以使用 Baba 專屬表情 {BABA_EMOJI_TEXT}）。\n\n"
                 f"背景設定與世界知識如下：\n{context}\n\n"
                 f"冒險者問：「{self.question.value}」"
                 "請在 60 字以內回答，可以給新手有用的遊戲提示（探索、商店、技能卷軸、BOSS 等）。"
             )
         ai_response = await self.game_view.cog.generate_npc_dialogue(prompt)
-        # 👇 小精靈的回答走獨立的 ephemeral 訊息，不寫進 game_view.log_message
+        # Baba 的回答走獨立的 ephemeral 訊息，不寫進 game_view.log_message。
         embed = discord.Embed(
-            title=t(lang, "modal.elder_chief_embed_title", "🧚 小精靈baba的答覆"),
+            title=t(lang, "modal.elder_chief_embed_title", "{emoji} Baba 的答覆", emoji=baba_emoji_text(self.game_view.cog.bot)),
             description=t(lang, "modal.elder_chief_response", "「{response}」", response=ai_response),
             color=discord.Color.gold(),
         )

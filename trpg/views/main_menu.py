@@ -2,6 +2,7 @@ import discord
 from datetime import datetime
 from trpg.balance import area_shop_config
 from trpg.i18n import t, tf
+from trpg.view_shared import baba_emoji
 
 class MainMenuLayout:
     @staticmethod
@@ -38,12 +39,9 @@ class MainMenuLayout:
             view.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.primary, custom_id="btn_status", row=0, emoji="📜")
             view.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.primary, custom_id="btn_equip_menu", row=0, emoji="🛡️")
             view.add_action_button(label=shop_button_label, style=discord.ButtonStyle.primary, custom_id="btn_shop_menu", row=0, emoji="🛒")
-            view.add_action_button(label=t(lang, "menu.btn_inn", "旅館"), style=discord.ButtonStyle.secondary, custom_id="btn_rest", row=1, emoji="💤")
-            view.add_action_button(label=t(lang, "menu.btn_blacksmith", "鐵匠"), style=discord.ButtonStyle.secondary, custom_id="btn_artisan_menu", row=1, emoji="⚒️")
+            view.add_action_button(label=t(lang, "menu.btn_village_facilities", "村莊設施"), style=discord.ButtonStyle.secondary, custom_id="btn_village_facilities", row=1, emoji="🏘️")
             view.add_action_button(label=t(lang, "menu.btn_guild", "公會"), style=discord.ButtonStyle.secondary, custom_id="btn_guild_menu", row=1, emoji="🏛️")
-            view.add_action_button(label=t(lang, "menu.btn_church", "教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", row=1, emoji="⛪")
-            view.add_action_button(label=t(lang, "menu.btn_village_chief", "小精靈baba"), style=discord.ButtonStyle.secondary, custom_id="btn_ask_chief", row=2, emoji="🧚")
-            view.add_action_button(label=t(lang, "menu.btn_school", "學校"), style=discord.ButtonStyle.secondary, custom_id="btn_school_menu", row=2, emoji="🏫")
+            view.add_action_button(label=t(lang, "menu.btn_village_chief", "Baba"), style=discord.ButtonStyle.secondary, custom_id="btn_ask_chief", row=1, emoji=baba_emoji(view.cog.bot))
         else:
             area_data = view.cog.areas.get(view.player.current_area, {})
             current_subarea = view._current_subarea_data(area_data)
@@ -81,6 +79,18 @@ class MainMenuLayout:
         view.log_message = t(lang, "menu.artisan_prompt", "⚒️ 【鐵匠之地】挑選你要去的地方：")
         view.add_action_button(label=t(lang, "menu.btn_blacksmith_shop", "鐵匠鋪"), style=discord.ButtonStyle.primary, custom_id="btn_blacksmith_menu", emoji="⚒️")
         view.add_action_button(label=t(lang, "menu.btn_craft_workshop", "手藝工坊"), style=discord.ButtonStyle.primary, custom_id="btn_craft_menu", emoji="🔨")
+        view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
+
+    @staticmethod
+    def build_village_facilities_menu(view):
+        view.clear_items()
+        view.current_menu_state = "village_facilities"
+        lang = view.player.language
+        view.log_message = t(lang, "menu.village_facilities_prompt", "🏘️ 【米酥村設施】\n選擇你要前往的村莊設施：")
+        view.add_action_button(label=t(lang, "menu.btn_inn", "旅館"), style=discord.ButtonStyle.primary, custom_id="btn_rest", emoji="💤")
+        view.add_action_button(label=t(lang, "menu.btn_blacksmith", "鐵匠"), style=discord.ButtonStyle.primary, custom_id="btn_artisan_menu", emoji="⚒️")
+        view.add_action_button(label=t(lang, "menu.btn_church", "教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", emoji="⛪")
+        view.add_action_button(label=t(lang, "menu.btn_school", "學校"), style=discord.ButtonStyle.secondary, custom_id="btn_school_menu", emoji="🏫")
         view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
     @staticmethod

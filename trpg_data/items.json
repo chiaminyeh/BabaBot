@@ -553,16 +553,16 @@
         "desc_en": "Study this to learn the water-elemental spell [Water Ball]."
     },
     "scroll_stone_spike": {
-        "name": "技能卷軸：岩刺術",
+        "name": "技能卷軸：堡壘岩刺",
         "type": "skill_scroll",
         "teaches": "stone_spike",
         "price": 550,
         "sell_price": 180,
-        "exclusive_level": 8,
+        "exclusive_level": 20,
         "shop_weight": 15,
-        "desc": "研讀後可習得土屬性魔法【岩刺術】",
-        "name_en": "Skill Scroll: Rock Spike",
-        "desc_en": "Study this to learn the earth-elemental spell [Rock Spike]."
+        "desc": "研讀後可習得騎士技能【堡壘岩刺】",
+        "name_en": "Skill Scroll: Fortress Spike",
+        "desc_en": "Study this to learn the Knight skill [Fortress Spike]."
     },
     "scroll_dark_orb": {
         "name": "技能卷軸：暗影球",
@@ -594,11 +594,11 @@
         "teaches": "holy_smash",
         "price": 800,
         "sell_price": 280,
-        "exclusive_level": 12,
+        "exclusive_level": 20,
         "shop_weight": 10,
-        "desc": "研讀後可習得光屬性魔法【神聖制裁】",
+        "desc": "研讀後可習得騎士技能【神聖制裁】",
         "name_en": "Skill Scroll: Holy Judgment",
-        "desc_en": "Study this to learn the light-elemental spell [Holy Judgment]."
+        "desc_en": "Study this to learn the Knight skill [Holy Judgment]."
     },
     "scroll_venom_cloud": {
         "name": "劇毒之雲卷軸",
@@ -607,20 +607,21 @@
         "price": 1800,
         "sell_price": 500,
         "shop_weight": 0,
-        "desc": "【學習條件：Lv.15】散播劇毒雲霧，讓所有敵人痛苦掙扎",
+        "desc": "【學習條件：Lv.10、術士 18】散播劇毒雲霧，讓所有敵人痛苦掙扎",
         "name_en": "Toxic Cloud Scroll",
-        "desc_en": "[Requires Lv.15] Spreads a cloud of deadly poison, leaving all enemies writhing in agony."
+        "desc_en": "[Requires Lv.10, Warlock 18] Spreads a cloud of deadly poison across all enemies."
     },
     "scroll_frost_nova": {
-        "name": "冰霜新星卷軸",
+        "name": "冰霜陷阱卷軸",
         "type": "skill_scroll",
         "teaches": "frost_nova",
         "price": 2500,
         "sell_price": 700,
+        "exclusive_level": 50,
         "shop_weight": 0,
-        "desc": "【學習條件：Lv.18】釋放極寒氣息，凍結全場敵人",
-        "name_en": "Frost Nova Scroll",
-        "desc_en": "[Requires Lv.18] Releases a frigid blast that freezes every enemy on the field."
+        "desc": "【學習條件：Lv.50、盜賊 50】設下以速度引爆的全體冰霜陷阱",
+        "name_en": "Frost Trap Scroll",
+        "desc_en": "[Requires Lv.50, Rogue 50] Sets a SPD-scaled frost trap against all enemies."
     },
     "scroll_meteor_swarm": {
         "name": "隕石風暴卷軸",
@@ -628,10 +629,11 @@
         "teaches": "meteor_swarm",
         "price": 4500,
         "sell_price": 1200,
+        "exclusive_level": 80,
         "shop_weight": 0,
-        "desc": "【學習條件：Lv.25】召喚毀滅性的隕石，將戰場化為火海",
+        "desc": "【學習條件：Lv.80、法師 80】召喚毀滅性的隕石，將戰場化為火海",
         "name_en": "Meteor Storm Scroll",
-        "desc_en": "[Requires Lv.25] Summons devastating meteors, turning the battlefield into a sea of fire."
+        "desc_en": "[Requires Lv.80, Mage 80] Summons devastating meteors, turning the battlefield into a sea of fire."
     },
     "scroll_earthquake": {
         "name": "大地震擊卷軸",
@@ -639,10 +641,11 @@
         "teaches": "earthquake",
         "price": 3000,
         "sell_price": 800,
+        "exclusive_level": 80,
         "shop_weight": 0,
-        "desc": "【學習條件：Lv.20】撼動大地的怒吼，震碎敵人的防禦",
-        "name_en": "Earthquake Strike Scroll",
-        "desc_en": "[Requires Lv.20] An earth-shaking roar that shatters enemy defenses."
+        "desc": "【學習條件：Lv.80、騎士 80】以防禦力撼動大地，重創全體敵人",
+        "name_en": "Earthshaker Scroll",
+        "desc_en": "[Requires Lv.80, Knight 80] Ruptures the ground with DEF to strike all enemies."
     },
     "scroll_void_eruption": {
         "name": "虛空爆發卷軸",
@@ -650,10 +653,11 @@
         "teaches": "void_eruption",
         "price": 4500,
         "sell_price": 1200,
+        "exclusive_level": 20,
         "shop_weight": 0,
-        "desc": "【學習條件：Lv.25】撕裂空間釋放虛空之力，無視大量防禦",
+        "desc": "【學習條件：Lv.20、術士 25】撕裂空間釋放虛空之力，無視大量防禦",
         "name_en": "Void Eruption Scroll",
-        "desc_en": "[Requires Lv.25] Tears open space to unleash the power of the void, ignoring most defense."
+        "desc_en": "[Requires Lv.20, Warlock 25] Tears open space to unleash the void, ignoring most defense."
     },
     "antidote_herb": {
         "name": "解毒草",

@@ -14,7 +14,7 @@ from trpg.stats import default_stat_alloc, recalc_player_stats, get_unspent_poin
 from trpg.player import RoguePlayerWrapper
 from trpg.entity import absorb_monster_damage
 from trpg import dungeon as dg
-from trpg.balance import PRESTIGE_LEVEL_STEP
+from trpg.balance import PRESTIGE_LEVEL_STEP, ARCHETYPE_BALANCE_VERSION
 from trpg.modals import ElderChiefModal, BuyItemModal, SellItemModal, StatPointModal
 from trpg.view_shared import ITEM_TYPE_EMOJI, item_emoji, EQUIP_STAT_DISPLAY, ELEMENT_DISPLAY
 from trpg.view_shop import ShopMixin
@@ -240,6 +240,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "btn_stat_alloc": {"m": "handle_stat_alloc_menu"},
         "btn_stat_reset": {"m": "handle_stat_reset"},
         "btn_artisan_menu": {"m": "build_artisan_menu", "await": False},
+        "btn_village_facilities": {"m": "build_village_facilities_menu", "await": False},
         "btn_guild_menu": {"m": "build_guild_menu", "await": False},
         "btn_church_menu": {"m": "build_church_menu", "await": False},
         "btn_school_menu": {"m": "build_school_menu", "await": False},
@@ -458,6 +459,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         MainMenuLayout.build_main_menu(self)
     def build_artisan_menu(self):
         MainMenuLayout.build_artisan_menu(self)
+    def build_village_facilities_menu(self):
+        MainMenuLayout.build_village_facilities_menu(self)
     def _daily_claimed_today(self) -> bool:
         baba = getattr(self.cog.bot, "baba", None)
         if baba is None or not hasattr(baba, "daily_claims"):
@@ -1688,15 +1691,24 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         """屬性重置費用：Lv.10 以下免費（新手試錯期），之後隨等級成長——
         後期洗點是金幣回收管道之一，也讓「隨便亂點再免費洗掉」有一點成本感。"""
         real = getattr(self.player, "real_player", self.player)
+        if getattr(real, "archetype_balance_version", 0) < ARCHETYPE_BALANCE_VERSION:
+            return 0
         return 0 if real.level < 10 else real.level * 30
+
+    def _has_balance_respec(self) -> bool:
+        real = getattr(self.player, "real_player", self.player)
+        return getattr(real, "archetype_balance_version", 0) < ARCHETYPE_BALANCE_VERSION
 
     async def handle_stat_reset(self):
         lang = self.player.language
+        used_balance_respec = self._has_balance_respec()
         cost = self._stat_reset_cost()
         if cost > 0 and not self.cog.try_spend(self.user_id, self.player, cost):
             await self.handle_stat_alloc_menu(t(lang, "char.stat_reset_no_gold", "❌ 重置屬性配點需要 {cost} 金幣，你的餘額不足！", cost=cost))
             return
         self.player.stat_alloc = default_stat_alloc()
+        real = getattr(self.player, "real_player", self.player)
+        real.archetype_balance_version = ARCHETYPE_BALANCE_VERSION
         recalc_player_stats(self.player, self.cog.items, heal_full=False)
         removed = prune_unqualified_skills(self.player, self.cog.skills)
         self.cog.save_players(player=self.player)
@@ -1705,7 +1717,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             joiner = ", " if lang == "en" else "、"
             removed_names = joiner.join(tf(self.cog.skills.get(skill_id, {}), "name", lang) or skill_id for skill_id in removed[:8])
             removed_text = "\n" + t(lang, "char.stats_reset_skills_removed", "⚠️ 因點數歸零，你失去了這些專屬技能：{skills}", skills=removed_names)
-        if cost > 0:
+        if used_balance_respec:
+            await self.handle_stat_alloc_menu(t(lang, "char.stats_balance_respec_notice", "🎁 已使用本次技能重整提供的免費流派重置，請重新分配點數。") + removed_text)
+        elif cost > 0:
             await self.handle_stat_alloc_menu(t(lang, "char.stats_reset_paid_notice", "🔄 支付了 {cost} 金幣，已重置所有屬性配點，請重新分配。", cost=cost) + removed_text)
         else:
             await self.handle_stat_alloc_menu(t(lang, "char.stats_reset_notice", "🔄 已重置所有屬性配點，請重新分配。") + removed_text)

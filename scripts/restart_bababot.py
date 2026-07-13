@@ -168,9 +168,13 @@ def start_bababot(python_executable: str) -> tuple[subprocess.Popen[bytes], Path
     if os.name == "nt":
         creationflags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
 
+    # Use pythonw.exe instead of python.exe for subprocess to avoid console window
+    pythonw_executable = Path(python_executable).parent / "pythonw.exe"
+    executable_to_use = pythonw_executable if pythonw_executable.exists() else python_executable
+
     try:
         process = subprocess.Popen(
-            [python_executable, "-u", str(MAIN_PATH)],
+            [str(executable_to_use), "-u", str(MAIN_PATH)],
             cwd=str(REPO_ROOT),
             env=env,
             stdin=subprocess.DEVNULL,
