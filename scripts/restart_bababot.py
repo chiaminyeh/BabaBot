@@ -31,6 +31,7 @@ FAILURE_MARKERS = (
     "extensionfailed",
     "trpg startup validation failed",
 )
+WINDOWS_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
 
 
 def _normalize_path(value: str) -> str:
@@ -63,6 +64,7 @@ def list_python_processes() -> list[dict[str, Any]]:
         encoding="utf-8",
         errors="replace",
         check=True,
+        creationflags=WINDOWS_NO_WINDOW,
     )
 
     normalized_text = (
@@ -120,6 +122,7 @@ def terminate_process(pid: int) -> None:
         text=True,
         encoding="utf-8",
         errors="replace",
+        creationflags=WINDOWS_NO_WINDOW,
     )
     if result.returncode == 0:
         return

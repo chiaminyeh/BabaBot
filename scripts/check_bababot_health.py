@@ -41,6 +41,7 @@ SECRET_PATTERNS = [
     re.compile(r"[MN][A-Za-z\d]{23}\.[\w-]{6}\.[\w-]{27}"),
 ]
 IGNORE_DIRS = {".git", ".venv", "__pycache__", "logs", ".mypy_cache", ".pytest_cache"}
+WINDOWS_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
 
 
 @dataclass
@@ -63,6 +64,7 @@ def list_python_processes() -> list[dict[str, Any]]:
             encoding="utf-8",
             errors="replace",
             check=True,
+            creationflags=WINDOWS_NO_WINDOW,
         )
         normalized = result.stdout.replace("\r\r\n", "\n").replace("\r\n", "\n").replace("\r", "\n")
         processes: list[dict[str, Any]] = []

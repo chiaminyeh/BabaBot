@@ -44,6 +44,10 @@ PLAYERS_DB_PATH = TRPG_DATA_DIR / "trpg_players.sqlite3"
 MAX_HASHES = 100
 MAX_TRACKED_FILES = 12
 
+# monitor_cog 每兩分鐘會在 Bot 行程內呼叫本模組。Windows 若直接啟動 wmic，
+# 即使有 capture_output 仍可能短暫建立主控台視窗，因此明確要求不建立視窗。
+WINDOWS_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
+
 
 def load_health_module():
     script_path = REPO_ROOT / "scripts" / "check_bababot_health.py"
@@ -120,6 +124,7 @@ def list_python_processes() -> list[dict[str, Any]]:
         encoding="utf-8",
         errors="replace",
         check=True,
+        creationflags=WINDOWS_NO_WINDOW,
     )
     normalized = result.stdout.replace("\r\r\n", "\n").replace("\r\n", "\n").replace("\r", "\n")
     current_command: str | None = None
