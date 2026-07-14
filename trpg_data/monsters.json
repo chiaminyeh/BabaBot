@@ -1658,14 +1658,14 @@
             "scroll_combo_attack": 0.55,
             "bronze_sword": 0.2
         },
-        "ai": "self_heal",
+        "ai": "none",
         "active_skills": [
             {
                 "id": "call_of_the_forest",
                 "name": "森林之喚",
                 "trigger": {
                     "type": "interval",
-                    "value": 5
+                    "value": 6
                 },
                 "effect": {
                     "type": "summon_minion",
@@ -1682,7 +1682,7 @@
             "hp_below": 0.5,
             "ai": "berserk_low_hp",
             "name_suffix": "（森林之怒）",
-            "heal_pct": 0.45,
+            "heal_pct": 0.15,
             "transform_text": "迷霧林王身上的藤蔓暴漲，化作猛獸般的姿態！",
             "active_skills": [
                 {
@@ -1703,6 +1703,7 @@
             "transform_text_en": "The vines covering the Mistwood King surge and swell, twisting him into a beastlike form!"
         },
         "name_en": "Mistwood King",
+        "regen_pct": 0.03,
         "traits": [
             "regenerator"
         ]

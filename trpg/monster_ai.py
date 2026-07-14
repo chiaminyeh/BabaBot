@@ -676,7 +676,7 @@ def _trait_regenerator(combat, slot, log):
     lang = combat.player.language
     if "burn" in (slot.get("status") or {}):
         return log + t(lang, "monster_ai.trait_regen_burned", "\n🔥 傷口被烈焰灼燒，{name} 的超再生失效了！", name=tf(monster, "name", lang)), True
-    heal = max(1, int(monster["max_hp"] * 0.08))
+    heal = max(1, int(monster["max_hp"] * monster.get("regen_pct", 0.08)))
     before = slot["hp"]
     slot["hp"] = min(monster["max_hp"], slot["hp"] + heal)
     if slot["hp"] - before > 0:

@@ -1,6 +1,8 @@
+import json
 import unittest
+from pathlib import Path
 
-from trpg.monster_ai import _trait_avenger
+from trpg.monster_ai import _trait_avenger, _trait_regenerator
 
 
 class DummyPlayer:
@@ -34,6 +36,38 @@ class TestMonsterAiTraits(unittest.TestCase):
         self.assertEqual(mult, 1.0)
         self.assertEqual(note, "")
         self.assertNotIn("avenger_atk_stacks", slot)
+
+    def test_regenerator_uses_per_monster_regen_rate(self):
+        slot = {
+            "monster": {"name": "迷霧林王", "max_hp": 848, "regen_pct": 0.03},
+            "hp": 400,
+            "status": {},
+        }
+
+        _, proceed = _trait_regenerator(DummyCombat(), slot, "")
+
+        self.assertTrue(proceed)
+        self.assertEqual(slot["hp"], 425)
+
+    def test_regenerator_keeps_eight_percent_default(self):
+        slot = {
+            "monster": {"name": "森林精靈", "max_hp": 100},
+            "hp": 50,
+            "status": {},
+        }
+
+        _trait_regenerator(DummyCombat(), slot, "")
+
+        self.assertEqual(slot["hp"], 58)
+
+    def test_mistwood_king_healing_budget_is_bounded(self):
+        monsters = json.loads((Path(__file__).parents[1] / "trpg_data" / "monsters.json").read_text(encoding="utf-8"))
+        boss = monsters["forest_guardian"]
+
+        self.assertEqual(boss["ai"], "none")
+        self.assertEqual(boss["regen_pct"], 0.03)
+        self.assertEqual(boss["phase2"]["heal_pct"], 0.15)
+        self.assertEqual(boss["active_skills"][0]["trigger"], {"type": "interval", "value": 6})
 
 
 if __name__ == "__main__":
