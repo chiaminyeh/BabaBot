@@ -411,12 +411,12 @@ def ai_thief(combat, slot, log):
 
 
 def ai_time_thief(combat, slot, log):
-    """時間竊賊：偷走玩家的行動值，讓玩家的下次行動大幅延後（整場戰鬥最多 3 次，避免無限鎖回合）。"""
+    """時間竊賊：整場最多 3 次，使玩家下一完整回合失去 1 AP。"""
     lang = combat.player.language
-    if slot.get("time_steals", 0) < 3 and combat.player_av > 40 and random.random() < 0.35:
+    if slot.get("time_steals", 0) < 3 and combat.next_round_ap_penalty < 1 and random.random() < 0.35:
         slot["time_steals"] = slot.get("time_steals", 0) + 1
-        combat.player_av = max(0, combat.player_av - 30)
-        return log + t(lang, "monster_ai.time_thief", "\n⏳ {name} 扭曲了你周圍的時間，你的行動被大幅延後了！", name=tf(slot["monster"], "name", lang))
+        combat.next_round_ap_penalty = 1
+        return log + t(lang, "monster_ai.time_thief", "\n⏳ {name} 偷走了一段時間：你下回合將失去 1 AP！", name=tf(slot["monster"], "name", lang))
     return _plain_attack(combat, slot, log)
 
 
@@ -1079,25 +1079,24 @@ def tick_revive(slot: dict, lang: str = "zh") -> str:
     return t(lang, "monster_ai.revive", "\n💀➡️✨ {name} 的屍體竟微微抽動——牠重新站了起來！（恢復至 {hp} HP，僅此一次）", name=tf(slot["monster"], "name", lang), hp=slot["hp"])
 
 
-def run_monster_ai(combat, slot: dict, log: str) -> str:
+def run_monster_ai(combat, slot: dict, log: str, round_start: bool = True) -> str:
     lang = combat.player.language
-    slot["turns_acted"] = slot.get("turns_acted", 0) + 1
-    # 傷害上限（damage_cap）機制：額度是「兩次行動之間」的總承傷，牠一行動就重置。
-    # 重置前先把這個窗口的承傷快照下來，給復仇（avenger）/反擊架勢（counter_stance）
-    # 這類「記住你剛才打了我多少」的機制讀取。
-    slot["dmg_last_window"] = slot.get("dmg_taken_since_act", 0)
-    slot["dmg_taken_since_act"] = 0
-    _tick_stat_mods(slot)
-    log = _maybe_transform_phase2(combat, slot, log)
+    if round_start:
+        slot["turns_acted"] = slot.get("turns_acted", 0) + 1
+        # Damage caps and turn-start traits reset/tick once per complete round,
+        # never once per AP action.
+        slot["dmg_last_window"] = slot.get("dmg_taken_since_act", 0)
+        slot["dmg_taken_since_act"] = 0
+        _tick_stat_mods(slot)
+        log = _maybe_transform_phase2(combat, slot, log)
 
-    # 被動特性：行動前結算（再生/怒意/強固/元素變換...）。分裂、裝死這類「劫持
-    # 整回合」的特性回傳 proceed=False，這回合就不再執行一般行動。
-    for tname in slot["monster"].get("traits", ()):
-        hook = TRAIT_REGISTRY.get(tname, {}).get("turn_start")
-        if hook:
-            log, proceed = hook(combat, slot, log)
-            if not proceed:
-                return log
+        for tname in slot["monster"].get("traits", ()):
+            hook = TRAIT_REGISTRY.get(tname, {}).get("turn_start")
+            if hook:
+                log, proceed = hook(combat, slot, log)
+                if not proceed:
+                    slot["_skip_remaining_ap"] = True
+                    return log
 
     if slot.get("status", {}).get("berserk"):
         slot["telegraph"] = None

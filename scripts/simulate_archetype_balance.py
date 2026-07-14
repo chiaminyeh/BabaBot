@@ -12,7 +12,7 @@ ROOT = Path(__file__).parents[1]
 sys.path.insert(0, str(ROOT))
 
 from trpg.archetypes import set_core_ability
-from trpg.combat import get_player_atk, get_player_def, get_player_magic, get_player_spd
+from trpg.combat import TRPGCombat, get_player_atk, get_player_def, get_player_magic, get_player_spd
 from trpg.player import TRPGPlayer
 from trpg.stats import meets_item_stat_requirements, recalc_player_stats
 
@@ -82,19 +82,22 @@ def build(level, archetype, items):
 def run():
     items = json.loads((ROOT / "trpg_data" / "items.json").read_text(encoding="utf-8"))
     skills = json.loads((ROOT / "trpg_data" / "skills.json").read_text(encoding="utf-8"))
-    print("level,class,hp,mp,atk,def,magic,spd,best_hit,weapon,armor,accessory")
+    print("level,class,hp,mp,atk,def,magic,spd,ap,best_hit,weapon,armor,accessory")
     rows = []
     for level in LEVELS:
         enemy_def = 5 + level * 2.2
         enemy_mdef = 3 + level * 1.6
         for archetype in ARCHETYPES:
             p = build(level, archetype, items)
-            row = (level, LABELS[archetype], p.max_hp, p.max_mp, get_player_atk(p, items), get_player_def(p, items), get_player_magic(p, items), get_player_spd(p), round(expected_damage(p, skills, archetype, enemy_def, enemy_mdef)), p.weapon or "-", p.armor or "-", p.accessory or "-")
+            spd = get_player_spd(p)
+            enemy_spd = int(10 + level * 2.2)
+            ap = TRPGCombat.action_points_for_speed(spd, enemy_spd)
+            row = (level, LABELS[archetype], p.max_hp, p.max_mp, get_player_atk(p, items), get_player_def(p, items), get_player_magic(p, items), spd, ap, round(expected_damage(p, skills, archetype, enemy_def, enemy_mdef)), p.weapon or "-", p.armor or "-", p.accessory or "-")
             rows.append(row)
             print(",".join(map(str, row)))
     assert len(rows) == len(LEVELS) * len(ARCHETYPES)
     for level in LEVELS:
-        hits = [r[8] for r in rows if r[0] == level]
+        hits = [r[9] for r in rows if r[0] == level]
         assert min(hits) > 0
         assert max(hits) / min(hits) < 8.0, (level, hits)
 

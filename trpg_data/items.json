@@ -1378,7 +1378,7 @@
         "desc": "速度越快，攻擊越猛烈",
         "desc_en": "The faster you are, the harder this hits.",
         "atk_bonus": 12,
-        "spd_scaling": 0.5
+        "spd_scaling": 0.15
     },
     "ember_wand": {
         "name": "餘燼法杖",
@@ -1581,7 +1581,7 @@
         "desc": "經過強化的巨型弓",
         "desc_en": "A reinforced, oversized bow.",
         "atk_bonus": 44,
-        "spd_scaling": 0.6
+        "spd_scaling": 0.18
     },
     "sky_pendant": {
         "name": "天空吊墜",
@@ -1930,7 +1930,7 @@
         "desc": "來自虛空的輕盈長槍",
         "desc_en": "A light glaive drawn from the void.",
         "atk_bonus": 130,
-        "spd_scaling": 0.4,
+        "spd_scaling": 0.12,
         "set": "voidwalker",
         "stat_requirements": {
             "rogue": 22,

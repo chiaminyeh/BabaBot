@@ -562,7 +562,7 @@
     "monster_ai.thief_flee_gone": "\n💰🏃 {name} makes off with your {amount} gold...",
     "monster_ai.thief_flee_warn": "\n💰😰 {name} clutches its loot and looks ready to bolt! (It will escape with your gold next turn — finish it fast!)",
     "monster_ai.thief_steal": "\n💰 {name} deftly pickpockets {amount} gold from you! (Defeat it to get your money back)",
-    "monster_ai.time_thief": "\n⏳ {name} warps the flow of time around you — your next action is greatly delayed!",
+    "monster_ai.time_thief": "\n⏳ {name} steals a moment of time: you will lose 1 AP next round!",
     "monster_ai.trait_avenger": "💢 【Vengeance】{name} remembers the damage you just dealt — and repays it with interest!",
     "monster_ai.trait_bloodthirst": "\n🩸 【Bloodthirst】{name} laps up your blood, recovering {heal} HP!",
     "monster_ai.trait_desperado": "🔥 【Last Stand】The more wounded {name} is, the harder it hits!",
@@ -794,7 +794,7 @@
     "fortune.school_hint": "\n🍀 Omen: {tier}",
     "fortune.shifted": "🍀 You feel the current of fate quietly shift... Current omen: {tier}",
     "combat.coating_expired": "💨 The elemental coating on your weapon fades.",
-    "combat.combo_gained": "🔄 Combo Rhythm rises to {stacks}/3.",
+    "combat.combo_gained": "🔄 Combo Rhythm rises to {stacks}/5.",
     "combat.weapon_coating_source": "[Elemental Coating]",
     "combat.skill_combo_insufficient": "❌ [{skill}] requires {cost} Combo.",
     "combat.blood_pact_gained": "🩸 Blood Pact rises to {stacks}/3.\n",
@@ -806,5 +806,11 @@
     "event.choice_core_locked": "🔒 {label} (matching core required)",
     "event.choice_invalid": "❌ This option is no longer valid.",
     "event.choice_requirement_failed": "❌ Your current core ability cannot take this action.",
-    "event.choice_resolved": "Your choice changes the path ahead."
+    "event.choice_resolved": "Your choice changes the path ahead.",
+    "battle.btn_end_turn": "End Turn",
+    "battle.ap_label": "⚡ AP: `{ap}/{max_ap}`",
+    "battle.enemy_ap_label": "⚡ AP: {markers}",
+    "combat.player_ends_round": "⏭️ You end the round early.",
+    "combat.combo_broken": "💥 Taking damage breaks your Combo Rhythm!",
+    "combat.skill_ap_insufficient": "❌ Not enough AP! [{skill}] costs {cost} AP; you have {have}."
 }

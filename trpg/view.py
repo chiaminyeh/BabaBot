@@ -71,14 +71,25 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         if pending_battle and pending_battle.get("monster_slots"):
             self.in_battle = True
             self.monster_slots = pending_battle["monster_slots"]
-            self.combat.player_av = pending_battle.get("player_av", 100)
+            for slot in self.monster_slots:
+                slot.pop("av", None)
+            # Legacy AV snapshots resume with one safe AP; new snapshots preserve the exact round state.
+            self.combat.player_ap = pending_battle.get("player_ap", 1)
+            self.combat.player_max_ap = pending_battle.get("player_max_ap", max(1, self.combat.player_ap))
+            self.combat.round_started = pending_battle.get("round_started", True)
+            self.combat.round_number = pending_battle.get("round_number", 1)
+            self.combat.next_round_ap_penalty = pending_battle.get("next_round_ap_penalty", 0)
             self.combat.skill_cds = pending_battle.get("skill_cds", {})
             self.combat.is_defending = pending_battle.get("is_defending", False)
             self.combat.is_dodging = pending_battle.get("is_dodging", False)
         else:
             self.in_battle = False
             self.monster_slots = []
-            self.combat.player_av = 100
+            self.combat.player_ap = 0
+            self.combat.player_max_ap = 1
+            self.combat.round_started = False
+            self.combat.round_number = 0
+            self.combat.next_round_ap_penalty = 0
             self.combat.skill_cds = {}
             self.combat.is_defending = False
             self.combat.is_dodging = False
@@ -135,11 +146,14 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         """所有戰鬥的單一入口：最多吃 3 隻怪物，組成 monster_slots。絕大多數戰鬥仍只傳 1 隻怪物。
         monster 定義帶 start_divine_shield 的話，開場就自帶一層聖盾（完全抵銷下一次傷害）。"""
         self.monster_slots = [
-            {"monster": dict(m), "hp": m["max_hp"], "av": 0, "status": {},
+            {"monster": dict(m), "hp": m["max_hp"], "status": {},
              "divine_shield": bool(m.get("start_divine_shield"))}
             for m in monster_defs[:3]
         ]
         self.in_battle = True
+        self.combat._clear_battle_state()
+        self.combat.player_max_ap = self.combat.calculate_player_ap()
+        self.combat.player_ap = self.combat.player_max_ap
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if str(interaction.user.id) != self.user_id:
@@ -275,6 +289,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "btn_upgrade_weapon": {"m": "handle_upgrade_execute", "k": {"is_weapon": True}},
         "btn_upgrade_armor": {"m": "handle_upgrade_execute", "k": {"is_weapon": False}},
         "b_atk": {"m": "handle_battle_attack", "guard": True},
+        "b_end": {"m": "handle_battle_end_turn", "guard": True},
         "b_ski": {"m": "handle_skill_menu"},
         "b_itm": {"m": "handle_item_menu"},
         "b_fle": {"m": "handle_battle_flee", "guard": True},
@@ -325,11 +340,11 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "btn_explore", "btn_boss_explore", "btn_rest",
         "btn_tower_next", "btn_dung_next", "btn_dung_flee", "btn_colo_fight",
         "cave_dir_forward", "cave_dir_left", "cave_dir_right", "cave_dir_back",
-        "b_atk", "b_def", "b_dod", "b_fle",
+        "b_atk", "b_def", "b_dod", "b_fle", "b_end",
     }
     _WORLD_ACTION_PREFIXES = ("move_to_", "subarea_", "skill_", "use_item_")
     _BATTLE_ALLOWED_IDS = {
-        "b_atk", "b_def", "b_dod", "b_fle", "b_ski", "b_itm",
+        "b_atk", "b_def", "b_dod", "b_fle", "b_end", "b_ski", "b_itm",
         "btn_back_battle", "btn_status", "b_sta", "btn_combat_history",
     }
     _BATTLE_ALLOWED_PREFIXES = ("skill_", "use_item_")
@@ -428,7 +443,11 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         if getattr(self, "in_battle", False) and self.monster_slots:
             real_player.active_battle = {
                 "monster_slots": self.monster_slots,
-                "player_av": self.combat.player_av,
+                "player_ap": self.combat.player_ap,
+                "player_max_ap": self.combat.player_max_ap,
+                "round_started": self.combat.round_started,
+                "round_number": self.combat.round_number,
+                "next_round_ap_penalty": self.combat.next_round_ap_penalty,
                 "skill_cds": self.combat.skill_cds,
                 "is_defending": self.combat.is_defending,
                 "is_dodging": self.combat.is_dodging,
@@ -1291,13 +1310,6 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         item_name = tf(item, "name", lang)
         return t(lang, "battle.used_item_cured", "✨ 使用了【{item_name}】，解除了：{cured_list}", item_name=item_name, cured_list="、".join(cured))
 
-    def _generate_action_bar(self, current, maximum, length=10):
-            """生成文字版行動條"""
-            if maximum <= 0: return "▱" * length
-            filled = int(round((current / maximum) * length))
-            filled = min(max(filled, 0), length)
-            return "▰" * filled + "▱" * (length - filled)
-
     def _has_magic_eye(self) -> bool:
         """魔法之眼是「放在行囊就生效」的主線道具——一律讀永久角色的背包，
         地下城探索中封印替身的臨時背包不算數。"""
@@ -1360,11 +1372,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         p_spd = get_player_spd(p)
         unspent = get_unspent_points(p)
 
-        # 配合 trpg_combat.py 的設定，抓取 player_av
-        p_atb = getattr(self.combat, "player_av", 0) if self.in_battle else 0
-        atb_max = 100  # 根據你的 advance_time 邏輯，滿值固定為 100
-
-        player_bar = self._generate_action_bar(p_atb, atb_max)
+        player_ap = getattr(self.combat, "player_ap", 0) if self.in_battle else 0
+        player_max_ap = getattr(self.combat, "player_max_ap", 1) if self.in_battle else 1
 
         # 小丑面具判定
         immune_str = ""
@@ -1404,7 +1413,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
 
         status_line = t(lang, "battle.status_line", "📜 狀態：{status_text}", status_text=status_text)
         if self.in_battle:
-            action_label = t(lang, "battle.action_bar_label", "⚡ 行動: `[{bar}]`", bar=player_bar)
+            action_label = t(lang, "battle.ap_label", "⚡ AP：`{ap}/{max_ap}`", ap=player_ap, max_ap=player_max_ap)
             player_desc += f"{action_label}\n"
             mods_str = self._format_combat_mods(p)
             if mods_str:
@@ -1450,15 +1459,14 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                     row_tag = t(lang, "battle.row_back", "　 後排")
                 else:
                     row_tag = t(lang, "battle.row_defeated", "💀 已擊倒")
-                monster_bar = self._generate_action_bar(slot["av"], atb_max)
                 monster_name = tf(m, "name", lang)
-                # ❗ 提示：預估玩家下次行動後這隻怪物會攻擊幾次（❗=1 次，❗❗=2 次以上）
-                warn = ""
+                # One marker per enemy AP. A telegraphed large move replaces the first marker with ⚠️.
+                markers = ""
                 if slot["hp"] > 0:
                     acts = self.combat.predict_monster_actions(slot)
                     if acts >= 1:
-                        warn = " " + "❗" * min(acts, 3)
-                action_label = t(lang, "battle.action_bar_label", "⚡ 行動: `[{bar}]`", bar=monster_bar) + warn
+                        markers = ("⚠️" if self.combat._has_ultimate_warning(slot) else "❗") + "❗" * (acts - 1)
+                action_label = t(lang, "battle.enemy_ap_label", "⚡ AP：{markers}", markers=markers or "—")
                 # 防禦是「身份標籤」不是通用數值：大多數怪物 0 防（不顯示），少數
                 # 鐵殼/重甲型怪物的高防才值得佔一格版面，讓玩家一眼認出要換打法。
                 def_part = f" | 🛡️ DEF: `{m['def']}`" if m.get("def", 0) > 0 else ""
@@ -1526,6 +1534,15 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
     async def handle_battle_attack(self):
         self.log_message = self.combat.player_attack()
         # 確保砍完重繪戰鬥按鈕
+        if self.in_battle:
+            self.build_battle_menu()
+
+    async def handle_battle_end_turn(self):
+        lang = self.player.language
+        self.log_message = self.combat.advance_time(
+            t(lang, "combat.player_ends_round", "⏭️ 你主動結束了這一回合。"),
+            force_end=True,
+        )
         if self.in_battle:
             self.build_battle_menu()
 

@@ -19,14 +19,14 @@ CORE_ABILITIES = {
     "rogue": {
         "name": "🔄 連擊節奏",
         "name_en": "🔄 Combo Rhythm",
-        "desc": "核心被動：成功攻擊獲得 1 層連擊（最多 3 層）；每層速度 +5%、暴擊率 +3%。部分技能會消耗連擊。",
-        "desc_en": "Core Passive: Successful attacks grant 1 Combo (max 3); each grants +5% SPD and +3% crit. Some skills consume Combo.",
+        "desc": "核心被動：成功攻擊獲得 1 層連擊（最多 5 層）；每層暴擊率 +3%，受到傷害時歸零。部分技能會消耗連擊。",
+        "desc_en": "Core Passive: Successful attacks grant 1 Combo (max 5); each grants +3% crit, and taking damage clears all stacks. Some skills consume Combo.",
     },
     "mage": {
         "name": "🔷 魔力循環",
         "name_en": "🔷 Arcane Cycle",
-        "desc": "核心被動：每個玩家回合開始時回復最大 MP 的 4% 加魔力的 5%（至少 3 MP）。",
-        "desc_en": "Core Passive: At the start of each player turn, restore 4% max MP plus 5% Magic (minimum 3 MP).",
+        "desc": "核心被動：每個完整回合開始時回復最大 MP 的 4% 加魔力的 5%（至少 3 MP）；同回合多次施法不會重複回魔。",
+        "desc_en": "Core Passive: At the start of each complete round, restore 4% max MP plus 5% Magic (minimum 3 MP); extra actions do not trigger more regeneration.",
     },
     "warlock": {
         "name": "🩸 血之契約",

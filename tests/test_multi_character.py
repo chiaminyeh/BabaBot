@@ -542,14 +542,14 @@ class TestMultiCharacter(unittest.TestCase):
         player.status_effects = {"burn": {"turns": 2}}
         view = TRPGGameView(cog, "90004")
         view.start_combat([{"id": "slime", "name": "Slime", "max_hp": 10, "atk": 1, "def": 0}])
-        view.combat.player_av = 77
+        view.combat.player_ap = 2
 
         log = view.combat.use_cure_item("antidote")
 
         self.assertIn("目前沒有", log)
         self.assertEqual(player.inventory["antidote"], 1)
         self.assertIn("burn", player.status_effects)
-        self.assertEqual(view.combat.player_av, 77)
+        self.assertEqual(view.combat.player_ap, 2)
 
     def test_wild_flee_text_does_not_claim_return_to_village(self):
         cog = TRPGCog(self.bot)

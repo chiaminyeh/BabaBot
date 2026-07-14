@@ -39,5 +39,12 @@
     "modal.elder_chief_done": "Baba 已回答，請檢查面板！",
     "tutorial.complete": "🎉 **教學完成！** 你已經掌握了戰鬥的基本技巧。記住：去 🏫 學校 可以配置與學習技能，🛒 商店 可以買裝備，而 <:baba:1422080743886291025> Baba 能解答你的任何疑問。祝你寫下屬於自己的傳奇！",
     "tutorial.skipped": "好的！你可以隨時找 <:baba:1422080743886291025> Baba 聊天，Baba 對這個世界瞭若指掌。祝你好運！",
-    "tutorial.tip_skill_item": "💡 **戰鬥教學 5/6 - 技能與道具**\n在 🏫 學校 使用卷軸學習技能後，需要將它們「配置」到戰鬥快捷鍵中，才能在戰鬥中點擊「技能」按鈕釋放（消耗魔力或生命）。「道具」按鈕可以喝藥水回復狀態或解除異常。"
+    "tutorial.tip_skill_item": "💡 **戰鬥教學 5/6 - 技能與道具**\n在 🏫 學校 使用卷軸學習技能後，需要將它們「配置」到戰鬥快捷鍵中，才能在戰鬥中點擊「技能」按鈕釋放（消耗魔力或生命）。「道具」按鈕可以喝藥水回復狀態或解除異常。",
+    "battle.btn_end_turn": "結束回合",
+    "battle.ap_label": "⚡ AP：`{ap}/{max_ap}`",
+    "battle.enemy_ap_label": "⚡ AP：{markers}",
+    "combat.player_ends_round": "⏭️ 你主動結束了這一回合。",
+    "combat.combo_broken": "💥 受到傷害，連擊節奏歸零！",
+    "combat.skill_ap_insufficient": "❌ AP 不足！【{skill}】需要 {cost} AP，目前只有 {have}。",
+    "monster_ai.time_thief": "\n⏳ {name} 偷走了一段時間：你下回合將失去 1 AP！"
 }

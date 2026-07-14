@@ -28,9 +28,9 @@ class ArchetypeReworkRegressionTests(unittest.TestCase):
         self.assertTrue(set_core_ability(p, "knight"))
         self.assertEqual(get_player_def(p, {}), 120)
 
-    def test_rogue_combo_grants_speed_without_extra_attack_passive(self):
+    def test_rogue_combo_does_not_grant_speed_or_extra_attack(self):
         p = SimpleNamespace(base_spd=100, stat_alloc={"rogue": 10}, core_ability="rogue", combat_debuffs={}, combat_buffs={"combo_stacks": 3})
-        self.assertEqual(get_player_spd(p), 114)  # int(100 * 1.15)
+        self.assertEqual(get_player_spd(p), 100)
         self.assertNotIn("combo_attack", self.skills)
         self.assertEqual(_status_synergy_multiplier_from_skills(p, self.skills, {"burn": {"turns": 2}}), 1.0)
 

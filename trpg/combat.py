@@ -97,9 +97,6 @@ def get_player_spd(player) -> int:
     combat_buffs = getattr(player, "combat_buffs", None)
     if combat_buffs and combat_buffs.get("turns", 0) > 0 and combat_buffs.get("spd_mult"):
         spd = int(spd * combat_buffs["spd_mult"])
-    if core_active(player, "rogue"):
-        stacks = min(3, max(0, int((combat_buffs or {}).get("combo_stacks", 0))))
-        spd = int(spd * (1.0 + stacks * 0.05))
     return spd
 
 
@@ -371,7 +368,11 @@ class TRPGCombat:
 
         self.view = view
         self.skill_cds = {}
-        self.player_av = 100
+        self.player_ap = 0
+        self.player_max_ap = 1
+        self.round_started = False
+        self.round_number = 0
+        self.next_round_ap_penalty = 0
         self.is_defending = False
         self.is_dodging = False
 
@@ -379,7 +380,11 @@ class TRPGCombat:
 
     def _clear_battle_state(self):
         self.skill_cds.clear()
-        self.player_av = 100
+        self.player_ap = 0
+        self.player_max_ap = 1
+        self.round_started = False
+        self.round_number = 0
+        self.next_round_ap_penalty = 0
         self.is_defending = False
         self.is_dodging = False
         self.player.combat_debuffs = {}
@@ -444,7 +449,45 @@ class TRPGCombat:
 
 
 
+    @staticmethod
+    def action_points_for_speed(actor_spd: int, opponent_spd: int) -> int:
+        """Return 1..3 AP with diminishing speed thresholds."""
+        actor_spd = max(1, int(actor_spd))
+        opponent_spd = max(1, int(opponent_spd))
+        ratio = actor_spd / opponent_spd
+        if ratio >= 2.5:
+            return 3
+        if ratio >= 1.5:
+            return 2
+        return 1
+
+    def calculate_player_ap(self) -> int:
+        enemy_speeds = [self._effective_monster_spd(slot) for slot in self.view.monster_slots if slot.get("hp", 0) > 0]
+        reference = max(enemy_speeds, default=self._effective_player_spd())
+        return self.action_points_for_speed(self._effective_player_spd(), reference)
+
+    def monster_action_points(self, slot: dict) -> int:
+        if slot.get("hp", 0) <= 0:
+            return 0
+        return self.action_points_for_speed(self._effective_monster_spd(slot), self._effective_player_spd())
+
+    def _reset_combo_after_damage(self, before_hp: int) -> str:
+        if self.player.current_hp >= before_hp:
+            return ""
+        buffs = getattr(self.player, "combat_buffs", None) or {}
+        if int(buffs.get("combo_stacks", 0)) <= 0:
+            return ""
+        buffs["combo_stacks"] = 0
+        return t(self.player.language, "combat.combo_broken", "💥 受到傷害，連擊節奏歸零！")
+
     def _player_turn_start(self) -> tuple[str, bool]:
+        if self.round_started:
+            return "", True
+        self.round_started = True
+        self.round_number += 1
+        self.player_max_ap = max(1, self.calculate_player_ap() - self.next_round_ap_penalty)
+        self.next_round_ap_penalty = 0
+        self.player_ap = self.player_max_ap
         # 輪到玩家時，重置上一回合的防禦與閃避
         self.is_defending = False
         self.is_dodging = False
@@ -484,12 +527,20 @@ class TRPGCombat:
                 mp_regen_line = t(self.player.language, "combat.mp_regen_tick", "🔷 冥想般地回復了 {mp} 點 MP。", mp=gained_mp)
                 buff_log = f"{buff_log}\n{mp_regen_line}" if buff_log else mp_regen_line
 
+        before_status_hp = self.player.current_hp
         log, can_act = process_turn_start(self.player, self.cog.status_effects)
+        combo_log = self._reset_combo_after_damage(before_status_hp)
+        if combo_log:
+            log = f"{log}\n{combo_log}" if log else combo_log
         if buff_log:
             log = f"{buff_log}\n{log}" if log else buff_log
         if self.player.current_hp <= 0:
             log = self.view.process_death(log, t(self.player.language, "combat.death_by_status", "💀 異常狀態將你折磨至死..."))
             return log, False
+        if not can_act:
+            # A control effect skips the complete round, regardless of speed.
+            self.player_ap = 1
+            self.player_max_ap = 1
         return log, can_act
 
     def _tick_combat_buffs(self) -> str:
@@ -542,82 +593,79 @@ class TRPGCombat:
         return max(1, int(m_spd * self._slow_factor(slot.get("status"))))
 
     def predict_monster_actions(self, slot: dict) -> int:
-        """預估玩家下一次行動後，這隻怪物會行動幾次（給行動條 ❗ 提示用，冰凍已納入計算）。
-        與事件驅動的 advance_time 用同一套連續時間數學，預估值與實際行動次數一致。"""
-        if slot["hp"] <= 0:
-            return 0
-        p_spd = self._effective_player_spd()
-        m_spd = self._effective_monster_spd(slot)
-        start = self.player_av - 100  # 玩家行動結算後的 AV
-        t_interval = max(0.0, (100 - start) / p_spd)
-        total_av = slot.get("av", 0) + m_spd * t_interval
-        return max(0, int(total_av // 100))
+        """Compatibility name used by the UI; AP is now deterministic per round."""
+        return self.monster_action_points(slot)
 
-    def advance_time(self, log: str) -> str:
-        """事件驅動的行動條推進：把「誰先填滿 100 AV」換算成連續時間軸上的事件，
-        依序讓最快到點的單位行動，直到輪回玩家為止。
+    @staticmethod
+    def _has_ultimate_warning(slot: dict) -> bool:
+        return bool(slot.get("telegraph") or slot.get("is_charging") or slot.get("bomb_fuse"))
 
-        舊版以「玩家每 +p_spd、所有怪物就 +m_spd」的粗顆粒推進，有兩個肉眼可見的毛病：
-        1. 速度超過 100 的怪物（例如持聖劍時 spd 200 的魔王）會把多次行動擠在同一個
-           刻度一口氣爆發，而不是平均穿插在玩家行動之間。
-        2. 玩家速度超過 100 時，爬條溢出的 AV 被存起來，隔一回合直接免費行動——那個
-           回合世界時間完全不推進，全場怪物看起來像被定住；下一個真刻度又連環補償，
-           形成「動2次→不動→動2次→不動」的詭異節奏，玩家會以為遊戲壞了。
-        事件驅動後長期行動次數比例與舊制完全相同（spd 200 對 spd 100 依然是 1:2），
-        只是分佈平滑：快的單位平均穿插行動，不再忽停忽爆。"""
-        self.player_av -= 100
+    def advance_time(self, log: str, ap_cost: int = 1, force_end: bool = False) -> str:
+        """Consume player AP. Monsters act only when AP is exhausted or the player ends the round."""
+        if not self.round_started:
+            start_log, can_act = self._player_turn_start()
+            if start_log:
+                log = f"{start_log}\n{log}" if log else start_log
+            if not can_act:
+                force_end = True
+        if force_end or self.is_defending or self.is_dodging:
+            self.player_ap = 0
+        else:
+            self.player_ap = max(0, self.player_ap - max(1, int(ap_cost)))
+        if self.player_ap > 0:
+            return log
+        return self.end_turn(log)
 
-        # 復活倒數改為每個「玩家行動」數一次。舊版依玩家爬條迭代次數倒數，
-        # 玩家速度越慢、怪物反而復活得越快，並不合理。
-        from trpg.monster_ai import tick_revive
-        for slot in list(self.view.monster_slots):
-            if slot["hp"] <= 0:
-                log += tick_revive(slot, self.player.language)
+    def end_turn(self, log: str = "") -> str:
+        """End the complete player round, resolve every monster's AP, then start the next round."""
+        from trpg.monster_ai import run_monster_ai, tick_revive
+        from trpg.status import process_monster_status
 
-        guard = 0
-        while guard < 400:
-            guard += 1
-            p_spd = self._effective_player_spd()
-            remaining = 100 - self.player_av
-            if remaining <= 0:
-                break  # 玩家已就緒（舊存檔可能帶著溢出 AV，直接輪到玩家）
-            t_player = remaining / p_spd
+        self.player_ap = 0
+        skipped_rounds = 0
+        while skipped_rounds < 10 and self.player.current_hp > 0:
+            for slot in list(self.view.monster_slots):
+                if slot.get("hp", 0) <= 0:
+                    log += tick_revive(slot, self.player.language)
 
-            # 找出最快到點的怪物
-            next_slot, t_best = None, None
-            for slot in self.view.monster_slots:
-                if slot["hp"] <= 0:
+            for slot in list(self.view.monster_slots):
+                if slot.get("hp", 0) <= 0 or self.player.current_hp <= 0:
                     continue
-                m_spd = self._effective_monster_spd(slot)
-                t_mon = (100 - slot["av"]) / m_spd
-                if t_best is None or t_mon < t_best:
-                    next_slot, t_best = slot, t_mon
+                status_log, can_act = process_monster_status(slot, self.cog.status_effects, self.player.language)
+                if status_log:
+                    log += f"\n{status_log}"
+                if slot.get("hp", 0) <= 0 or not can_act:
+                    continue
+                actions = self.monster_action_points(slot)
+                for _ in range(actions):
+                    if slot.get("hp", 0) <= 0 or self.player.current_hp <= 0:
+                        break
+                    warned_before = self._has_ultimate_warning(slot)
+                    before_hp = self.player.current_hp
+                    log = run_monster_ai(self, slot, log, round_start=(_ == 0))
+                    combo_log = self._reset_combo_after_damage(before_hp)
+                    if combo_log:
+                        log += f"\n{combo_log}"
+                    if slot.pop("_skip_remaining_ap", False):
+                        break
+                    if not warned_before and self._has_ultimate_warning(slot):
+                        break  # Telegraphing a large move ends this monster's phase.
+                    if self._all_monsters_dead():
+                        return log + self._process_victory()
 
-            # 玩家比所有怪物先到點：推進到玩家行動，結束
-            if next_slot is None or t_best > t_player:
-                self.player_av = 100
-                for slot in self.view.monster_slots:
-                    if slot["hp"] > 0:
-                        slot["av"] += self._effective_monster_spd(slot) * t_player
-                break
-
-            # 推進所有單位到這個事件的時間點，讓該怪物行動（同時到點時怪物先動，與舊制一致）
-            t_next = max(0.0, t_best)
-            self.player_av += p_spd * t_next
-            for slot in self.view.monster_slots:
-                if slot["hp"] > 0:
-                    slot["av"] += self._effective_monster_spd(slot) * t_next
-
-            next_slot["av"] -= 100
-            if next_slot["hp"] > 0 and self.player.current_hp > 0:
-                log = self._monster_act_slot(next_slot, log)
             if self.player.current_hp <= 0:
                 return log
             if self._all_monsters_dead():
                 return log + self._process_victory()
 
-        # 場上沒有活著的怪物、卻還有等待復活的怪物時，立即快轉完成復活，
-        # 避免玩家面對「敵人全倒、戰鬥卻沒結束也沒復活」的空回合（高速度時尤其明顯）
+            self.round_started = False
+            start_log, can_act = self._player_turn_start()
+            if start_log:
+                log += f"\n{start_log}"
+            if self.player.current_hp <= 0 or can_act:
+                return self._resolve_pending_revives(log)
+            self.player_ap = 0
+            skipped_rounds += 1
         return self._resolve_pending_revives(log)
 
     def _any_monster_alive(self) -> bool:
@@ -776,7 +824,7 @@ class TRPGCombat:
                 return log + "\n" + t(self.player.language, "combat.flee_success_dungeon", "🏃 你成功逃跑了！但地下城危機四伏，你只能一路逃回村莊。")
             return log + "\n" + t(self.player.language, "combat.flee_success", "🏃 你化作一陣風，成功脫離了戰鬥。")
 
-        return self.advance_time(log + "\n" + t(self.player.language, "combat.flee_fail", "💨 逃跑失敗！你的速度不夠快，被攔截了！"))
+        return self.advance_time(log + "\n" + t(self.player.language, "combat.flee_fail", "💨 逃跑失敗！你的速度不夠快，被攔截了！"), force_end=True)
 
     def _end_combat_via_flee(self) -> bool:
         """成功逃跑後共用的收尾：清狀態、清戰鬥快照，並在地下城裡把逃跑視同放棄本次
@@ -813,16 +861,16 @@ class TRPGCombat:
         if not core_active(self.player, "rogue"):
             return ""
         buffs = self.player.combat_buffs
-        before = min(3, int(buffs.get("combo_stacks", 0)))
-        after = min(3, before + 1)
+        before = min(5, int(buffs.get("combo_stacks", 0)))
+        after = min(5, before + 1)
         buffs["combo_stacks"] = after
         if after == before:
             return ""
-        return t(self.player.language, "combat.combo_gained", "🔄 連擊節奏提升至 {stacks}/3。", stacks=after)
+        return t(self.player.language, "combat.combo_gained", "🔄 連擊節奏提升至 {stacks}/5。", stacks=after)
 
     def _consume_combo(self, amount: int | None = None) -> int:
         buffs = self.player.combat_buffs
-        current = min(3, int(buffs.get("combo_stacks", 0)))
+        current = min(5, int(buffs.get("combo_stacks", 0)))
         spent = current if amount is None else min(current, max(0, amount))
         buffs["combo_stacks"] = current - spent
         return spent
@@ -865,7 +913,7 @@ class TRPGCombat:
 
         combo_crit = 0.0
         if core_active(self.player, "rogue"):
-            combo_crit = min(3, int((getattr(self.player, "combat_buffs", None) or {}).get("combo_stacks", 0))) * 0.03
+            combo_crit = min(5, int((getattr(self.player, "combat_buffs", None) or {}).get("combo_stacks", 0))) * 0.03
         crit_rate = PHYSICAL_CRIT_CHANCE + crit_bonus + combo_crit + luck_crit_bonus(getattr(self.player, "fortune", 0))
         is_crit = random.random() < crit_rate
         if is_crit:
@@ -917,6 +965,7 @@ class TRPGCombat:
         hp_cost_pct = skill.get("hp_cost_percent", 0.0)
         actual_hp_cost = int(self.player.max_hp * hp_cost_pct)
         combo_cost = int(skill.get("combo_cost", 0) or 0)
+        ap_cost = max(1, int(skill.get("ap_cost", 1) or 1))
 
         if mp_cost > 0 and self.player.current_mp < mp_cost:
             return t(lang, "combat.skill_mp_insufficient", "❌ MP 不足！需要 {cost} 點，目前只有 {have} 點。", cost=mp_cost, have=self.player.current_mp)
@@ -925,6 +974,8 @@ class TRPGCombat:
                 return t(lang, "combat.skill_hp_insufficient", "❌ HP 不足！【{skill}】需要獻祭 {cost} 點生命，你會把自己抽乾的！", skill=skill_name, cost=actual_hp_cost)
         if combo_cost > int((getattr(self.player, "combat_buffs", None) or {}).get("combo_stacks", 0)):
             return t(lang, "combat.skill_combo_insufficient", "❌ 【{skill}】需要 {cost} 層連擊。", skill=skill_name, cost=combo_cost)
+        if ap_cost > self.player_ap:
+            return t(lang, "combat.skill_ap_insufficient", "❌ AP 不足！【{skill}】需要 {cost} AP，目前只有 {have}。", skill=skill_name, cost=ap_cost, have=self.player_ap)
 
         dot_log, can_act = self._player_turn_start()
         if self.player.current_hp <= 0: return dot_log
@@ -952,7 +1003,7 @@ class TRPGCombat:
         if skill.get("combo_consume_all"):
             spent = self._consume_combo(None)
             skill_for_cast["power_multiplier"] = float(skill.get("power_multiplier", 1.0)) + spent * float(skill.get("combo_power_per_stack", 0.0))
-            if spent >= 3:
+            if spent >= 5:
                 skill_for_cast["crit_bonus"] = 1.0
             log += t(lang, "combat.combo_spent", "🔄 消耗 {stacks} 層連擊強化【{skill}】。\n", stacks=spent, skill=skill_name)
 
@@ -966,7 +1017,8 @@ class TRPGCombat:
                 return log + t(lang, "combat.skill_flee_success", "💨 使用了【{skill}】，化作一團黑影成功脫離戰鬥！", skill=skill_name)
             else:
                 monster_name = tf(self.monster, "name", lang)
-                return log + t(lang, "combat.skill_flee_fail", "💦 嘗試使用逃跑，卻被 {monster} 識破！", monster=monster_name) + self.advance_time("") # 👈 修正
+                log += t(lang, "combat.skill_flee_fail", "💦 嘗試使用逃跑，卻被 {monster} 識破！", monster=monster_name)
+                return self.advance_time(log, force_end=True)
 
         else:
             # 👇 target_type 決定打誰：front=只打前排／back=打後排／all=打全體，預設 front
@@ -997,7 +1049,7 @@ class TRPGCombat:
         if self._all_monsters_dead():
             return log + self._process_victory()
 
-        return self.advance_time(log) # 👈 修正：統一交給時間條推進
+        return self.advance_time(log, ap_cost=ap_cost)
 
 
 

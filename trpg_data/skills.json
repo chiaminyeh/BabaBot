@@ -507,7 +507,7 @@
     },
     "blade_dance": {
         "name": "🗡️ 劍舞終式",
-        "desc": "消耗全部連擊造成終結一擊：基礎 1.0 倍，每層再 +0.35 倍；消耗 3 層時必定暴擊（CD: 3）",
+        "desc": "消耗全部連擊造成終結一擊：基礎 1.0 倍，每層再 +0.35 倍；消耗 5 層時必定暴擊（CD: 3）",
         "type": "physical",
         "element": "physical",
         "hits": 1,
@@ -518,7 +518,7 @@
         "req_level": 20,
         "target_type": "front",
         "name_en": "🗡️ Blade Dance Finale",
-        "desc_en": "Consume all Combo for a finisher: 1.0x base plus 0.35x per stack; guaranteed crit at 3 stacks (CD: 3).",
+        "desc_en": "Consume all Combo for a finisher: 1.0x base plus 0.35x per stack; guaranteed crit at 5 stacks (CD: 3).",
         "dungeon_pool": true,
         "req_points": {
             "rogue": 25

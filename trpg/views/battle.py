@@ -13,6 +13,7 @@ class BattleLayout:
             view.add_action_button(label=t(lang, "menu.btn_berserk_attack", "狂暴攻擊"), style=discord.ButtonStyle.danger, custom_id="b_atk", row=0, emoji="😡")
             view.add_action_button(label=t(lang, "menu.btn_flee", "逃跑"), style=discord.ButtonStyle.secondary, custom_id="b_fle", row=0, emoji="🏃")
             view.add_action_button(label=t(lang, "menu.btn_items", "物品"), style=discord.ButtonStyle.success, custom_id="b_sta", row=0, emoji="🎒")
+            view.add_action_button(label=t(lang, "battle.btn_end_turn", "結束回合"), style=discord.ButtonStyle.secondary, custom_id="b_end", row=1, emoji="⏭️")
             return
 
         view.add_action_button(label=t(lang, "menu.btn_attack", "攻擊"), style=discord.ButtonStyle.danger, custom_id="b_atk", row=0, emoji="🗡️")
@@ -23,6 +24,7 @@ class BattleLayout:
         view.add_action_button(label=t(lang, "menu.btn_item", "道具"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=1, emoji="🎒")
         view.add_action_button(label=t(lang, "menu.btn_flee", "逃跑"), style=discord.ButtonStyle.secondary, custom_id="b_fle", row=1, emoji="🏃")
         view.add_action_button(label=t(lang, "menu.btn_items", "物品"), style=discord.ButtonStyle.success, custom_id="b_sta", row=1, emoji="🎒")
+        view.add_action_button(label=t(lang, "battle.btn_end_turn", "結束回合"), style=discord.ButtonStyle.secondary, custom_id="b_end", row=1, emoji="⏭️")
 
     @staticmethod
     def handle_skill_menu(view):
@@ -56,6 +58,8 @@ class BattleLayout:
                 cost_texts.append(f"MP:{skill['mp_cost']}")
             if skill.get("hp_cost_percent"):
                 cost_texts.append(f"HP:{int(view.player.max_hp * skill['hp_cost_percent'])}")
+            if skill.get("ap_cost", 1) > 1:
+                cost_texts.append(f"AP:{skill['ap_cost']}")
 
             cost_str = " (" + ", ".join(cost_texts) + ")" if cost_texts else ""
             cd_text = f" [CD:{cd_left}]" if cd_left > 0 else ""
@@ -63,7 +67,7 @@ class BattleLayout:
             mp_cost = skill.get("mp_cost", 0)
             hp_cost_pct = skill.get("hp_cost_percent", 0.0)
             actual_hp_cost = int(view.player.max_hp * hp_cost_pct)
-            cant_afford = (mp_cost > 0 and view.player.current_mp < mp_cost) or (
+            cant_afford = skill.get("ap_cost", 1) > view.combat.player_ap or (mp_cost > 0 and view.player.current_mp < mp_cost) or (
                 actual_hp_cost > 0 and view.player.current_hp <= actual_hp_cost
             )
             disabled = cd_left > 0 or cant_afford
