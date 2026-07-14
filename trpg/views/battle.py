@@ -12,7 +12,7 @@ class BattleLayout:
         if "berserk" in getattr(view.player, "status_effects", {}):
             view.add_action_button(label=t(lang, "menu.btn_berserk_attack", "狂暴攻擊"), style=discord.ButtonStyle.danger, custom_id="b_atk", row=0, emoji="😡")
             view.add_action_button(label=t(lang, "menu.btn_flee", "逃跑"), style=discord.ButtonStyle.secondary, custom_id="b_fle", row=0, emoji="🏃")
-            view.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.success, custom_id="b_sta", row=0, emoji="📜")
+            view.add_action_button(label=t(lang, "menu.btn_items", "物品"), style=discord.ButtonStyle.success, custom_id="b_sta", row=0, emoji="🎒")
             return
 
         view.add_action_button(label=t(lang, "menu.btn_attack", "攻擊"), style=discord.ButtonStyle.danger, custom_id="b_atk", row=0, emoji="🗡️")
@@ -22,7 +22,7 @@ class BattleLayout:
 
         view.add_action_button(label=t(lang, "menu.btn_item", "道具"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=1, emoji="🎒")
         view.add_action_button(label=t(lang, "menu.btn_flee", "逃跑"), style=discord.ButtonStyle.secondary, custom_id="b_fle", row=1, emoji="🏃")
-        view.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.success, custom_id="b_sta", row=1, emoji="📜")
+        view.add_action_button(label=t(lang, "menu.btn_items", "物品"), style=discord.ButtonStyle.success, custom_id="b_sta", row=1, emoji="🎒")
 
     @staticmethod
     def handle_skill_menu(view):

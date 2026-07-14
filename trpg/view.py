@@ -218,8 +218,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "btn_explore": {"m": "handle_explore"},
         "btn_subarea_menu": {"m": "build_subarea_menu", "await": False},
         "btn_move_menu": {"m": "handle_move_menu"},
-        "btn_status": {"m": "handle_status", "i": True},
-        "b_sta": {"m": "handle_status", "i": True},
+        "btn_status": {"m": "handle_items", "i": True},
+        "b_sta": {"m": "handle_items", "i": True},
         "btn_leaderboard": {"m": "handle_leaderboard"},
         "btn_quest_hall": {"m": "handle_quest_hall"},
         "btn_area_npc": {"m": "handle_area_npc"},
@@ -1364,10 +1364,20 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
 
         # 玩家狀態區塊排版
         # 戰鬥中：不顯示金錢/未分配點數（用不到），改顯示增益/減益；探索中：顯示金錢與未分配點數
+        required_exp = exp_to_next_level(p.level)
         if self.in_battle:
-            header_line = t(lang, "battle.header_line", "**Lv.{level} 冒險者**", level=p.level)
+            header_line = t(
+                lang, "battle.adventurer_level_exp",
+                "**Lv.{level} 冒險者** | ⭐ EXP: `{exp}/{required}`",
+                level=p.level, exp=p.exp, required=required_exp,
+            )
         else:
-            header_line = t(lang, "battle.adventurer_status_line", "**Lv.{level} 冒險者** | 💰 {balance} {money_name}", level=p.level, balance=user_bal, money_name=self.cog.bot.baba.money_name)
+            header_line = t(
+                lang, "battle.adventurer_status_line",
+                "**Lv.{level} 冒險者** | ⭐ EXP: `{exp}/{required}` | 💰 {balance} {money_name}",
+                level=p.level, exp=p.exp, required=required_exp,
+                balance=user_bal, money_name=self.cog.bot.baba.money_name,
+            )
         player_desc = (
             f"{header_line}\n"
             f"❤️ HP: `{p.current_hp:03d}/{p.max_hp:03d}`\n"
@@ -2384,48 +2394,16 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         )
         self.build_main_menu()
 
-    async def handle_status(self, interaction: discord.Interaction):
+    async def handle_items(self, interaction: discord.Interaction):
         p = self.player
         lang = p.language
-        user_bal = self.cog.get_bank_balance(self.user_id)
-        status_embed = discord.Embed(title=t(lang, "char.status_title", "📜 {user} 的詳細冒險狀態", user=interaction.user.name), color=discord.Color.blue())
-        status_embed.add_field(name=t(lang, "char.level_exp", "等級與經驗"), value=f"Lv.{p.level} (EXP: {p.exp}/{exp_to_next_level(p.level)})", inline=True)
-        status_embed.add_field(name=t(lang, "char.wallet_balance", "錢包餘額"), value=f"{user_bal} {self.cog.bot.baba.money_name}", inline=True)
-
-        prestige = getattr(p, "prestige_count", 0)
-        status_embed.add_field(name=t(lang, "char.prestige", "轉生次數"), value=str(prestige), inline=True)
-
-        weapon_name = tf(self.cog.items.get(p.weapon, {}), "name", lang) if p.weapon else t(lang, "blacksmith.none", "None")
-        none_label = t(lang, "blacksmith.none", "None")
         inv_desc = self._format_inventory_grouped(p, lang)
-        trophies = getattr(p, "trophies", [])
-        if trophies:
-            status_embed.add_field(name=t(lang, "char.trophies", "🏆 戰利品"), value=" ".join(trophies), inline=False)
-
-        alloc_text = format_stat_alloc_summary(p)
-        status_embed.add_field(
-            name=t(lang, "char.combat_core_stats", "Core Combat Stats"),
-            value=(
-                f"❤️ HP: {p.current_hp}/{p.max_hp}\n"
-                f"💧 MP: {p.current_mp}/{p.max_mp}\n"
-                f"⚔️ ATK: {get_player_atk(p, self.cog.items, self.cog.status_effects)} | 🛡️ DEF: {get_player_def(p, self.cog.items)}\n"
-                f"✨ MAG: {get_player_magic(p, self.cog.items, self.cog.status_effects)} | 🚀 SPD: {get_player_spd(p)}\n"
-                f"🍀 LUCK: {getattr(p, 'base_luck', 0)}\n"
-                f"{alloc_text}"
-            ),
-            inline=False,
+        items_embed = discord.Embed(
+            title=t(lang, "char.items_title", "🎒 {user} 的物品", user=interaction.user.name),
+            color=discord.Color.blue(),
         )
-        status_embed.add_field(name=t(lang, "char.equipped_weapon", "Equipped Weapon"), value=weapon_name, inline=True)
-        status_embed.add_field(name=t(lang, "char.status_effects", "Status Effects"), value=format_status_list(p.status_effects, self.cog.status_effects, p.language), inline=True)
-        if p.accessory:
-            acc_item = self.cog.items.get(p.accessory, {})
-            acc_name = f"{item_emoji(acc_item)} {tf(acc_item, 'name', lang) or p.accessory}"
-            status_embed.add_field(name=t(lang, "char.accessory", "Accessory"), value=acc_name, inline=True)
-        skill_list = ", ".join([tf(self.cog.skills.get(s, {}), "name", lang) or s for s in p.skills]) or none_label
-        status_embed.add_field(name=t(lang, "char.learned_skills", "Learned Skills"), value=skill_list, inline=True)
-        status_embed.add_field(name=t(lang, "char.bag_contents", "Bag Contents"), value=inv_desc, inline=False)
-
-        await interaction.followup.send(embed=status_embed, ephemeral=True)
+        items_embed.add_field(name=t(lang, "char.bag_contents", "背包內容"), value=inv_desc, inline=False)
+        await interaction.followup.send(embed=items_embed, ephemeral=True)
 
     async def re_render_current_menu(self):
         state = getattr(self, "current_menu_state", "main")

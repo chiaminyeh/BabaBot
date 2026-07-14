@@ -36,7 +36,7 @@ class MainMenuLayout:
         if view.cog.areas.get(view.player.current_area, {}).get("is_village"):
             view.add_action_button(label=t(lang, "menu.btn_outskirts", "郊外"), style=discord.ButtonStyle.primary, custom_id="move_to_area_01grassland", row=0, emoji="🌾")
             view.add_action_button(label=t(lang, "menu.btn_move", "移動"), style=discord.ButtonStyle.primary, custom_id="btn_move_menu", row=0, emoji="🗺️")
-            view.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.primary, custom_id="btn_status", row=0, emoji="📜")
+            view.add_action_button(label=t(lang, "menu.btn_items", "物品"), style=discord.ButtonStyle.primary, custom_id="btn_status", row=0, emoji="🎒")
             view.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.primary, custom_id="btn_equip_menu", row=0, emoji="🛡️")
             view.add_action_button(label=shop_button_label, style=discord.ButtonStyle.primary, custom_id="btn_shop_menu", row=0, emoji="🛒")
             view.add_action_button(label=t(lang, "menu.btn_village_facilities", "村莊設施"), style=discord.ButtonStyle.secondary, custom_id="btn_village_facilities", row=1, emoji="🏘️")
@@ -51,7 +51,7 @@ class MainMenuLayout:
                 explore_label = t(lang, "menu.btn_resume_subarea", "探索：{subarea_name}", subarea_name=current_subarea_name)
             view.add_action_button(label=explore_label, style=discord.ButtonStyle.primary, custom_id="btn_explore", row=0, emoji="⚔️")
             view.add_action_button(label=t(lang, "menu.btn_move", "移動"), style=discord.ButtonStyle.secondary, custom_id="btn_move_menu", row=0, emoji="🗺️")
-            view.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.secondary, custom_id="btn_status", row=0, emoji="📜")
+            view.add_action_button(label=t(lang, "menu.btn_items", "物品"), style=discord.ButtonStyle.secondary, custom_id="btn_status", row=0, emoji="🎒")
             view.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.secondary, custom_id="btn_equip_menu", row=0, emoji="🛡️")
             view.add_action_button(label=t(lang, "menu.btn_potions", "藥水"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=1, emoji="🎒")
             if view.player.current_area != "area_tower":
@@ -379,7 +379,7 @@ class MainMenuLayout:
             disabled=cleared_today,
         )
         view.add_action_button(label=t(lang, "menu.btn_move", "移動"), style=discord.ButtonStyle.secondary, custom_id="btn_move_menu", row=0, emoji="🗺️")
-        view.add_action_button(label=t(lang, "menu.btn_status", "狀態"), style=discord.ButtonStyle.success, custom_id="btn_status", row=0, emoji="📜")
+        view.add_action_button(label=t(lang, "menu.btn_items", "物品"), style=discord.ButtonStyle.success, custom_id="btn_status", row=0, emoji="🎒")
         view.add_action_button(label=t(lang, "menu.btn_potions", "藥水"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=1, emoji="🎒")
 
     @staticmethod
