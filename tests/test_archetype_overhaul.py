@@ -57,16 +57,14 @@ class ArchetypeOverhaulTests(unittest.TestCase):
         self.assertEqual(village_branch.count("row=0"), 3)
         self.assertEqual(village_branch.count("row=1"), 3)
         self.assertEqual(village_branch.count("row=2"), 3)
-        self.assertIn('custom_id="btn_village_facilities"', village_branch)
+        self.assertIn('custom_id="btn_school_menu"', village_branch)
         self.assertIn('custom_id="btn_inn_menu"', village_branch)
+        self.assertNotIn('custom_id="btn_village_facilities"', village_branch)
         self.assertNotIn('custom_id="btn_rest"', village_branch)
 
         facilities = source.split("def build_village_facilities_menu(view):", 1)[1].split("    @staticmethod", 1)[0]
-        for custom_id in ("btn_blacksmith_menu", "btn_craft_menu", "btn_church_menu", "btn_school_menu", "btn_back_main"):
-            self.assertIn(f'custom_id="{custom_id}"', facilities)
-        self.assertNotIn('custom_id="btn_artisan_menu"', facilities)
-        self.assertNotIn('custom_id="btn_rest"', facilities)
-        self.assertNotIn('custom_id="btn_inn_menu"', facilities)
+        self.assertIn("MainMenuLayout.build_school_menu(view)", facilities)
+        self.assertNotIn("view.add_action_button", facilities)
 
         routes = (ROOT / "trpg" / "view.py").read_text(encoding="utf-8")
         self.assertIn('"btn_village_facilities": {"m": "build_village_facilities_menu"', routes)

@@ -56,14 +56,12 @@ class LevelSkillSyncAndFacilitiesTests(unittest.TestCase):
         self.assertIn("shield_bash", player.skills)
         self.assertIn("shield_bash", player.equipped_skills)
 
-    def test_facilities_directly_contains_blacksmith_and_crafting_station(self):
+    def test_retired_facilities_route_to_school(self):
         source = (ROOT / "trpg" / "views" / "main_menu.py").read_text(encoding="utf-8")
         self.assertNotIn("def build_artisan_menu", source)
         facilities = source.split("def build_village_facilities_menu(view):", 1)[1].split("    @staticmethod", 1)[0]
-        self.assertIn('custom_id="btn_blacksmith_menu"', facilities)
-        self.assertIn('custom_id="btn_craft_menu"', facilities)
-        self.assertIn('menu.btn_crafting_station', facilities)
-        self.assertNotIn('custom_id="btn_artisan_menu"', facilities)
+        self.assertIn("MainMenuLayout.build_school_menu(view)", facilities)
+        self.assertNotIn("view.add_action_button", facilities)
 
     def test_quest_rewards_and_arrival_have_localized_level_notice(self):
         quest_source = (ROOT / "trpg" / "quest_popup.py").read_text(encoding="utf-8")

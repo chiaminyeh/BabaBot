@@ -140,6 +140,16 @@
             "emoji": "🧝‍♀️",
             "intro": "一位身披翠綠斗篷的精靈長老靜立在古樹之下，空靈的目光彷彿看穿了千年的風霜。\n「旅人啊……森林正在哭泣。你願意聆聽她的悲鳴嗎？」",
             "intro_en": "An elven elder in an emerald cloak stands silently beneath an ancient tree, her ethereal gaze seeming to pierce a thousand years of frost.\n\"Traveler... the forest is weeping. Will you listen to her lament?\"",
+            "dialogue_before": "「月狼的哀嚎一夜比一夜淒厲……旅人，先替牠們斬斷黑暗的枷鎖吧。森林不會忘記伸出援手的人。」",
+            "dialogue_before_en": "\"The moon wolves' howls grow more anguished each night... Traveler, first sever the darkness binding them. The forest remembers every helping hand.\"",
+            "dialogue_after_first": "「月狼終於能安睡了，但迷霧林王仍在腐化中掙扎。淨化那位古老守護者後，我會為你喚醒精靈族的合成台。」",
+            "dialogue_after_first_en": "\"The moon wolves can finally rest, but the Mistwood King still suffers in corruption. Cleanse our ancient guardian, and I will awaken the elven Crafting Station for you.\"",
+            "dialogue_complete": "「你讓森林重新學會了呼吸。從今日起，古樹下的合成台將為你開放；帶來材料與三色魔法碎片，我會教你讓它們回應彼此。」",
+            "dialogue_complete_en": "\"You have taught the forest to breathe again. From this day, the Crafting Station beneath the ancient tree is open to you. Bring materials and the three magic shards, and I will teach you to make them answer one another.\"",
+            "craft_unlock_requires": [
+                "npc_elune_1",
+                "npc_elune_2"
+            ],
             "quest_ids": [
                 "npc_elune_1",
                 "npc_elune_2"

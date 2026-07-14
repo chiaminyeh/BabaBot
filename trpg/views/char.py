@@ -10,6 +10,12 @@ from trpg.stats import (
     format_skill_point_requirements,
 )
 
+
+def prestige_hall_accessible(player) -> bool:
+    real = getattr(player, "real_player", player)
+    return real.current_area == "area_40vampire_castle"
+
+
 class CharLayout:
     _STAT_ALLOC_BUTTONS = (
         ("knight", "⚔️"), ("rogue", "🗡️"), ("mage", "✨"),
@@ -73,7 +79,7 @@ class CharLayout:
         view.add_action_button(
             label=t(lang, "menu.btn_back", "返回"),
             style=discord.ButtonStyle.secondary,
-            custom_id="btn_church_menu",
+            custom_id="btn_guild_menu",
             row=4,
             emoji="🔙"
         )
@@ -138,10 +144,14 @@ class CharLayout:
             reset_label = (t(lang, "char.btn_reset_stats_paid", "重置所有屬性點（{cost}$）", cost=reset_cost) if reset_cost > 0
                            else t(lang, "char.btn_reset_stats", "重置所有屬性點"))
         view.add_action_button(label=reset_label, style=discord.ButtonStyle.danger, custom_id="btn_stat_reset", row=last_row, emoji="🔄")
-        view.add_action_button(label=t(lang, "char.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", row=last_row, emoji="🔙")
+        view.add_action_button(label=t(lang, "char.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", row=last_row, emoji="🔙")
 
     @staticmethod
     def handle_prestige_menu(view, notice=""):
+        if not prestige_hall_accessible(view.player):
+            view.build_main_menu()
+            view.log_message = t(view.player.language, "prestige.locked_castle", "🔒 轉生殿堂位於吸血鬼城堡，請前往該區域使用。")
+            return
         view.clear_items()
         lang = view.player.language
         prefix = notice + "\n\n" if notice else ""
@@ -233,7 +243,7 @@ class CharLayout:
 
         if not p_skills:
             view.log_message = prefix + t(lang, "skill.equip_menu_no_skills", "🔧 【技能配置】\n你尚未習得任何技能。請先【學習魔法】！")
-            view.add_action_button(label=t(lang, "skill.btn_back_to_church", "返回教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", emoji="🔙")
+            view.add_action_button(label=t(lang, "skill.btn_back_to_school", "返回學校"), style=discord.ButtonStyle.secondary, custom_id="btn_school_menu", emoji="🔙")
             return
 
         equipped_count = len(view.player.equipped_skills)

@@ -24,7 +24,7 @@ from trpg.view_tutorial import TutorialMixin
 from trpg.views.main_menu import MainMenuLayout, select_main_menu_quests
 from trpg.balance import MYSTERY_MERCHANT_CHANCE
 from trpg.views.battle import BattleLayout
-from trpg.views.char import CharLayout
+from trpg.views.char import CharLayout, prestige_hall_accessible
 
 
 class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
@@ -244,7 +244,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "btn_artisan_menu": {"m": "build_village_facilities_menu", "await": False},
         "btn_village_facilities": {"m": "build_village_facilities_menu", "await": False},
         "btn_guild_menu": {"m": "build_guild_menu", "await": False},
-        "btn_church_menu": {"m": "build_church_menu", "await": False},
+        "btn_church_menu": {"m": "build_school_menu", "await": False},
         "btn_school_menu": {"m": "build_school_menu", "await": False},
         "btn_skill_codex": {"m": "handle_skill_codex_menu"},
         "btn_skill_equip": {"m": "handle_skill_equip_menu"},
@@ -2069,6 +2069,10 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         CharLayout.handle_prestige_menu(self, notice)
     async def handle_prestige_confirm(self):
         lang = self.player.language
+        if not prestige_hall_accessible(self.player):
+            self.build_main_menu()
+            self.log_message = t(lang, "prestige.locked_castle", "🔒 轉生殿堂位於吸血鬼城堡，請前往該區域使用。")
+            return
         prestige = getattr(self.player, "prestige_count", 0)
         req_level = prestige_required_level(prestige)
         if self.player.level < req_level:

@@ -10,6 +10,22 @@ from trpg.stats import format_item_stat_requirements, recalc_player_stats
 from trpg.view_shared import item_emoji
 
 
+ELUNE_CRAFT_QUESTS = frozenset(("npc_elune_1", "npc_elune_2"))
+
+
+def crafting_station_unlocked(player) -> bool:
+    real = getattr(player, "real_player", player)
+    return (
+        real.current_area == "area_05forest"
+        and ELUNE_CRAFT_QUESTS.issubset(set(real.completed_quests))
+    )
+
+
+def blacksmith_accessible(player) -> bool:
+    real = getattr(player, "real_player", player)
+    return real.current_area == "area_20lab"
+
+
 class ShopMixin:
     def _format_shop_item_line(self, item_id: str) -> str:
         lang = self.player.language
@@ -242,6 +258,10 @@ class ShopMixin:
         self.add_action_button(label=t(lang, "shop.btn_back_to_shop", "返回商店"), style=discord.ButtonStyle.secondary, custom_id="btn_shop_menu", emoji="🔙", row=4)
 
     async def handle_craft_menu(self, notice="", paging=False):
+        if not crafting_station_unlocked(self.player):
+            self.build_main_menu()
+            self.log_message = t(self.player.language, "craft.locked_elune", "🔒 合成台由精靈長老艾露娜保管。完成她的兩項委託後，才能在迷霧森林使用。")
+            return
         self.clear_items()
         self.current_menu_state = "craft"
         lang = self.player.language
@@ -276,9 +296,13 @@ class ShopMixin:
         self.add_action_select(t(lang, "craft.select_placeholder", "🔨 選擇要製作的配方"), options, row=0, custom_id="sel_craft")
         if len(recipe_ids) > 25:
             self._add_pagination_buttons(len(recipe_ids), 25)
-        self.add_action_button(label=t(lang, "menu.btn_back_village", "返回村莊"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙", row=4)
+        self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙", row=4)
 
     async def handle_craft_execute(self, item_id: str):
+        if not crafting_station_unlocked(self.player):
+            self.build_main_menu()
+            self.log_message = t(self.player.language, "craft.locked_elune", "🔒 合成台由精靈長老艾露娜保管。完成她的兩項委託後，才能在迷霧森林使用。")
+            return
         lang = self.player.language
         recipe = CRAFTING_RECIPES.get(item_id)
         if not recipe:
@@ -315,6 +339,10 @@ class ShopMixin:
         await self.handle_craft_menu(notice_text)
 
     async def handle_blacksmith_menu(self, notice=""):
+        if not blacksmith_accessible(self.player):
+            self.build_main_menu()
+            self.log_message = t(self.player.language, "blacksmith.locked_lab", "🔒 鐵匠鋪設在瘋狂博士實驗室，請前往 Lv.20 區域使用。")
+            return
         self.clear_items()
         self.current_menu_state = "blacksmith"
         lang = self.player.language
@@ -365,9 +393,13 @@ class ShopMixin:
 
         self.add_action_button(label=t(lang, "blacksmith.btn_upgrade_weapon", "強化武器"), style=discord.ButtonStyle.primary if can_up_w else discord.ButtonStyle.secondary, custom_id="btn_upgrade_weapon", disabled=not can_up_w)
         self.add_action_button(label=t(lang, "blacksmith.btn_upgrade_armor", "強化防具"), style=discord.ButtonStyle.primary if can_up_a else discord.ButtonStyle.secondary, custom_id="btn_upgrade_armor", disabled=not can_up_a)
-        self.add_action_button(label=t(lang, "menu.btn_back_village", "返回村莊"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
+        self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
     async def handle_upgrade_execute(self, is_weapon: bool):
+        if not blacksmith_accessible(self.player):
+            self.build_main_menu()
+            self.log_message = t(self.player.language, "blacksmith.locked_lab", "🔒 鐵匠鋪設在瘋狂博士實驗室，請前往 Lv.20 區域使用。")
+            return
         p = self.player
         lang = p.language
         slot = "weapon" if is_weapon else "armor"

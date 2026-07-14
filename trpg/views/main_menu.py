@@ -23,6 +23,19 @@ def select_main_menu_quests(active_quests: dict, quest_catalog: dict) -> tuple[l
     return selected, max(0, len(quest_ids) - len(selected))
 
 
+def npc_progress_state(npc: dict, completed_quests: set[str]) -> tuple[str | None, bool]:
+    """Return a data-driven NPC dialogue stage and crafting unlock state."""
+    requirements = npc.get("craft_unlock_requires") or []
+    if not requirements:
+        return None, False
+    unlocked = all(quest_id in completed_quests for quest_id in requirements)
+    if unlocked:
+        return "dialogue_complete", True
+    if requirements[0] in completed_quests:
+        return "dialogue_after_first", False
+    return "dialogue_before", False
+
+
 class MainMenuLayout:
     @staticmethod
     def build_main_menu(view):
@@ -54,13 +67,13 @@ class MainMenuLayout:
         shop_emoji = SHOP_EMOJIS.get(view.player.current_area, "🛒")
         inn_cfg = area_inn_config(view.player.current_area)
         if view.cog.areas.get(view.player.current_area, {}).get("is_village"):
-            view.add_action_button(label=t(lang, "menu.btn_outskirts", "郊外"), style=discord.ButtonStyle.primary, custom_id="move_to_area_01grassland", row=0, emoji="🌾")
             view.add_action_button(label=t(lang, "menu.btn_move", "移動"), style=discord.ButtonStyle.primary, custom_id="btn_move_menu", row=0, emoji="🗺️")
             view.add_action_button(label=t(lang, "menu.btn_items", "物品"), style=discord.ButtonStyle.primary, custom_id="btn_status", row=0, emoji="🎒")
-            view.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.primary, custom_id="btn_equip_menu", row=1, emoji="🛡️")
+            view.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.primary, custom_id="btn_equip_menu", row=0, emoji="🛡️")
             view.add_action_button(label=shop_button_label, style=discord.ButtonStyle.primary, custom_id="btn_shop_menu", row=1, emoji=shop_emoji)
             view.add_action_button(label=t(lang, "menu.btn_inn", "旅館"), style=discord.ButtonStyle.primary, custom_id="btn_inn_menu", row=1, emoji=inn_cfg["emoji"])
-            view.add_action_button(label=t(lang, "menu.btn_village_facilities", "村莊設施"), style=discord.ButtonStyle.secondary, custom_id="btn_village_facilities", row=2, emoji="🏘️")
+            view.add_action_button(label=t(lang, "menu.btn_attributes", "屬性"), style=discord.ButtonStyle.primary, custom_id="btn_stat_alloc", row=1, emoji="📊")
+            view.add_action_button(label=t(lang, "menu.btn_school", "學校"), style=discord.ButtonStyle.secondary, custom_id="btn_school_menu", row=2, emoji="🏫")
             view.add_action_button(label=t(lang, "menu.btn_guild", "公會"), style=discord.ButtonStyle.secondary, custom_id="btn_guild_menu", row=2, emoji="🏛️")
             view.add_action_button(label=t(lang, "menu.btn_village_chief", "Baba"), style=discord.ButtonStyle.secondary, custom_id="btn_ask_chief", row=2, emoji=baba_emoji(view.cog.bot))
         else:
@@ -83,6 +96,10 @@ class MainMenuLayout:
             view.add_action_button(label=t(lang, "menu.btn_consumables", "消耗品"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=1, emoji="🧪")
             view.add_action_button(label=shop_button_label, style=discord.ButtonStyle.primary, custom_id="btn_shop_menu", row=2, emoji=shop_emoji)
             view.add_action_button(label=t(lang, "menu.btn_inn", "旅館"), style=discord.ButtonStyle.primary, custom_id="btn_inn_menu", row=2, emoji=inn_cfg["emoji"])
+            if view.player.current_area == "area_20lab":
+                view.add_action_button(label=t(lang, "menu.btn_blacksmith_shop", "鐵匠鋪"), style=discord.ButtonStyle.primary, custom_id="btn_blacksmith_menu", row=3, emoji="⚒️")
+            if view.player.current_area == "area_40vampire_castle":
+                view.add_action_button(label=t(lang, "menu.btn_prestige_hall", "轉生殿堂"), style=discord.ButtonStyle.success, custom_id="btn_prestige_menu", row=3, emoji="🌟")
             if current_subarea:
                 view.add_action_button(label=t(lang, "menu.btn_change_subarea", "切換子區域"), style=discord.ButtonStyle.secondary, custom_id="btn_subarea_menu", row=3, emoji="🧭")
             if view.player.current_area == "area_01grassland":
@@ -94,15 +111,9 @@ class MainMenuLayout:
 
     @staticmethod
     def build_village_facilities_menu(view):
-        view.clear_items()
-        view.current_menu_state = "village_facilities"
-        lang = view.player.language
-        view.log_message = t(lang, "menu.village_facilities_prompt", "🏘️ 【米酥村設施】\n選擇你要前往的村莊設施：")
-        view.add_action_button(label=t(lang, "menu.btn_blacksmith_shop", "鐵匠鋪"), style=discord.ButtonStyle.primary, custom_id="btn_blacksmith_menu", emoji="⚒️")
-        view.add_action_button(label=t(lang, "menu.btn_crafting_station", "合成台"), style=discord.ButtonStyle.primary, custom_id="btn_craft_menu", emoji="🔨")
-        view.add_action_button(label=t(lang, "menu.btn_church", "教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", emoji="⛪")
-        view.add_action_button(label=t(lang, "menu.btn_school", "學校"), style=discord.ButtonStyle.secondary, custom_id="btn_school_menu", emoji="🏫")
-        view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
+        # Backward compatibility for old Discord panels: the retired Village
+        # Facilities button now opens the school that replaced it.
+        MainMenuLayout.build_school_menu(view)
 
     @staticmethod
     def build_inn_menu(view, notice=""):
@@ -180,6 +191,7 @@ class MainMenuLayout:
         view.add_action_button(label=t(lang, "menu.btn_lottery", "幸運抽獎"), style=discord.ButtonStyle.primary, custom_id="btn_lottery_menu", emoji="🎰")
         view.add_action_button(label=t(lang, "menu.btn_achievements", "成就"), style=discord.ButtonStyle.primary, custom_id="btn_achievements", emoji="🏅")
         view.add_action_button(label=t(lang, "menu.btn_leaderboard", "排行榜"), style=discord.ButtonStyle.secondary, custom_id="btn_leaderboard", emoji="🏆")
+        view.add_action_button(label=t(lang, "menu.btn_char_menu", "角色管理"), style=discord.ButtonStyle.secondary, custom_id="btn_char_menu", emoji="👥")
         view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
     @staticmethod
@@ -266,6 +278,9 @@ class MainMenuLayout:
             lines.append(notice + "\n")
         lines.append(f"{area_npc.get('emoji', '🧑')} **{npc_name}**")
         lines.append(tf(area_npc, "intro", lang) or "")
+        dialogue_key, craft_unlocked = npc_progress_state(area_npc, set(real.completed_quests))
+        if dialogue_key:
+            lines.extend(["", tf(area_npc, dialogue_key, lang) or ""])
 
         lines.append(t(lang, "npc.quest_header", "\n── 委託 ──"))
         for qid in area_npc.get("quest_ids", []):
@@ -299,8 +314,14 @@ class MainMenuLayout:
                 else:
                     lines.append(t(lang, "npc.quest_locked_chain", "🔒 {title}（完成前一項委託後開啟）", title=title))
 
-        if all(qid in real.completed_quests for qid in area_npc.get("quest_ids", [])):
-            lines.append(t(lang, "npc.all_done_hint", "\n💠 這位 NPC 的委託已全部完成。集齊三色魔法碎片後，到村莊設施的合成台製作【魔法之眼】吧！"))
+        if craft_unlocked:
+            view.add_action_button(
+                label=t(lang, "menu.btn_crafting_station", "合成台"),
+                style=discord.ButtonStyle.success,
+                custom_id="btn_craft_menu", emoji="🔨",
+            )
+        elif all(qid in real.completed_quests for qid in area_npc.get("quest_ids", [])):
+            lines.append(t(lang, "npc.all_done_hint", "\n💠 這位 NPC 的委託已全部完成。集齊三色魔法碎片後，前往迷霧森林找精靈長老艾露娜，使用她的合成台製作【魔法之眼】吧！"))
 
         view.log_message = "\n".join(lines)
         view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
@@ -310,9 +331,6 @@ class MainMenuLayout:
         view.clear_items()
         lang = view.player.language
         view.log_message = t(lang, "menu.church_prompt", "⛪ 【教堂】\n莊嚴的聖光籠罩著你。這裡能為你洗滌疲憊，指引未來的道路。")
-        view.add_action_button(label=t(lang, "menu.btn_prestige_hall", "轉生殿堂"), style=discord.ButtonStyle.success, custom_id="btn_prestige_menu", emoji="🌟")
-        view.add_action_button(label=t(lang, "menu.btn_stat_alloc", "屬性分配"), style=discord.ButtonStyle.primary, custom_id="btn_stat_alloc", emoji="📊")
-        view.add_action_button(label=t(lang, "menu.btn_char_menu", "角色管理"), style=discord.ButtonStyle.primary, custom_id="btn_char_menu", emoji="👥")
         view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
     @staticmethod
