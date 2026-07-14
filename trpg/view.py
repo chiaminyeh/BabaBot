@@ -6,6 +6,7 @@ import random
 from datetime import datetime
 
 from trpg.i18n import t, tf
+from trpg.inns import INN_EVENT_CHANCE, INN_ROOMS, apply_inn_room, area_inn_config, inn_room_cost
 from trpg.combat import TRPGCombat, exp_to_next_level, get_player_atk, get_player_def, get_player_magic, get_player_spd
 from trpg.status import format_status_list, clear_all_status, get_daily_jester_immunity
 from trpg.monster_pool import pick_random_monster
@@ -20,7 +21,7 @@ from trpg.view_shared import ITEM_TYPE_EMOJI, item_emoji, EQUIP_STAT_DISPLAY, EL
 from trpg.view_shop import ShopMixin
 from trpg.view_dungeon import DungeonMixin
 from trpg.view_tutorial import TutorialMixin
-from trpg.views.main_menu import MainMenuLayout
+from trpg.views.main_menu import MainMenuLayout, select_main_menu_quests
 from trpg.balance import MYSTERY_MERCHANT_CHANCE
 from trpg.views.battle import BattleLayout
 from trpg.views.char import CharLayout
@@ -228,7 +229,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "btn_daily_claim": {"m": "handle_daily_claim"},
         "btn_achievements": {"m": "handle_achievements", "await": False},
         "btn_combat_history": {"m": "handle_combat_history", "i": True},
-        "btn_rest": {"m": "handle_rest"},
+        "btn_rest": {"m": "build_inn_menu", "await": False},
+        "btn_inn_menu": {"m": "build_inn_menu", "await": False},
         "btn_shop_menu": {"m": "handle_shop_menu"},
         "btn_shop_refresh": {"m": "handle_shop_refresh"},
         "btn_shop_sell": {"m": "handle_sell_menu"},
@@ -275,6 +277,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
     # gets passed: "suffix" = custom_id after the prefix, "full" = whole
     # custom_id, "int_tail" = int of the last underscore segment.
     _PREFIX_ROUTES = [
+        ("inn_rest_", {"m": "handle_inn_rest", "arg": "suffix"}),
         ("codex_cat_", {"m": "handle_skill_codex_category", "arg": "suffix"}),
         ("char_switch_", {"m": "handle_char_switch", "arg": "suffix"}),
         ("char_create_", {"m": "handle_char_create", "arg": "suffix"}),
@@ -1374,16 +1377,14 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         else:
             header_line = t(
                 lang, "battle.adventurer_status_line",
-                "**Lv.{level} 冒險者** | ⭐ EXP: `{exp}/{required}` | 💰 {balance} {money_name}",
+                "**Lv.{level} 冒險者** | ⭐ `{exp}/{required}` EXP | 💰 `{balance}`",
                 level=p.level, exp=p.exp, required=required_exp,
                 balance=user_bal, money_name=self.cog.bot.baba.money_name,
             )
         player_desc = (
             f"{header_line}\n"
-            f"❤️ HP: `{p.current_hp:03d}/{p.max_hp:03d}`\n"
-            f"💧 MP: `{p.current_mp:03d}/{p.max_mp:03d}`\n"
-            f"⚔️ ATK: `{p_atk}` | 🛡️ DEF: `{p_def}` | 🚀 SPD: `{p_spd}`\n"
-            f"✨ MAG: `{p_magic}`\n"
+            f"❤️ `{p.current_hp}/{p.max_hp}` | 💧 `{p.current_mp}/{p.max_mp}`\n"
+            f"⚔️ `{p_atk}` | 🛡️ `{p_def}` | ✨ `{p_magic}` | 🚀 `{p_spd}`\n"
         )
 
         status_line = t(lang, "battle.status_line", "📜 狀態：{status_text}", status_text=status_text)
@@ -1395,25 +1396,30 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 player_desc += t(lang, "battle.mods_line", "🔺 增益/減益：{mods}", mods=mods_str) + "\n"
             player_desc += f"{status_line}{immune_str}"
         else:
-            unspent_line = t(lang, "battle.unspent_points_line", "📊 未分配點數: `{unspent}`", unspent=unspent)
-            player_desc += f"{unspent_line}\n{status_line}{immune_str}"
+            if unspent > 0:
+                player_desc += t(lang, "battle.unspent_points_line", "📊 未分配點數: `{unspent}`", unspent=unspent) + "\n"
+            if p.status_effects:
+                player_desc += f"{status_line}{immune_str}\n"
             real = getattr(p, "real_player", p)
             active_quests = getattr(real, "active_quests", {})
             if active_quests:
-                quest_names = []
-                for qid in active_quests:
-                    qinfo = self.cog.quests.get(qid)
-                    if qinfo:
-                        quest_names.append(f"【{tf(qinfo, 'title', lang)}】")
-                if quest_names:
-                    quests_str = "、".join(quest_names)
-                    quests_line = t(
-                        lang, "battle.active_quests_line",
-                        "📌 進行中的任務: {quests}",
-                        quests=quests_str
+                selected_quests, remaining = select_main_menu_quests(active_quests, self.cog.quests)
+                for qid in selected_quests:
+                    qinfo = self.cog.quests[qid]
+                    if qinfo.get("quest_line") == "main":
+                        marker = "📖"
+                    elif qinfo.get("repeatable"):
+                        marker = "📅"
+                    else:
+                        marker = "📌"
+                    player_desc += f"{marker} {tf(qinfo, 'title', lang)}\n"
+                if remaining:
+                    player_desc += t(
+                        lang, "battle.more_missions",
+                        "📌 另外 {count} 個任務",
+                        count=remaining,
                     )
-                    player_desc += f"\n{quests_line}"
-        embed.add_field(name=t(lang, "battle.your_status_field", "👤 你的狀態"), value=player_desc, inline=False)
+        embed.add_field(name=t(lang, "battle.adventurer_info_field", "👤 冒險者資訊"), value=player_desc, inline=False)
 
         # 戰鬥時顯示敵方狀態區塊（最多 3 格，前排優先顯示在最上面）
         if self.in_battle and self.monster_slots:
@@ -1734,25 +1740,44 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         else:
             await self.handle_stat_alloc_menu(t(lang, "char.stats_reset_notice", "🔄 已重置所有屬性配點，請重新分配。") + removed_text)
 
-    async def handle_rest(self):
+    def build_inn_menu(self, notice=""):
+        MainMenuLayout.build_inn_menu(self, notice)
+
+    async def handle_inn_rest(self, room_id: str):
         lang = self.player.language
-        if self.player.current_hp == self.player.max_hp and self.player.current_mp == self.player.max_mp and not self.player.status_effects:
-            self.log_message = t(lang, "char.rest_not_needed", "❓ 你精神飽滿，去睡覺只是在浪費錢。")
-            return
-        if not self.cog.try_spend(self.user_id, self.player, 20):
-            self.log_message = t(lang, "char.cant_afford_inn", "❌ 你身上的硬幣連旅館的乾草床都租不起！去打怪賺錢！")
+        room = INN_ROOMS.get(room_id)
+        if room is None:
+            self.build_inn_menu(t(lang, "inn.invalid_room", "❌ 這個房型目前無法使用。"))
             return
 
-        self.player.current_hp = self.player.max_hp
-        self.player.current_mp = self.player.max_mp
-        clear_all_status(self.player)
-        self.log_message = t(lang, "char.rest_complete", "💤 在村莊溫暖的旅店休息了一晚，體力、魔力恢復，異常狀態也清除了！(扣除 20$)")
+        cost = inn_room_cost(room_id, self.player.level)
+        if not self.cog.try_spend(self.user_id, self.player, cost):
+            self.build_inn_menu(t(lang, "inn.cant_afford", "❌ 你付不起這個房型需要的 {cost} 金幣。", cost=cost))
+            return
+
+        restored_hp, restored_mp, cleared = apply_inn_room(self.player, room_id)
+
+        room_name = room["name_en" if lang == "en" else "name_zh"]
+        notice = t(
+            lang, "inn.rest_result",
+            "💤 你在【{room}】休息，恢復 {hp} HP、{mp} MP，解除 {cleared} 個異常狀態。（-{cost}$）",
+            room=room_name,
+            hp=restored_hp,
+            mp=restored_mp,
+            cleared=cleared,
+            cost=cost,
+        )
+        config = area_inn_config(self.player.current_area)
+        if random.random() < INN_EVENT_CHANCE:
+            event = random.choice(config["events"])
+            event_text = event["en" if lang == "en" else "zh"]
+            notice += "\n\n" + t(lang, "inn.rumor_prefix", "💬 【旅店見聞】{event}", event=event_text)
 
         achv_text = self.check_achievements()
         if achv_text:
-            self.log_message += achv_text
-
+            notice += achv_text
         self.cog.save_players(player=self.player)
+        self.build_inn_menu(notice)
 
     async def handle_tower_explore(self):
         lang = self.player.language

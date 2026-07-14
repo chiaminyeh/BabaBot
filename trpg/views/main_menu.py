@@ -1,8 +1,27 @@
 import discord
 from datetime import datetime
-from trpg.balance import area_shop_config
 from trpg.i18n import t, tf
+from trpg.inns import INN_ROOMS, SHOP_EMOJIS, area_inn_config, inn_room_cost, localized
 from trpg.view_shared import baba_emoji
+
+
+def select_main_menu_quests(active_quests: dict, quest_catalog: dict) -> tuple[list[str], int]:
+    """Pick one main and one daily quest, falling back without duplicates."""
+    quest_ids = [qid for qid in active_quests if qid in quest_catalog]
+    main_id = next((qid for qid in quest_ids if quest_catalog[qid].get("quest_line") == "main"), None)
+    daily_id = next((qid for qid in quest_ids if quest_catalog[qid].get("repeatable")), None)
+
+    selected = []
+    first = main_id or next((qid for qid in quest_ids if qid != daily_id), daily_id)
+    if first:
+        selected.append(first)
+    second = daily_id if daily_id not in selected else None
+    if second is None:
+        second = next((qid for qid in quest_ids if qid not in selected), None)
+    if second:
+        selected.append(second)
+    return selected, max(0, len(quest_ids) - len(selected))
+
 
 class MainMenuLayout:
     @staticmethod
@@ -31,17 +50,19 @@ class MainMenuLayout:
             return
 
         lang = view.player.language
-        shop_cfg = area_shop_config(view.player.current_area)
-        shop_button_label = (shop_cfg.get("name_en" if lang == "en" else "name_zh") or t(lang, "shop.btn_shop", "商店"))[:80]
+        shop_button_label = t(lang, "shop.btn_shop", "商店")
+        shop_emoji = SHOP_EMOJIS.get(view.player.current_area, "🛒")
+        inn_cfg = area_inn_config(view.player.current_area)
         if view.cog.areas.get(view.player.current_area, {}).get("is_village"):
             view.add_action_button(label=t(lang, "menu.btn_outskirts", "郊外"), style=discord.ButtonStyle.primary, custom_id="move_to_area_01grassland", row=0, emoji="🌾")
             view.add_action_button(label=t(lang, "menu.btn_move", "移動"), style=discord.ButtonStyle.primary, custom_id="btn_move_menu", row=0, emoji="🗺️")
             view.add_action_button(label=t(lang, "menu.btn_items", "物品"), style=discord.ButtonStyle.primary, custom_id="btn_status", row=0, emoji="🎒")
-            view.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.primary, custom_id="btn_equip_menu", row=0, emoji="🛡️")
-            view.add_action_button(label=shop_button_label, style=discord.ButtonStyle.primary, custom_id="btn_shop_menu", row=0, emoji="🛒")
-            view.add_action_button(label=t(lang, "menu.btn_village_facilities", "村莊設施"), style=discord.ButtonStyle.secondary, custom_id="btn_village_facilities", row=1, emoji="🏘️")
-            view.add_action_button(label=t(lang, "menu.btn_guild", "公會"), style=discord.ButtonStyle.secondary, custom_id="btn_guild_menu", row=1, emoji="🏛️")
-            view.add_action_button(label=t(lang, "menu.btn_village_chief", "Baba"), style=discord.ButtonStyle.secondary, custom_id="btn_ask_chief", row=1, emoji=baba_emoji(view.cog.bot))
+            view.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.primary, custom_id="btn_equip_menu", row=1, emoji="🛡️")
+            view.add_action_button(label=shop_button_label, style=discord.ButtonStyle.primary, custom_id="btn_shop_menu", row=1, emoji=shop_emoji)
+            view.add_action_button(label=t(lang, "menu.btn_inn", "旅館"), style=discord.ButtonStyle.primary, custom_id="btn_inn_menu", row=1, emoji=inn_cfg["emoji"])
+            view.add_action_button(label=t(lang, "menu.btn_village_facilities", "村莊設施"), style=discord.ButtonStyle.secondary, custom_id="btn_village_facilities", row=2, emoji="🏘️")
+            view.add_action_button(label=t(lang, "menu.btn_guild", "公會"), style=discord.ButtonStyle.secondary, custom_id="btn_guild_menu", row=2, emoji="🏛️")
+            view.add_action_button(label=t(lang, "menu.btn_village_chief", "Baba"), style=discord.ButtonStyle.secondary, custom_id="btn_ask_chief", row=2, emoji=baba_emoji(view.cog.bot))
         else:
             area_data = view.cog.areas.get(view.player.current_area, {})
             current_subarea = view._current_subarea_data(area_data)
@@ -50,26 +71,26 @@ class MainMenuLayout:
                 current_subarea_name = tf(current_subarea, "name", lang) or current_subarea.get("id", "子區域")
                 explore_label = t(lang, "menu.btn_resume_subarea", "探索：{subarea_name}", subarea_name=current_subarea_name)
             view.add_action_button(label=explore_label, style=discord.ButtonStyle.primary, custom_id="btn_explore", row=0, emoji="⚔️")
-            view.add_action_button(label=t(lang, "menu.btn_move", "移動"), style=discord.ButtonStyle.secondary, custom_id="btn_move_menu", row=0, emoji="🗺️")
-            view.add_action_button(label=t(lang, "menu.btn_items", "物品"), style=discord.ButtonStyle.secondary, custom_id="btn_status", row=0, emoji="🎒")
-            view.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.secondary, custom_id="btn_equip_menu", row=0, emoji="🛡️")
-            view.add_action_button(label=t(lang, "menu.btn_potions", "藥水"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=1, emoji="🎒")
-            if view.player.current_area != "area_tower":
-                view.add_action_button(label=shop_button_label, style=discord.ButtonStyle.primary, custom_id="btn_shop_menu", row=1, emoji="🛒")
             today_str = datetime.today().strftime("%Y-%m-%d")
             boss_done_today = view.player.daily_boss_kills.get(view.player.current_area) == today_str
             if boss_done_today:
-                view.add_action_button(label=t(lang, "menu.btn_area_boss_done", "✅ BOSS"), style=discord.ButtonStyle.secondary, custom_id="btn_boss_explore", row=1, emoji="👹", disabled=True)
+                view.add_action_button(label=t(lang, "menu.btn_area_boss_done", "✅ BOSS"), style=discord.ButtonStyle.secondary, custom_id="btn_boss_explore", row=0, emoji="👹", disabled=True)
             else:
-                view.add_action_button(label=t(lang, "menu.btn_area_boss", "BOSS"), style=discord.ButtonStyle.danger, custom_id="btn_boss_explore", row=1, emoji="👹")
+                view.add_action_button(label=t(lang, "menu.btn_area_boss", "BOSS"), style=discord.ButtonStyle.danger, custom_id="btn_boss_explore", row=0, emoji="👹")
+            view.add_action_button(label=t(lang, "menu.btn_move", "移動"), style=discord.ButtonStyle.secondary, custom_id="btn_move_menu", row=0, emoji="🗺️")
+            view.add_action_button(label=t(lang, "menu.btn_items", "物品"), style=discord.ButtonStyle.secondary, custom_id="btn_status", row=1, emoji="🎒")
+            view.add_action_button(label=t(lang, "menu.btn_equip", "裝備"), style=discord.ButtonStyle.secondary, custom_id="btn_equip_menu", row=1, emoji="🛡️")
+            view.add_action_button(label=t(lang, "menu.btn_consumables", "消耗品"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=1, emoji="🧪")
+            view.add_action_button(label=shop_button_label, style=discord.ButtonStyle.primary, custom_id="btn_shop_menu", row=2, emoji=shop_emoji)
+            view.add_action_button(label=t(lang, "menu.btn_inn", "旅館"), style=discord.ButtonStyle.primary, custom_id="btn_inn_menu", row=2, emoji=inn_cfg["emoji"])
             if current_subarea:
-                view.add_action_button(label=t(lang, "menu.btn_change_subarea", "切換子區域"), style=discord.ButtonStyle.secondary, custom_id="btn_subarea_menu", row=2, emoji="🧭")
+                view.add_action_button(label=t(lang, "menu.btn_change_subarea", "切換子區域"), style=discord.ButtonStyle.secondary, custom_id="btn_subarea_menu", row=3, emoji="🧭")
             if view.player.current_area == "area_01grassland":
-                view.add_action_button(label=t(lang, "menu.btn_back_village", "返回新手村"), style=discord.ButtonStyle.secondary, custom_id="move_to_area_00village", row=2, emoji="🏠")
+                view.add_action_button(label=t(lang, "menu.btn_back_village", "返回村莊"), style=discord.ButtonStyle.secondary, custom_id="move_to_area_00village", row=2, emoji="🏠")
             area_npc = area_data.get("npc")
             if area_npc:
                 npc_name = tf(area_npc, "name", lang) or "NPC"
-                view.add_action_button(label=npc_name[:80], style=discord.ButtonStyle.success, custom_id="btn_area_npc", row=2, emoji=area_npc.get("emoji") or "🧑")
+                view.add_action_button(label=npc_name[:80], style=discord.ButtonStyle.success, custom_id="btn_area_npc", row=3, emoji=area_npc.get("emoji") or "🧑")
 
     @staticmethod
     def build_artisan_menu(view):
@@ -87,11 +108,40 @@ class MainMenuLayout:
         view.current_menu_state = "village_facilities"
         lang = view.player.language
         view.log_message = t(lang, "menu.village_facilities_prompt", "🏘️ 【米酥村設施】\n選擇你要前往的村莊設施：")
-        view.add_action_button(label=t(lang, "menu.btn_inn", "旅館"), style=discord.ButtonStyle.primary, custom_id="btn_rest", emoji="💤")
         view.add_action_button(label=t(lang, "menu.btn_blacksmith", "鐵匠"), style=discord.ButtonStyle.primary, custom_id="btn_artisan_menu", emoji="⚒️")
         view.add_action_button(label=t(lang, "menu.btn_church", "教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", emoji="⛪")
         view.add_action_button(label=t(lang, "menu.btn_school", "學校"), style=discord.ButtonStyle.secondary, custom_id="btn_school_menu", emoji="🏫")
         view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
+
+    @staticmethod
+    def build_inn_menu(view, notice=""):
+        view.clear_items()
+        view.current_menu_state = "inn"
+        lang = view.player.language
+        config = area_inn_config(view.player.current_area)
+        lines = []
+        if notice:
+            lines.extend([notice, ""])
+        lines.append(f"{config['emoji']} " + t(lang, "inn.title", "【旅館】"))
+        lines.extend([localized(config, "intro", lang), ""])
+        for room_id, room in INN_ROOMS.items():
+            cost = inn_room_cost(room_id, view.player.level)
+            room_name = localized(room, "name", lang)
+            if room_id == "cot":
+                effect = t(lang, "inn.cot_effect", "恢復 35% HP／MP，不解除異常")
+            elif room_id == "room":
+                effect = t(lang, "inn.room_effect", "恢復 70% HP／MP，解除 1 個異常")
+            else:
+                effect = t(lang, "inn.suite_effect", "完全恢復 HP／MP，解除全部異常")
+            lines.append(f"{room['emoji']} **{room_name}** — {cost}$\n　{effect}")
+            view.add_action_button(
+                label=t(lang, "inn.room_button", "{room}・{cost}$", room=room_name, cost=cost),
+                style=discord.ButtonStyle.primary if room_id != "suite" else discord.ButtonStyle.success,
+                custom_id=f"inn_rest_{room_id}", row=0, emoji=room["emoji"],
+            )
+        lines.append("\n" + t(lang, "inn.event_hint", "住宿時可能聽見這個地區獨有的傳聞或小插曲。"))
+        view.log_message = "\n".join(lines)
+        view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", row=1, emoji="🔙")
 
     @staticmethod
     def build_subarea_menu(view):
