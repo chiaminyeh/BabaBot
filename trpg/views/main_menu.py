@@ -93,22 +93,13 @@ class MainMenuLayout:
                 view.add_action_button(label=npc_name[:80], style=discord.ButtonStyle.success, custom_id="btn_area_npc", row=3, emoji=area_npc.get("emoji") or "🧑")
 
     @staticmethod
-    def build_artisan_menu(view):
-        view.clear_items()
-        view.current_menu_state = "artisan"
-        lang = view.player.language
-        view.log_message = t(lang, "menu.artisan_prompt", "⚒️ 【鐵匠之地】挑選你要去的地方：")
-        view.add_action_button(label=t(lang, "menu.btn_blacksmith_shop", "鐵匠鋪"), style=discord.ButtonStyle.primary, custom_id="btn_blacksmith_menu", emoji="⚒️")
-        view.add_action_button(label=t(lang, "menu.btn_craft_workshop", "手藝工坊"), style=discord.ButtonStyle.primary, custom_id="btn_craft_menu", emoji="🔨")
-        view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
-
-    @staticmethod
     def build_village_facilities_menu(view):
         view.clear_items()
         view.current_menu_state = "village_facilities"
         lang = view.player.language
         view.log_message = t(lang, "menu.village_facilities_prompt", "🏘️ 【米酥村設施】\n選擇你要前往的村莊設施：")
-        view.add_action_button(label=t(lang, "menu.btn_blacksmith", "鐵匠"), style=discord.ButtonStyle.primary, custom_id="btn_artisan_menu", emoji="⚒️")
+        view.add_action_button(label=t(lang, "menu.btn_blacksmith_shop", "鐵匠鋪"), style=discord.ButtonStyle.primary, custom_id="btn_blacksmith_menu", emoji="⚒️")
+        view.add_action_button(label=t(lang, "menu.btn_crafting_station", "合成台"), style=discord.ButtonStyle.primary, custom_id="btn_craft_menu", emoji="🔨")
         view.add_action_button(label=t(lang, "menu.btn_church", "教堂"), style=discord.ButtonStyle.secondary, custom_id="btn_church_menu", emoji="⛪")
         view.add_action_button(label=t(lang, "menu.btn_school", "學校"), style=discord.ButtonStyle.secondary, custom_id="btn_school_menu", emoji="🏫")
         view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
@@ -309,7 +300,7 @@ class MainMenuLayout:
                     lines.append(t(lang, "npc.quest_locked_chain", "🔒 {title}（完成前一項委託後開啟）", title=title))
 
         if all(qid in real.completed_quests for qid in area_npc.get("quest_ids", [])):
-            lines.append(t(lang, "npc.all_done_hint", "\n💠 這位 NPC 的委託已全部完成。集齊三色魔法碎片後，到鐵匠之地的手藝工坊合成【魔法之眼】吧！"))
+            lines.append(t(lang, "npc.all_done_hint", "\n💠 這位 NPC 的委託已全部完成。集齊三色魔法碎片後，到村莊設施的合成台製作【魔法之眼】吧！"))
 
         view.log_message = "\n".join(lines)
         view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
@@ -436,19 +427,19 @@ class MainMenuLayout:
     def handle_move_menu(view):
         view.clear_items()
         lang = view.player.language
-        view.log_message = t(lang, "menu.move_prompt", "Choose your destination.")
+        view.log_message = t(lang, "menu.move_prompt", "請選擇要前往的區域。")
         for area_id, area in view.cog.areas.items():
             if area_id == view.player.current_area:
                 continue
             if not view._area_unlocked(area):
                 continue
             req = area.get("req_level", 1)
-            area_name = tf(area, "area_name", lang) if area.get("area_name") else t(lang, "menu.unknown_area", "Unknown Area")
+            area_name = tf(area, "area_name", lang) if area.get("area_name") else t(lang, "menu.unknown_area", "未知區域")
             label = t(
                 lang, "menu.move_to_label",
-                "Go to {area_name} (Recommended Lv.{req})",
+                "前往 {area_name}（建議 Lv.{req}）",
                 area_name=area_name,
                 req=req,
             )
             view.add_action_button(label=label, style=discord.ButtonStyle.primary, custom_id=f"move_to_{area_id}")
-        view.add_action_button(label=t(lang, "menu.btn_back", "Back"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
+        view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")

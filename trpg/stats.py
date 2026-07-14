@@ -156,6 +156,31 @@ def prune_unqualified_skills(player, skills_data: dict) -> list[str]:
     return removed
 
 
+def grant_qualified_skills(player, skills_data: dict, max_equipped: int = 8) -> list[tuple[str, bool]]:
+    """Grant newly-qualified archetype skills and fill empty skill slots.
+
+    Skills without ``req_points`` remain scroll/drop progression and are never
+    auto-granted. Returns ``(skill_id, auto_equipped)`` for each new skill.
+    """
+    learned = list(dict.fromkeys(getattr(player, "skills", []) or []))
+    equipped = list(dict.fromkeys(getattr(player, "equipped_skills", []) or []))
+    granted = []
+    for skill_id, skill_data in skills_data.items():
+        if skill_id in learned or not skill_data.get("req_points"):
+            continue
+        qualified, _, _ = meets_skill_requirements(player, skill_data)
+        if not qualified:
+            continue
+        learned.append(skill_id)
+        auto_equipped = len(equipped) < max_equipped
+        if auto_equipped:
+            equipped.append(skill_id)
+        granted.append((skill_id, auto_equipped))
+    player.skills = learned
+    player.equipped_skills = equipped
+    return granted
+
+
 def total_stat_points(level: int) -> int:
     return POINTS_PER_LEVEL * level
 
@@ -324,7 +349,9 @@ def migrate_player_stats(player, items: dict, skills_data: dict | None = None):
 
     recalc_player_stats(player, items, heal_full=False)
     if skills_data is not None:
-        return prune_unqualified_skills(player, skills_data)
+        removed = prune_unqualified_skills(player, skills_data)
+        grant_qualified_skills(player, skills_data)
+        return removed
     return []
 
 

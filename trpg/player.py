@@ -1,6 +1,6 @@
 """Player save model: TRPGPlayer, shop-level gating, and the dungeon stat wrapper."""
 
-from trpg.stats import default_stat_alloc, recalc_player_stats, meets_skill_requirements
+from trpg.stats import default_stat_alloc, grant_qualified_skills, recalc_player_stats, meets_skill_requirements
 from trpg.combat import exp_to_next_level
 from trpg.balance import ARCHETYPE_BALANCE_VERSION
 from trpg.dungeon import SEALED_FIELDS
@@ -112,7 +112,7 @@ class TRPGPlayer:
                 del self.inventory[item_id]
         return True
 
-    def add_exp(self, amount, items=None):
+    def add_exp(self, amount, items=None, skills_data=None):
         self.exp += amount
         needed = exp_to_next_level(self.level)
         leveled_up = False
@@ -128,6 +128,8 @@ class TRPGPlayer:
             leveled_up = True
 
         recalc_player_stats(self, items or {}, heal_full=leveled_up)
+        if skills_data is not None:
+            grant_qualified_skills(self, skills_data)
         return leveled_up
 
     def to_dict(self):

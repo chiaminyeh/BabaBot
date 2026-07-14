@@ -263,19 +263,35 @@ def _grant_quest_rewards(view, quest_info) -> str:
     player = _real_player(view)
     cog = view.cog
     lang = getattr(player, "language", "zh")
-    player.add_exp(quest_info.get("reward_exp", 0), cog.items)
+    old_level = player.level
+    skills_before = set(player.skills)
+    equipped_before = set(player.equipped_skills)
+    leveled_up = player.add_exp(quest_info.get("reward_exp", 0), cog.items, cog.skills)
     cog.adjust_bank(view.user_id, quest_info.get("reward_money", 0))
 
     reward_items = quest_info.get("reward_items") or {}
-    if not reward_items:
-        return ""
     names = []
     for item_id, qty in reward_items.items():
         player.inventory[item_id] = player.inventory.get(item_id, 0) + qty
         nm = tf(cog.items.get(item_id, {}), "name", lang) or item_id
         names.append(f"{nm} x{qty}")
     sep = ", " if lang == "en" else "、"
-    return t(lang, "quest.reward_items_suffix", "、道具：{items}", items=sep.join(names))
+    result = t(lang, "quest.reward_items_suffix", "、道具：{items}", items=sep.join(names)) if names else ""
+    if leveled_up:
+        result += "\n" + t(
+            lang, "quest.level_up_notice",
+            "🌟 任務經驗讓你從 Lv.{old_level} 升到了 Lv.{level}！",
+            old_level=old_level, level=player.level,
+        )
+    unlocked = [skill_id for skill_id in player.skills if skill_id not in skills_before]
+    if unlocked:
+        skill_names = sep.join(tf(cog.skills[skill_id], "name", lang) for skill_id in unlocked)
+        result += "\n" + t(lang, "quest.skills_unlocked_notice", "✨ 達成流派條件，學會了：{skills}", skills=skill_names)
+        auto_equipped = [skill_id for skill_id in unlocked if skill_id in player.equipped_skills and skill_id not in equipped_before]
+        if auto_equipped:
+            equipped_names = sep.join(tf(cog.skills[skill_id], "name", lang) for skill_id in auto_equipped)
+            result += "\n" + t(lang, "quest.skills_auto_equipped_notice", "✅ 技能欄有空位，已自動裝備：{skills}", skills=equipped_names)
+    return result
 
 
 def _mark_completed(player, quest_id, quest_info):

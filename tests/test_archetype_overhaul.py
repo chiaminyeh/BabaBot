@@ -62,8 +62,9 @@ class ArchetypeOverhaulTests(unittest.TestCase):
         self.assertNotIn('custom_id="btn_rest"', village_branch)
 
         facilities = source.split("def build_village_facilities_menu(view):", 1)[1].split("    @staticmethod", 1)[0]
-        for custom_id in ("btn_artisan_menu", "btn_church_menu", "btn_school_menu", "btn_back_main"):
+        for custom_id in ("btn_blacksmith_menu", "btn_craft_menu", "btn_church_menu", "btn_school_menu", "btn_back_main"):
             self.assertIn(f'custom_id="{custom_id}"', facilities)
+        self.assertNotIn('custom_id="btn_artisan_menu"', facilities)
         self.assertNotIn('custom_id="btn_rest"', facilities)
         self.assertNotIn('custom_id="btn_inn_menu"', facilities)
 

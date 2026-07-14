@@ -256,7 +256,7 @@ class DungeonMixin:
             self.cog.adjust_bank(self.user_id, reward_gold)
             d_state["in_run"] = False
             dg.end_run(self.player)
-            real.add_exp(reward_exp, self.cog.items)
+            leveled_up = real.add_exp(reward_exp, self.cog.items, self.cog.skills)
             real.current_area = "area_00village"
             real.current_subarea = None
             self.log_message = base_log + t(
@@ -266,6 +266,8 @@ class DungeonMixin:
                 reward_gold=reward_gold,
                 reward_exp=reward_exp,
             )
+            if leveled_up:
+                self.log_message += "\n" + t(lang, "dungeon.level_up", "🌟 地下城獎勵讓你升到了 Lv.{level}！", level=real.level)
             self.build_main_menu()
             return
 

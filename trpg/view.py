@@ -11,7 +11,7 @@ from trpg.combat import TRPGCombat, exp_to_next_level, get_player_atk, get_playe
 from trpg.status import format_status_list, clear_all_status, get_daily_jester_immunity
 from trpg.monster_pool import pick_random_monster
 from trpg.quest_popup import process_quest_popups, accept_quest
-from trpg.stats import default_stat_alloc, recalc_player_stats, get_unspent_points, format_stat_alloc_summary, get_potion_heal_target, prestige_required_level, format_item_stat_requirements, format_stat_requirement_map, item_stat_requirements, meets_item_stat_requirements, meets_skill_requirements, format_skill_point_requirements, prune_unqualified_skills, stat_display_name
+from trpg.stats import default_stat_alloc, grant_qualified_skills, recalc_player_stats, get_unspent_points, format_stat_alloc_summary, get_potion_heal_target, prestige_required_level, format_item_stat_requirements, format_stat_requirement_map, item_stat_requirements, meets_item_stat_requirements, meets_skill_requirements, format_skill_point_requirements, prune_unqualified_skills, stat_display_name
 from trpg.player import RoguePlayerWrapper
 from trpg.entity import absorb_monster_damage
 from trpg import dungeon as dg
@@ -241,7 +241,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "btn_skill_learn": {"m": "handle_learn_skill_menu"},
         "btn_stat_alloc": {"m": "handle_stat_alloc_menu"},
         "btn_stat_reset": {"m": "handle_stat_reset"},
-        "btn_artisan_menu": {"m": "build_artisan_menu", "await": False},
+        "btn_artisan_menu": {"m": "build_village_facilities_menu", "await": False},
         "btn_village_facilities": {"m": "build_village_facilities_menu", "await": False},
         "btn_guild_menu": {"m": "build_guild_menu", "await": False},
         "btn_church_menu": {"m": "build_church_menu", "await": False},
@@ -1678,6 +1678,21 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
 
     async def handle_stat_alloc_menu(self, notice=""):
         CharLayout.handle_stat_alloc_menu(self, notice)
+
+    def sync_qualified_skill_notice(self) -> str:
+        """Grant newly-qualified archetype skills and describe auto-equips."""
+        lang = self.player.language
+        granted = grant_qualified_skills(self.player, self.cog.skills)
+        if not granted:
+            return ""
+        separator = ", " if lang == "en" else "、"
+        names = separator.join(tf(self.cog.skills[skill_id], "name", lang) for skill_id, _ in granted)
+        notice = "\n" + t(lang, "skill.conditions_unlocked", "✨ 達成流派條件，學會了：{skills}", skills=names)
+        equipped_names = separator.join(tf(self.cog.skills[skill_id], "name", lang) for skill_id, equipped in granted if equipped)
+        if equipped_names:
+            notice += "\n" + t(lang, "skill.conditions_auto_equipped", "✅ 技能欄有空位，已自動裝備：{skills}", skills=equipped_names)
+        return notice
+
     async def handle_stat_add(self, stat_key: str, amount: int = 1):
         """amount 超過目前剩餘點數時直接封頂到剩餘點數——這樣手動輸入視窗打一個
         很大的數字（例如 999）就等於「全押」，不需要另外維護一顆 All-in 按鈕。"""
@@ -1700,8 +1715,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         add_amount = min(amount, unspent, allowed)
         self.player.stat_alloc[stat_key] = current + add_amount
         recalc_player_stats(self.player, self.cog.items, heal_full=False)
+        skill_notice = self.sync_qualified_skill_notice()
         self.cog.save_players(player=self.player)
-        await self.handle_stat_alloc_menu(t(lang, "char.points_invested", "✅ 已將 {add_amount} 點投入【{stat_key}】。", add_amount=add_amount, stat_key=stat_display_name(stat_key, lang)))
+        await self.handle_stat_alloc_menu(t(lang, "char.points_invested", "✅ 已將 {add_amount} 點投入【{stat_key}】。", add_amount=add_amount, stat_key=stat_display_name(stat_key, lang)) + skill_notice)
 
     def _stat_reset_cost(self) -> int:
         """屬性重置費用：Lv.10 以下免費（新手試錯期），之後隨等級成長——
@@ -2403,7 +2419,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.build_main_menu()
             return
         if not self._area_unlocked(area_data):
-            self.log_message = t(lang, "menu.move_blocked_generic", "You can't travel to this area yet.")
+            self.log_message = t(lang, "menu.move_blocked_generic", "❌ 你目前還無法前往這個區域。")
             self.build_main_menu()
             return
 
@@ -2414,7 +2430,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         area_name = tf(area_data, "area_name", lang)
         self.log_message = t(
             lang, "explore.arrived_at_area",
-            "You successfully arrived at {area_name}.",
+            "成功抵達【{area_name}】。",
             area_name=area_name,
         )
         self.build_main_menu()
@@ -2445,7 +2461,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         elif state == "blacksmith":
             await self.handle_blacksmith_menu()
         elif state == "artisan":
-            self.build_artisan_menu()
+            self.build_village_facilities_menu()
         elif state == "subarea":
             self.build_subarea_menu()
         elif state == "char_menu":

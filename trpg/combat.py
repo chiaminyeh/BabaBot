@@ -1234,7 +1234,10 @@ class TRPGCombat:
             quest_log += self._update_kill_quest_progress(monster)
 
         self.cog.adjust_bank(self.view.user_id, total_gold)
-        lvl_up = self.player.add_exp(total_exp, self.cog.items)
+        skills_before = set(self.player.skills)
+        equipped_before = set(self.player.equipped_skills)
+        lvl_up = self.player.add_exp(total_exp, self.cog.items, self.cog.skills)
+        unlocked_skills = [skill_id for skill_id in self.player.skills if skill_id not in skills_before]
         self.player.stats["monsters_killed"] = self.player.stats.get("monsters_killed", 0) + len(killed_monsters)
         clear_all_status(self.player)
 
@@ -1295,6 +1298,12 @@ class TRPGCombat:
 
         if lvl_up:
             log += "\n" + t(lang, "combat.level_up", "🌟 升級了！你提升到了 Lv.{level}！", level=self.player.level)
+        if unlocked_skills:
+            names = "、".join(tf(self.cog.skills[skill_id], "name", lang) for skill_id in unlocked_skills)
+            log += "\n" + t(lang, "combat.skills_unlocked", "✨ 達成流派條件，學會了：{skills}", skills=names)
+            auto_names = [tf(self.cog.skills[skill_id], "name", lang) for skill_id in unlocked_skills if skill_id in self.player.equipped_skills and skill_id not in equipped_before]
+            if auto_names:
+                log += "\n" + t(lang, "combat.skills_auto_equipped", "✅ 技能欄有空位，已自動裝備：{skills}", skills="、".join(auto_names))
 
         achv_text = self.view.check_achievements()
         if achv_text:

@@ -249,7 +249,7 @@ class ShopMixin:
         recipe_ids = list(CRAFTING_RECIPES.keys())
         page_ids, _, max_page = self._paginate(recipe_ids, 25, paging)
 
-        self.log_message = prefix + t(lang, "craft.title_select", "🔨 【手藝工坊】\n從下方選單挑選配方：")
+        self.log_message = prefix + t(lang, "craft.title_select", "🔨 【合成台】\n從下方選單挑選配方：")
         if max_page > 0:
             self.log_message += t(lang, "equip.page_suffix", "（第 {page}/{max_page} 頁）", page=self.inventory_page + 1, max_page=max_page + 1)
 
