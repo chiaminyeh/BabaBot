@@ -25,6 +25,7 @@ from trpg.views.main_menu import MainMenuLayout, select_main_menu_quests
 from trpg.balance import MYSTERY_MERCHANT_CHANCE
 from trpg.views.battle import BattleLayout
 from trpg.views.char import CharLayout, prestige_hall_accessible
+from trpg.archetypes import change_fortune, core_active, fortune_tier
 
 
 class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
@@ -246,6 +247,16 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "btn_guild_menu": {"m": "build_guild_menu", "await": False},
         "btn_church_menu": {"m": "build_school_menu", "await": False},
         "btn_school_menu": {"m": "build_school_menu", "await": False},
+        "btn_core_ability": {"m": "build_core_ability_menu", "await": False},
+        "core_select_knight": {"m": "handle_core_select", "args": ["knight"], "await": False},
+        "core_select_rogue": {"m": "handle_core_select", "args": ["rogue"], "await": False},
+        "core_select_mage": {"m": "handle_core_select", "args": ["mage"], "await": False},
+        "core_select_warlock": {"m": "handle_core_select", "args": ["warlock"], "await": False},
+        "event_choice_0": {"m": "handle_event_choice", "args": [0]},
+        "event_choice_1": {"m": "handle_event_choice", "args": [1]},
+        "event_choice_2": {"m": "handle_event_choice", "args": [2]},
+        "event_choice_3": {"m": "handle_event_choice", "args": [3]},
+        "event_choice_4": {"m": "handle_event_choice", "args": [4]},
         "btn_skill_codex": {"m": "handle_skill_codex_menu"},
         "btn_skill_equip": {"m": "handle_skill_equip_menu"},
         "btn_tower_safe_room": {"m": "handle_tower_safe_room", "k": {"revisit": True}},
@@ -514,8 +525,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         """回傳 [(weight, kind, payload), ...]。物品獎項在抽中時才 roll 具體內容。"""
         scroll_ids = [iid for iid, it in self.cog.items.items()
                       if it.get("type") == "skill_scroll" and it.get("shop_weight", 0) > 0]
-        luck = getattr(getattr(self.player, "real_player", self.player), "base_luck", 0)
-        luck_bonus = min(3.0, luck * 0.05)
+        fortune = getattr(getattr(self.player, "real_player", self.player), "fortune", 0)
+        luck_bonus = max(-0.5, min(0.5, fortune * 0.05))
         return [
             (34.0, "items", [("high_health_potion", 3), ("high_mana_potion", 3)]),
             (20.0, "items", [("ancient_wood", 3), ("ectoplasm", 3), ("bone_shard", 3), ("gargoyle_stone", 2)]),
@@ -629,6 +640,10 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         MainMenuLayout.build_church_menu(self)
     def build_school_menu(self):
         MainMenuLayout.build_school_menu(self)
+    def build_core_ability_menu(self, notice=""):
+        CharLayout.build_core_ability_menu(self, notice)
+    def handle_core_select(self, core_key: str):
+        CharLayout.handle_core_select(self, core_key)
     def process_death(self, log: str, reason: str = None) -> str:
         """統一處理死亡邏輯，回傳組合好的 log 訊息"""
         lang = self.player.language
@@ -1739,6 +1754,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             await self.handle_stat_alloc_menu(t(lang, "char.stat_reset_no_gold", "❌ 重置屬性配點需要 {cost} 金幣，你的餘額不足！", cost=cost))
             return
         self.player.stat_alloc = default_stat_alloc()
+        self.player.core_ability = None
         real = getattr(self.player, "real_player", self.player)
         real.archetype_balance_version = ARCHETYPE_BALANCE_VERSION
         recalc_player_stats(self.player, self.cog.items, heal_full=False)
@@ -2083,6 +2099,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.player.level = 1
         self.player.exp = 0
         self.player.stat_alloc = default_stat_alloc()
+        self.player.core_ability = None
         self.player.prestige_count = prestige + 1
 
         # 👇 轉生重置：魔塔/地下城回到第一層、清空地下城暫時加成、卸下所有裝備（避免轉生後因殘留裝備直接過強）
@@ -2373,6 +2390,11 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         weights = [self.cog.events[eid].get("weight", 1) for eid in event_pool]
         selected_id = random.choices(event_pool, weights=weights)[0]
         event = self.cog.events.get(selected_id, {})
+        if event.get("choices"):
+            real.pending_event = {"event_id": selected_id}
+            self.cog.save_players(player=self.player)
+            self.build_event_choice_menu()
+            return
         log = tf(event, "message", lang) or t(lang, "explore.nothing_happened", "🌫️ 四周靜悄悄的，什麼也沒發生。")
 
         quest_id = event.get("quest_id")
@@ -2413,6 +2435,75 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.log_message = log
         self.cog.save_players(player=self.player)
         self.build_main_menu()
+
+    def build_event_choice_menu(self, notice=""):
+        self.clear_items()
+        self.current_menu_state = "event_choice"
+        lang = self.player.language
+        real = getattr(self.player, "real_player", self.player)
+        event_id = (getattr(real, "pending_event", None) or {}).get("event_id")
+        event = self.cog.events.get(event_id, {})
+        if not event or not event.get("choices"):
+            real.pending_event = {}
+            self.build_main_menu()
+            self.log_message = t(lang, "event.choice_missing", "🌫️ 這個選擇已經消失了。")
+            return
+        lines = ([notice, ""] if notice else [])
+        lines.append(tf(event, "message", lang) or "")
+        lines.append(t(lang, "event.choose_prompt", "\n你要怎麼做？"))
+        for index, choice in enumerate(event["choices"][:5]):
+            label = choice.get("label_en") if lang == "en" else choice.get("label")
+            label = label or f"Choice {index + 1}"
+            required_core = choice.get("requires_core")
+            available = not required_core or core_active(real, required_core)
+            if not available:
+                label = t(lang, "event.choice_core_locked", "🔒 {label}（需要對應核心）", label=label)
+            self.add_action_button(label=label[:80], style=discord.ButtonStyle.primary, custom_id=f"event_choice_{index}", disabled=not available)
+        self.log_message = "\n".join(lines)
+
+    async def handle_event_choice(self, choice_index: int):
+        lang = self.player.language
+        real = getattr(self.player, "real_player", self.player)
+        event_id = (getattr(real, "pending_event", None) or {}).get("event_id")
+        event = self.cog.events.get(event_id, {})
+        choices = event.get("choices") or []
+        if not 0 <= choice_index < len(choices):
+            self.build_event_choice_menu(t(lang, "event.choice_invalid", "❌ 這個選項已經無效。"))
+            return
+        choice = choices[choice_index]
+        required_core = choice.get("requires_core")
+        if required_core and not core_active(real, required_core):
+            self.build_event_choice_menu(t(lang, "event.choice_requirement_failed", "❌ 你目前的核心能力無法採取這個行動。"))
+            return
+        outcome = choice.get("outcome") or {}
+        real.pending_event = {}
+        result = outcome.get("message_en") if lang == "en" else outcome.get("message")
+        result = result or t(lang, "event.choice_resolved", "你的選擇改變了接下來的命運。")
+        fortune_delta = int(outcome.get("fortune", 0) or 0)
+        if fortune_delta:
+            before, after = change_fortune(real, fortune_delta)
+            if before != after:
+                result += "\n" + t(lang, "fortune.shifted", "🍀 你感覺命運的流向悄悄改變了……目前：{tier}", tier=fortune_tier(after, lang))
+        rewards = outcome.get("rewards") or {}
+        gold = int(rewards.get("gold", 0) or 0)
+        if gold:
+            self.cog.adjust_bank(self.user_id, gold)
+            result += "\n" + t(lang, "explore.gained_gold", "💰 獲得了 {gold} {money_name}！", gold=gold, money_name=self.cog.bot.baba.money_name)
+        for item_id, qty in (rewards.get("items") or {}).items():
+            real.inventory[item_id] = real.inventory.get(item_id, 0) + int(qty)
+            item_name = tf(self.cog.items.get(item_id, {}), "name", lang) or item_id
+            result += "\n" + t(lang, "explore.gained_item", "✅ 獲得【{item_name}】x{qty}", item_name=item_name, qty=qty)
+        hp_loss = float(outcome.get("hp_loss_percent", 0) or 0)
+        if hp_loss:
+            loss = max(1, int(real.max_hp * hp_loss))
+            real.current_hp = max(0, real.current_hp - loss)
+            result += "\n" + t(lang, "explore.lost_hp", "❌ 失去了 {loss} HP", loss=loss)
+            if real.current_hp <= 0:
+                self.log_message = self.process_death(result, t(lang, "explore.fallen_from_event", "💀 你被事件害得倒下了……"))
+                return
+        self.cog.save_players(player=self.player)
+        self.build_main_menu()
+        self.log_message = result
 
     async def handle_move_execute(self, custom_id):
         lang = self.player.language

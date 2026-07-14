@@ -4,33 +4,34 @@ from trpg.balance import (
 )
 from trpg.i18n import t
 
-STAT_KEYS = ("knight", "rogue", "mage", "warlock", "luck")
+STAT_KEYS = ("knight", "rogue", "mage", "warlock")
 STAT_ABBR = {
-    "knight": "KNT",
+    "knight": "WAR",
     "rogue": "RGE",
     "mage": "MAG",
     "warlock": "WRL",
-    "luck": "LCK",
+
 }
 STAT_LABELS = {
-    "knight": {"zh": "騎士", "en": "Knight"},
+    "knight": {"zh": "戰士", "en": "Warrior"},
     "rogue": {"zh": "盜賊", "en": "Rogue"},
     "mage": {"zh": "法師", "en": "Mage"},
     "warlock": {"zh": "術士", "en": "Warlock"},
-    "luck": {"zh": "幸運", "en": "Luck"},
+
 }
 LEGACY_STAT_TO_ARCHETYPE = {
     "atk": {"knight": 1},
     "vit": {"knight": 1},
     "int": {"mage": 1},
     "spd": {"rogue": 1},
-    "luck": {"luck": 1},
+    "luck": {},
     "hp": {"knight": 1},
     "def": {"knight": 1},
     "magic": {"mage": 1},
     "res": {},
 }
 POINTS_PER_LEVEL = STAT_POINTS_PER_LEVEL
+DEPRECATED_PROGRESSION_SKILLS = frozenset(("combo_attack", "battle_focus"))
 
 
 def prestige_required_level(prestige_count: int) -> int:
@@ -256,7 +257,7 @@ def recalc_player_stats(player, items: dict = None, heal_full: bool = False):
     rogue = alloc.get("rogue", 0)
     mage = alloc.get("mage", 0)
     warlock = alloc.get("warlock", 0)
-    luck = alloc.get("luck", 0)
+
 
     base_atk = (
         10 + level * 2
@@ -292,8 +293,9 @@ def recalc_player_stats(player, items: dict = None, heal_full: bool = False):
     base_spd = 10 + level + rogue * ALLOC_BONUS["rogue"] + mage * 0.3 + eq["spd"]
     player.base_spd = int(base_spd * prestige_mult)
 
-    base_luck = luck * ALLOC_BONUS["luck"] + rogue * 0.2 + eq["luck"]
-    player.base_luck = int(base_luck * prestige_mult)
+    # Hidden Fortune is event-driven; gear and archetype allocation never
+    # mutate it. base_luck remains a compatibility display field only.
+    player.base_luck = 0
 
     if heal_full:
         player.current_hp = player.max_hp
@@ -315,7 +317,13 @@ def recalc_player_stats(player, items: dict = None, heal_full: bool = False):
 
 
 def migrate_player_stats(player, items: dict, skills_data: dict | None = None):
+    from trpg.archetypes import clamp_fortune, normalize_core_selection
+
     player.stat_alloc = normalize_stat_alloc(getattr(player, "stat_alloc", None) or {})
+    player.fortune = clamp_fortune(getattr(player, "fortune", 0) or 0)
+    normalize_core_selection(player)
+    player.skills = [skill_id for skill_id in (getattr(player, "skills", None) or []) if skill_id not in DEPRECATED_PROGRESSION_SKILLS]
+    player.equipped_skills = [skill_id for skill_id in (getattr(player, "equipped_skills", None) or []) if skill_id not in DEPRECATED_PROGRESSION_SKILLS]
 
     if not hasattr(player, "base_int"):
         player.base_int = getattr(player, "base_magic", 0)
@@ -363,10 +371,7 @@ def format_stat_alloc_summary(player) -> str:
         f"{stat_display_name(key, lang, short=True)} {alloc.get(key, 0)}"
         for key in ("knight", "rogue", "mage")
     )
-    row2 = " | ".join(
-        f"{stat_display_name(key, lang, short=True)} {alloc.get(key, 0)}"
-        for key in ("warlock", "luck")
-    )
+    row2 = f"{stat_display_name('warlock', lang, short=True)} {alloc.get('warlock', 0)}"
     return "\n".join([
         row1,
         row2,

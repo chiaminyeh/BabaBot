@@ -560,9 +560,9 @@
         "sell_price": 180,
         "exclusive_level": 20,
         "shop_weight": 15,
-        "desc": "研讀後可習得騎士技能【堡壘岩刺】",
+        "desc": "研讀後可習得戰士技能【堡壘岩刺】",
         "name_en": "Skill Scroll: Fortress Spike",
-        "desc_en": "Study this to learn the Knight skill [Fortress Spike]."
+        "desc_en": "Study this to learn the Warrior skill [Fortress Spike]."
     },
     "scroll_dark_orb": {
         "name": "技能卷軸：暗影球",
@@ -596,9 +596,9 @@
         "sell_price": 280,
         "exclusive_level": 20,
         "shop_weight": 10,
-        "desc": "研讀後可習得騎士技能【神聖制裁】",
+        "desc": "研讀後可習得戰士技能【神聖制裁】",
         "name_en": "Skill Scroll: Holy Judgment",
-        "desc_en": "Study this to learn the Knight skill [Holy Judgment]."
+        "desc_en": "Study this to learn the Warrior skill [Holy Judgment]."
     },
     "scroll_venom_cloud": {
         "name": "劇毒之雲卷軸",
@@ -643,9 +643,9 @@
         "sell_price": 800,
         "exclusive_level": 80,
         "shop_weight": 0,
-        "desc": "【學習條件：Lv.80、騎士 80】以防禦力撼動大地，重創全體敵人",
+        "desc": "【學習條件：Lv.80、戰士 80】以防禦力撼動大地，重創全體敵人",
         "name_en": "Earthshaker Scroll",
-        "desc_en": "[Requires Lv.80, Knight 80] Ruptures the ground with DEF to strike all enemies."
+        "desc_en": "[Requires Lv.80, Warrior 80] Ruptures the ground with DEF to strike all enemies."
     },
     "scroll_void_eruption": {
         "name": "虛空爆發卷軸",
@@ -1018,7 +1018,11 @@
         "magic_bonus": 150,
         "def_bonus": -80,
         "shop_weight": 0,
-        "mystery_only": false
+        "mystery_only": false,
+        "exclusive_level": 80,
+        "stat_requirements": {
+            "mage": 80
+        }
     },
     "abyssal_cloak": {
         "name": "深淵潛航者披風",
@@ -1034,7 +1038,11 @@
         "def_bonus": 100,
         "atk_bonus": -50,
         "shop_weight": 0,
-        "mystery_only": false
+        "mystery_only": false,
+        "exclusive_level": 80,
+        "stat_requirements": {
+            "rogue": 80
+        }
     },
     "dragonbone_greatsword": {
         "name": "龍骨毀滅劍",
@@ -1049,7 +1057,11 @@
         "atk_bonus": 350,
         "spd_bonus": -40,
         "shop_weight": 0,
-        "mystery_only": false
+        "mystery_only": false,
+        "exclusive_level": 80,
+        "stat_requirements": {
+            "knight": 80
+        }
     },
     "forbidden_blood_chalice": {
         "name": "禁忌血之聖杯",
@@ -1066,7 +1078,11 @@
         "magic_bonus": 100,
         "mdef_bonus": -50,
         "shop_weight": 0,
-        "mystery_only": false
+        "mystery_only": false,
+        "exclusive_level": 80,
+        "stat_requirements": {
+            "warlock": 80
+        }
     },
     "scroll_iron_skin": {
         "name": "技能卷軸：鋼鐵之軀",
@@ -1145,8 +1161,7 @@
         "exclusive_level": 16,
         "shop_weight": 6,
         "stat_requirements": {
-            "vit": 10,
-            "atk": 8
+            "knight": 10
         },
         "desc": "【史詩・守護者套裝】沉重而可靠。套裝：2件+防禦/HP，3件再+攻擊/魔防",
         "name_en": "Guardian Warhammer",
@@ -1164,7 +1179,7 @@
         "exclusive_level": 16,
         "shop_weight": 6,
         "stat_requirements": {
-            "vit": 12
+            "knight": 12
         },
         "desc": "【史詩・守護者套裝】厚重的全身板甲。套裝：2件+防禦/HP，3件再+攻擊/魔防",
         "name_en": "Guardian Plate",
@@ -1182,7 +1197,7 @@
         "exclusive_level": 16,
         "shop_weight": 6,
         "stat_requirements": {
-            "vit": 8
+            "knight": 8
         },
         "desc": "【史詩・守護者套裝】溫暖的守護之力。套裝：2件+防禦/HP，3件再+攻擊/魔防",
         "name_en": "Guardian Charm",
@@ -1453,7 +1468,7 @@
         "sell_price": 276,
         "shop_weight": 8,
         "stat_requirements": {
-            "spd": 10
+            "rogue": 10
         },
         "desc": "潛行者愛用的輕薄匕首",
         "desc_en": "A slim dagger favored by stalkers.",
@@ -1470,7 +1485,7 @@
         "sell_price": 276,
         "shop_weight": 8,
         "stat_requirements": {
-            "spd": 8
+            "rogue": 8
         },
         "desc": "遮蔽面容的輕便兜帽",
         "desc_en": "A light hood that conceals the face.",
@@ -1487,8 +1502,7 @@
         "sell_price": 276,
         "shop_weight": 8,
         "stat_requirements": {
-            "spd": 10,
-            "luck": 6
+            "rogue": 10
         },
         "desc": "刺客公會的信物",
         "desc_en": "A token of the assassins' guild.",
@@ -1519,7 +1533,7 @@
         "sell_price": 388,
         "shop_weight": 14,
         "stat_requirements": {
-            "vit": 10
+            "knight": 10
         },
         "desc": "專為抵抗異常狀態與魔防設計的鋼甲",
         "desc_en": "Plate armor designed to resist status ailments and magic damage.",
@@ -1548,8 +1562,7 @@
         "sell_price": 388,
         "shop_weight": 12,
         "stat_requirements": {
-            "spd": 12,
-            "luck": 6
+            "rogue": 12
         },
         "desc": "細如髮絲卻致命的毒針",
         "desc_en": "A hair-thin needle laced with deadly poison.",
@@ -1678,8 +1691,7 @@
         "on_hit_heal_percent": 0.05,
         "set": "vampiric",
         "stat_requirements": {
-            "atk": 14,
-            "spd": 10
+            "rogue": 14
         }
     },
     "noble_vampire_coat": {
@@ -1696,8 +1708,8 @@
         "hp_bonus": 240,
         "set": "vampiric",
         "stat_requirements": {
-            "vit": 14,
-            "spd": 8
+            "knight": 14,
+            "rogue": 8
         }
     },
     "blood_ring": {
@@ -1714,8 +1726,7 @@
         "hp_bonus": 80,
         "set": "vampiric",
         "stat_requirements": {
-            "atk": 12,
-            "vit": 10
+            "knight": 12
         }
     },
     "vampiric_wand": {
@@ -1731,8 +1742,8 @@
         "magic_bonus": 86,
         "element": "dark",
         "stat_requirements": {
-            "int": 14,
-            "vit": 10
+            "mage": 14,
+            "knight": 10
         }
     },
     "titan_warhammer": {
@@ -1747,8 +1758,7 @@
         "desc_en": "A massive hammer requiring immense strength to wield.",
         "atk_bonus": 94,
         "stat_requirements": {
-            "atk": 18,
-            "vit": 12
+            "knight": 18
         }
     },
     "aegis_of_ages": {
@@ -1764,8 +1774,7 @@
         "def_bonus": 68,
         "hp_bonus": 300,
         "stat_requirements": {
-            "vit": 18,
-            "atk": 10
+            "knight": 18
         }
     },
     "sage_ring": {
@@ -1781,7 +1790,7 @@
         "magic_bonus": 40,
         "mp_bonus": 50,
         "stat_requirements": {
-            "int": 18
+            "mage": 18
         }
     },
     "arch_sage_rod": {
@@ -1796,8 +1805,8 @@
         "desc_en": "A rod wielded only by arch-sages.",
         "magic_bonus": 106,
         "stat_requirements": {
-            "int": 20,
-            "spd": 8
+            "mage": 20,
+            "rogue": 8
         }
     },
     "arcane_focus": {
@@ -1840,8 +1849,8 @@
         "element": "fire",
         "set": "phoenix",
         "stat_requirements": {
-            "atk": 18,
-            "int": 12
+            "knight": 18,
+            "mage": 12
         }
     },
     "phoenix_mail": {
@@ -1858,8 +1867,8 @@
         "hp_bonus": 360,
         "set": "phoenix",
         "stat_requirements": {
-            "vit": 18,
-            "int": 12
+            "knight": 18,
+            "mage": 12
         }
     },
     "phoenix_feather_charm": {
@@ -1876,8 +1885,8 @@
         "magic_bonus": 30,
         "set": "phoenix",
         "stat_requirements": {
-            "atk": 14,
-            "int": 14
+            "knight": 14,
+            "mage": 14
         }
     },
     "phoenix_scepter": {
@@ -1893,8 +1902,8 @@
         "magic_bonus": 126,
         "element": "fire",
         "stat_requirements": {
-            "int": 22,
-            "vit": 10
+            "mage": 22,
+            "knight": 10
         }
     },
     "ancient_rune_band": {
@@ -1924,8 +1933,8 @@
         "spd_scaling": 0.4,
         "set": "voidwalker",
         "stat_requirements": {
-            "spd": 22,
-            "atk": 16
+            "rogue": 22,
+            "knight": 16
         }
     },
     "voidwalker_plate": {
@@ -1942,8 +1951,7 @@
         "spd_bonus": 15,
         "set": "voidwalker",
         "stat_requirements": {
-            "spd": 18,
-            "vit": 16
+            "rogue": 24
         }
     },
     "voidwalker_band": {
@@ -1960,8 +1968,7 @@
         "spd_bonus": 20,
         "set": "voidwalker",
         "stat_requirements": {
-            "spd": 22,
-            "luck": 12
+            "rogue": 22
         }
     },
     "void_orb": {
@@ -1976,8 +1983,8 @@
         "desc_en": "An orb that draws upon the power of the void.",
         "magic_bonus": 146,
         "stat_requirements": {
-            "int": 22,
-            "spd": 16
+            "mage": 22,
+            "rogue": 16
         }
     },
     "champions_belt": {
@@ -2006,8 +2013,7 @@
         "atk_bonus": 148,
         "set": "nether",
         "stat_requirements": {
-            "atk": 24,
-            "vit": 18
+            "knight": 24
         }
     },
     "netherplate": {
@@ -2024,8 +2030,7 @@
         "hp_bonus": 480,
         "set": "nether",
         "stat_requirements": {
-            "vit": 24,
-            "atk": 16
+            "knight": 24
         }
     },
     "nethercrown": {
@@ -2042,8 +2047,8 @@
         "magic_bonus": 40,
         "set": "nether",
         "stat_requirements": {
-            "atk": 18,
-            "int": 18
+            "knight": 18,
+            "mage": 18
         }
     },
     "abyss_scepter": {
@@ -2058,8 +2063,7 @@
         "desc_en": "A scepter condensed from abyssal energy.",
         "magic_bonus": 166,
         "stat_requirements": {
-            "int": 24,
-            "vit": 16
+            "mage": 24
         }
     },
     "dragon_heart": {
@@ -2173,7 +2177,7 @@
         "desc": "鑲嵌著雷擊之力的盾牌，裝備後【盾擊】會附帶對應屬性",
         "desc_en": "A shield imbued with thunder power; equipping it makes [Shield Bash] deal that element.",
         "stat_requirements": {
-            "vit": 8
+            "knight": 8
         }
     },
     "molten_shield": {
@@ -2289,8 +2293,7 @@
         "name_en": "Voidforged Edge",
         "desc_en": "A black blade forged from void shards — space itself warps in its wake. Craftable only at the workshop.",
         "stat_requirements": {
-            "spd": 24,
-            "atk": 18
+            "rogue": 24
         }
     },
     "lost_cat": {

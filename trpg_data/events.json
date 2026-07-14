@@ -2,14 +2,43 @@
     "shiny_coin": {
         "category": "good",
         "weight": 15,
-        "message": "路邊閃著金光……你撿到一袋被遺忘的零錢！",
-        "rewards": {
-            "gold": 50,
-            "items": {
-                "health_potion": 1
+        "message": "泥濘路邊躺著一只沉甸甸的錢袋，遠處似乎有人正焦急地尋找。",
+        "message_en": "A heavy coin purse lies in the mud. In the distance, someone seems to be searching anxiously.",
+        "choices": [
+            {
+                "label": "撿走錢袋",
+                "label_en": "Take the purse",
+                "outcome": {
+                    "message": "你把錢袋收進懷裡，沒有回頭。",
+                    "message_en": "You pocket the purse without looking back.",
+                    "fortune": -1,
+                    "rewards": {
+                        "gold": 100
+                    }
+                }
+            },
+            {
+                "label": "尋找失主",
+                "label_en": "Find the owner",
+                "outcome": {
+                    "message": "你追上失主；對方分出一小部分金幣向你道謝。",
+                    "message_en": "You catch up with the owner, who shares a few coins in gratitude.",
+                    "fortune": 2,
+                    "rewards": {
+                        "gold": 40
+                    }
+                }
+            },
+            {
+                "label": "留在原地",
+                "label_en": "Leave it alone",
+                "outcome": {
+                    "message": "你沒有碰不屬於自己的東西。風似乎變得柔和了一些。",
+                    "message_en": "You leave what is not yours. The wind seems a little gentler.",
+                    "fortune": 1
+                }
             }
-        },
-        "message_en": "Something glints by the roadside... you picked up a forgotten bag of coins!"
+        ]
     },
     "herb_patch": {
         "category": "good",
@@ -88,14 +117,83 @@
     "find_chest": {
         "category": "good",
         "weight": 5,
-        "message": "你在草叢中發現了一個被遺棄的生鏽寶箱，撬開後發現裡面有些零錢與藥水！",
-        "rewards": {
-            "gold": 150,
-            "items": {
-                "health_potion": 2
+        "message": "你發現一只被元素封印纏繞的古老寶箱；鎖孔、符文和血色紋路同時泛著微光。",
+        "message_en": "You find an ancient chest bound by an elemental seal; its lock, runes, and blood-red veins glow together.",
+        "choices": [
+            {
+                "label": "以蠻力擊碎封印",
+                "label_en": "Smash the seal",
+                "requires_core": "knight",
+                "outcome": {
+                    "message": "你正面擊碎封印，也被爆裂的碎片劃傷。",
+                    "message_en": "You smash the seal head-on, though the blast cuts you.",
+                    "rewards": {
+                        "gold": 130,
+                        "items": {
+                            "health_potion": 1
+                        }
+                    },
+                    "hp_loss_percent": 0.08
+                }
+            },
+            {
+                "label": "拆除鎖芯",
+                "label_en": "Disarm the lock",
+                "requires_core": "rogue",
+                "outcome": {
+                    "message": "機關在指尖無聲瓦解，暗格裡還藏著額外補給。",
+                    "message_en": "The mechanism yields silently, revealing a hidden supply compartment.",
+                    "fortune": 1,
+                    "rewards": {
+                        "gold": 100,
+                        "items": {
+                            "health_potion": 2
+                        }
+                    }
+                }
+            },
+            {
+                "label": "解析元素符文",
+                "label_en": "Read the runes",
+                "requires_core": "mage",
+                "outcome": {
+                    "message": "符文承認了你的魔力，封印自行打開。",
+                    "message_en": "The runes recognize your magic and open willingly.",
+                    "rewards": {
+                        "gold": 100,
+                        "items": {
+                            "mana_potion": 2
+                        }
+                    }
+                }
+            },
+            {
+                "label": "以鮮血交換",
+                "label_en": "Offer blood",
+                "requires_core": "warlock",
+                "outcome": {
+                    "message": "封印吞下鮮血，吐出比預期更多的財寶。",
+                    "message_en": "The seal drinks your blood and yields more treasure than expected.",
+                    "fortune": -1,
+                    "hp_loss_percent": 0.15,
+                    "rewards": {
+                        "gold": 180,
+                        "items": {
+                            "mana_potion": 1
+                        }
+                    }
+                }
+            },
+            {
+                "label": "不碰可疑寶箱",
+                "label_en": "Leave the chest",
+                "outcome": {
+                    "message": "你壓下貪念離開；背後的寶箱發出失望的嘆息。",
+                    "message_en": "You resist temptation and walk away; the chest sighs behind you.",
+                    "fortune": 1
+                }
             }
-        },
-        "message_en": "You spot an abandoned, rusty chest in the grass. Prying it open, you find some coins and potions inside!"
+        ]
     },
     "trap_pit": {
         "category": "bad",
@@ -120,15 +218,48 @@
     "merchant_corpse": {
         "category": "good",
         "weight": 2,
-        "message": "你發現了一具倒楣商人的屍體，你雙手合十拜了一下，然後默默把他的背包拿走了。",
-        "rewards": {
-            "gold": 300,
-            "items": {
-                "iron_sword": 1,
-                "health_potion": 3
+        "message": "一名倒斃商人的背包仍完好無缺，胸前卻緊握著寫給家人的信。",
+        "message_en": "A dead merchant's pack is untouched, but a letter to their family remains clutched to their chest.",
+        "choices": [
+            {
+                "label": "拿走背包",
+                "label_en": "Take the pack",
+                "outcome": {
+                    "message": "你帶走所有能用的東西；那封信留在原地。",
+                    "message_en": "You take everything useful and leave the letter behind.",
+                    "fortune": -2,
+                    "rewards": {
+                        "gold": 120,
+                        "items": {
+                            "health_potion": 1,
+                            "mana_potion": 1
+                        }
+                    }
+                }
+            },
+            {
+                "label": "安葬並送回信件",
+                "label_en": "Bury them and return the letter",
+                "outcome": {
+                    "message": "你立下簡陋墓標，將信收好。某種溫暖的目光似乎正注視著你。",
+                    "message_en": "You raise a simple marker and keep the letter safe. A warm presence seems to watch over you.",
+                    "fortune": 2
+                }
+            },
+            {
+                "label": "只取一瓶補給",
+                "label_en": "Take only one supply",
+                "outcome": {
+                    "message": "你只拿走活命所需的一瓶藥水，並替遺體覆上斗篷。",
+                    "message_en": "You take only one potion and cover the body with its cloak.",
+                    "rewards": {
+                        "items": {
+                            "health_potion": 1
+                        }
+                    }
+                }
             }
-        },
-        "message_en": "You come across the corpse of an unfortunate merchant. You press your hands together in a brief prayer, then quietly take their backpack."
+        ]
     },
     "village_old_man_cat": {
         "category": "neutral",

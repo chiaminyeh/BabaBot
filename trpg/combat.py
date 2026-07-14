@@ -5,6 +5,7 @@ import random
 from datetime import datetime
 
 from trpg.i18n import t, tf
+from trpg.archetypes import core_active
 
 from trpg.balance import (
     XP_CURVE_BASE, XP_CURVE_EXP, PHYSICAL_CRIT_CHANCE, SKILL_CRIT_CHANCE,
@@ -69,7 +70,9 @@ def get_player_def(player, items: dict) -> int:
     combat_buffs = getattr(player, "combat_buffs", None)
     if combat_buffs and combat_buffs.get("turns", 0) > 0 and combat_buffs.get("def_mult"):
         df = int(df * combat_buffs["def_mult"])
-    return df
+    if core_active(player, "knight"):
+        df = int(df * 1.20)
+    return max(0, df)
 
 
 def get_player_mdef(player, items: dict) -> int:
@@ -83,7 +86,7 @@ def get_player_mdef(player, items: dict) -> int:
     combat_buffs = getattr(player, "combat_buffs", None)
     if combat_buffs and combat_buffs.get("turns", 0) > 0 and combat_buffs.get("mdef_mult"):
         mdf = int(mdf * combat_buffs["mdef_mult"])
-    return mdf
+    return max(0, mdf)
 
 
 def get_player_spd(player) -> int:
@@ -94,6 +97,9 @@ def get_player_spd(player) -> int:
     combat_buffs = getattr(player, "combat_buffs", None)
     if combat_buffs and combat_buffs.get("turns", 0) > 0 and combat_buffs.get("spd_mult"):
         spd = int(spd * combat_buffs["spd_mult"])
+    if core_active(player, "rogue"):
+        stacks = min(3, max(0, int((combat_buffs or {}).get("combo_stacks", 0))))
+        spd = int(spd * (1.0 + stacks * 0.05))
     return spd
 
 
@@ -116,6 +122,9 @@ def get_player_magic(player, items: dict, status_defs: dict = None) -> int:
     status_defs = status_defs or {}
     if getattr(player, "status_effects", None) and "paralysis" in player.status_effects:
         mag = int(mag * status_defs.get("paralysis", {}).get("atk_mult", 0.7))
+    combat_buffs = getattr(player, "combat_buffs", None) or {}
+    if combat_buffs.get("turns", 0) > 0 and combat_buffs.get("magic_mult"):
+        mag = int(mag * combat_buffs["magic_mult"])
     return mag
 
 
@@ -125,18 +134,16 @@ def _format_physical_hit_msg(lang: str, dmg: int, is_crit: bool) -> str:
     return t(lang, "combat.player_normal_hit", "⚔️ 造成 {dmg} 點傷害。", dmg=dmg)
 
 
+def _target_has_status(target_statuses: dict) -> bool:
+    return bool(target_statuses) and any(
+        isinstance(value, dict) and value.get("turns", 0) > 0
+        for value in target_statuses.values()
+    )
+
+
 def _status_synergy_multiplier_from_skills(player, skills: dict, target_statuses: dict) -> float:
-    if player is None or not skills or not target_statuses:
-        return 1.0
-    if not any(isinstance(v, dict) and v.get("turns", 0) > 0 for v in target_statuses.values()):
-        return 1.0
-    mult = 1.0
-    for skill_id in getattr(player, "equipped_skills", []) or []:
-        skill = skills.get(skill_id, {})
-        if skill.get("type") != "passive":
-            continue
-        mult *= float(skill.get("status_target_damage_mult", 1.0))
-    return mult
+    """Compatibility shim: status bonus is no longer a passive/global effect."""
+    return 1.0
 
 
 def apply_schrodinger(player, dmg: int, is_crit: bool = False) -> tuple[int, str]:
@@ -179,22 +186,22 @@ def apply_elemental(dmg: int, ele_mult: float) -> int:
     return max(1, int(dmg * ele_mult))
 
 
-def luck_crit_bonus(luck: int) -> float:
-    """運氣換算成的額外暴擊率加成，疊加在 PHYSICAL_CRIT_CHANCE/SKILL_CRIT_CHANCE 上。"""
-    return max(0, luck) * LUCK_CRIT_BONUS_PER_POINT
+def luck_crit_bonus(fortune: int) -> float:
+    """Hidden Fortune modifies crit in both directions within its bounded range."""
+    return max(-0.05, min(0.05, int(fortune) * LUCK_CRIT_BONUS_PER_POINT))
 
 
 def luck_drop_rate_mult(luck: int) -> float:
     """運氣換算成的掉寶率相對加成倍率（乘在每一項 drop 機率上，非疊加到 100% 之外的絕對值）。"""
-    return 1.0 + max(0, luck) * LUCK_DROP_RATE_BONUS_PER_POINT
+    return max(0.75, min(1.25, 1.0 + int(luck) * LUCK_DROP_RATE_BONUS_PER_POINT))
 
 
 def luck_exp_mult(luck: int) -> float:
-    return 1.0 + max(0, luck) * LUCK_EXP_BONUS_PER_POINT
+    return max(0.85, min(1.15, 1.0 + int(luck) * LUCK_EXP_BONUS_PER_POINT))
 
 
 def luck_gold_mult(luck: int) -> float:
-    return 1.0 + max(0, luck) * LUCK_GOLD_BONUS_PER_POINT
+    return max(0.85, min(1.15, 1.0 + int(luck) * LUCK_GOLD_BONUS_PER_POINT))
 
 
 def absorb_note_text(reason: str, lang: str) -> str:
@@ -295,21 +302,29 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
         hit_logs = []
 
         for i in range(hits):
-            status_synergy = _status_synergy_multiplier_from_skills(getattr(caster, "player", None), getattr(caster, "skills", {}), target.status_effects)
+            status_synergy = float(skill.get("status_target_damage_mult", 1.0)) if _target_has_status(target.status_effects) else 1.0
             if hp_scaling_mult:
                 dmg = apply_elemental(int(hp_cost * hp_scaling_mult), ele_mult)
             elif skill_type == "magic":
                 dmg = calc_magic_damage(magic, target.mdef, base_power, def_pierce, magic_scaling)
                 dmg = apply_elemental(dmg, ele_mult)
             else:
-                dmg = calc_physical_damage(atk, target.def_, multiplier)
+                effective_def = target.def_
+                if skill.get("physical_def_pierce"):
+                    effective_def = int(effective_def * (1.0 - float(skill["physical_def_pierce"])))
+                dmg = calc_physical_damage(atk, effective_def, multiplier)
                 dmg = apply_elemental(dmg, ele_mult)
 
             if dmg > 0 and status_synergy != 1.0:
                 dmg = max(1, int(dmg * status_synergy))
+            caster_player = getattr(caster, "player", None)
+            if dmg > 0 and caster_player is not None and core_active(caster_player, "warlock") and skill.get("req_points", {}).get("warlock"):
+                pact_stacks = min(3, int((getattr(caster_player, "combat_buffs", None) or {}).get("blood_pact_stacks", 0)))
+                dmg = max(1, int(dmg * (1.0 + pact_stacks * 0.08)))
 
             # 物理跟 HP 獻祭流都可以暴擊，魔法傷害不會
-            if skill_type != "magic" and random.random() < (SKILL_CRIT_CHANCE + crit_bonus + relic_crit + luck_crit_bonus(caster.luck)):
+            caster_fortune = getattr(getattr(caster, "player", None), "fortune", 0)
+            if skill_type != "magic" and random.random() < (SKILL_CRIT_CHANCE + crit_bonus + relic_crit + luck_crit_bonus(caster_fortune)):
                 dmg = int(dmg * 1.5)
                 hit_logs.append(t(target.lang, "combat.skill_hit_crit", "  第{n}擊暴擊 {dmg} 點！", n=i + 1, dmg=dmg))
             else:
@@ -456,9 +471,11 @@ class TRPGCombat:
                 regen_line = t(self.player.language, "combat.dungeon_regen", "🌿 遺物回復了 {heal} HP。", heal=self.player.current_hp - before)
                 buff_log = f"{buff_log}\n{regen_line}" if buff_log else regen_line
 
-        # 每回合開始自動回復魔力（智力的 10%），一般戰鬥與地下城都適用——地下城裡讀的
-        # 是封印角色當下的 base_int，不會漏算流派/裝備帶來的智力加成。
-        mp_regen = int(getattr(self.player, "base_int", 0) * 0.1)
+        # Automatic mana regeneration is the Mage core identity, not a global
+        # benefit shared by every archetype.
+        mp_regen = 0
+        if core_active(self.player, "mage"):
+            mp_regen = max(3, int(self.player.max_mp * 0.04 + getattr(self.player, "base_int", 0) * 0.05))
         if mp_regen > 0 and self.player.current_hp > 0 and self.player.current_mp < self.player.max_mp:
             before_mp = self.player.current_mp
             self.player.current_mp = min(self.player.max_mp, self.player.current_mp + mp_regen)
@@ -499,9 +516,15 @@ class TRPGCombat:
         if buffs.get("turns", 0) > 0:
             buffs["turns"] -= 1
             if buffs["turns"] <= 0:
-                for k in ("atk_mult", "def_mult", "spd_mult", "turns"):
+                for k in ("atk_mult", "def_mult", "mdef_mult", "magic_mult", "spd_mult", "turns"):
                     buffs.pop(k, None)
                 parts.append(t(lang, "combat.buff_expired", "💨 你的強化效果消退了。"))
+        coating = buffs.get("weapon_coating")
+        if isinstance(coating, dict) and coating.get("turns", 0) > 0:
+            coating["turns"] -= 1
+            if coating["turns"] <= 0:
+                buffs.pop("weapon_coating", None)
+                parts.append(t(lang, "combat.coating_expired", "💨 武器上的元素塗層消散了。"))
         return "\n".join(parts)
     
     def _slow_factor(self, status_dict) -> float:
@@ -660,7 +683,8 @@ class TRPGCombat:
         # 取出武器的速度加成
         weapon = self.cog.items.get(self.player.weapon, {})
 
-        attack_elem = weapon.get("element", "physical")
+        coating = (getattr(self.player, "combat_buffs", None) or {}).get("weapon_coating") or {}
+        attack_elem = coating.get("element") or weapon.get("element", "physical")
         ele_mult, ele_msg = get_elemental_multiplier(attack_elem, self.monster, self.player.language)
 
         spd_scale = weapon.get("spd_scaling", 0.0)
@@ -713,21 +737,17 @@ class TRPGCombat:
         if wake_log:
             log += f"\n{wake_log}"
         log = self._apply_weapon_on_hit(log, target_status, target_slot["monster"] if target_slot else None)
-
-        # 被動技能：連續攻擊（extra_attack_multiplier）—— 裝備了這個被動的話，
-        # 普攻後會用同一套屬性/暴擊條件再補一下（之前這個欄位根本沒人讀，形同虛設）。
-        combo_mult = self._equipped_passive_value("extra_attack_multiplier")
-        if combo_mult and target_slot and target_slot.get("hp", 0) > 0:
-            combo_dmg, combo_is_crit = self._do_physical_hit(multiplier=combo_mult, crit_bonus=eff.get("crit_bonus", 0.0), ele_mult=ele_mult)
-            if combo_dmg > 0 and synergy_mult != 1.0:
-                combo_dmg = max(1, int(combo_dmg * synergy_mult))
-            combo_msg = _format_physical_hit_msg(lang, combo_dmg, combo_is_crit)
-            self.monster_hp -= combo_dmg
-            log += "\n" + t(lang, "combat.combo_attack_extra_hit", "🔄 藉著氣勢再補了一擊，{combo_msg}", combo_msg=combo_msg)
-
-            combo_note = absorb_note_text(target_slot.pop("last_absorb", "") if target_slot else "", lang)
-            if combo_note:
-                log += f"\n   ↳ {combo_note}"
+        if coating.get("apply_status") and target_slot and target_slot.get("hp", 0) > 0 and random.random() < coating.get("status_chance", 0):
+            coating_log = apply_status_to_monster(
+                target_status, coating["apply_status"], coating.get("status_turns", 2),
+                self.cog.status_effects, t(lang, "combat.weapon_coating_source", "【元素塗層】"),
+                lang=lang, monster=target_slot["monster"],
+            )
+            if coating_log:
+                log += f"\n{coating_log}"
+        combo_log = self._gain_combo() if p_dmg > 0 else ""
+        if combo_log:
+            log += f"\n{combo_log}"
 
         if self._all_monsters_dead():
             return log + self._process_victory()
@@ -789,6 +809,24 @@ class TRPGCombat:
                 return skill[field]
         return None
 
+    def _gain_combo(self) -> str:
+        if not core_active(self.player, "rogue"):
+            return ""
+        buffs = self.player.combat_buffs
+        before = min(3, int(buffs.get("combo_stacks", 0)))
+        after = min(3, before + 1)
+        buffs["combo_stacks"] = after
+        if after == before:
+            return ""
+        return t(self.player.language, "combat.combo_gained", "🔄 連擊節奏提升至 {stacks}/3。", stacks=after)
+
+    def _consume_combo(self, amount: int | None = None) -> int:
+        buffs = self.player.combat_buffs
+        current = min(3, int(buffs.get("combo_stacks", 0)))
+        spent = current if amount is None else min(current, max(0, amount))
+        buffs["combo_stacks"] = current - spent
+        return spent
+
     def _apply_weapon_on_hit(self, log: str, target_status: dict, target_monster: dict = None) -> str:
         weapon_id = self.player.weapon
         if not weapon_id:
@@ -825,7 +863,10 @@ class TRPGCombat:
         p_dmg = calc_physical_damage(p_atk, self.monster["def"], multiplier)
         p_dmg = apply_elemental(p_dmg, ele_mult)
 
-        crit_rate = PHYSICAL_CRIT_CHANCE + crit_bonus + luck_crit_bonus(getattr(self.player, "base_luck", 0))
+        combo_crit = 0.0
+        if core_active(self.player, "rogue"):
+            combo_crit = min(3, int((getattr(self.player, "combat_buffs", None) or {}).get("combo_stacks", 0))) * 0.03
+        crit_rate = PHYSICAL_CRIT_CHANCE + crit_bonus + combo_crit + luck_crit_bonus(getattr(self.player, "fortune", 0))
         is_crit = random.random() < crit_rate
         if is_crit:
             p_dmg = int(p_dmg * 1.6)
@@ -875,12 +916,15 @@ class TRPGCombat:
         mp_cost = skill.get("mp_cost", 0)
         hp_cost_pct = skill.get("hp_cost_percent", 0.0)
         actual_hp_cost = int(self.player.max_hp * hp_cost_pct)
+        combo_cost = int(skill.get("combo_cost", 0) or 0)
 
         if mp_cost > 0 and self.player.current_mp < mp_cost:
             return t(lang, "combat.skill_mp_insufficient", "❌ MP 不足！需要 {cost} 點，目前只有 {have} 點。", cost=mp_cost, have=self.player.current_mp)
         if actual_hp_cost > 0:
             if self.player.current_hp <= actual_hp_cost:
                 return t(lang, "combat.skill_hp_insufficient", "❌ HP 不足！【{skill}】需要獻祭 {cost} 點生命，你會把自己抽乾的！", skill=skill_name, cost=actual_hp_cost)
+        if combo_cost > int((getattr(self.player, "combat_buffs", None) or {}).get("combo_stacks", 0)):
+            return t(lang, "combat.skill_combo_insufficient", "❌ 【{skill}】需要 {cost} 層連擊。", skill=skill_name, cost=combo_cost)
 
         dot_log, can_act = self._player_turn_start()
         if self.player.current_hp <= 0: return dot_log
@@ -897,6 +941,20 @@ class TRPGCombat:
         if actual_hp_cost > 0:
             self.player.current_hp -= actual_hp_cost
             log += t(lang, "combat.skill_hp_sacrifice", "🩸 你殘忍地獻祭了自己 {cost} 點生命值！\n", cost=actual_hp_cost)
+            if core_active(self.player, "warlock"):
+                current_pact = min(3, int(self.player.combat_buffs.get("blood_pact_stacks", 0)))
+                self.player.combat_buffs["blood_pact_stacks"] = min(3, current_pact + 1)
+                log += t(lang, "combat.blood_pact_gained", "🩸 血契累積至 {stacks}/3。\n", stacks=self.player.combat_buffs["blood_pact_stacks"])
+
+        skill_for_cast = dict(skill)
+        if combo_cost:
+            self._consume_combo(combo_cost)
+        if skill.get("combo_consume_all"):
+            spent = self._consume_combo(None)
+            skill_for_cast["power_multiplier"] = float(skill.get("power_multiplier", 1.0)) + spent * float(skill.get("combo_power_per_stack", 0.0))
+            if spent >= 3:
+                skill_for_cast["crit_bonus"] = 1.0
+            log += t(lang, "combat.combo_spent", "🔄 消耗 {stacks} 層連擊強化【{skill}】。\n", stacks=spent, skill=skill_name)
 
         if skill_type == "support":
             log += self._apply_support_skill(skill, skill_id, skill_name, lang)
@@ -920,8 +978,21 @@ class TRPGCombat:
             else:
                 caster = PlayerCombatant(self.player, self.cog.items, self.cog.status_effects, self.cog.skills)
                 targets = [MonsterCombatant(slot, self.cog.status_effects, self.player.language) for slot in target_slots]
-                skill_log, _ = execute_skill(caster, targets, skill, self.cog.status_effects, hp_cost=actual_hp_cost)
+                skill_log, total_damage = execute_skill(caster, targets, skill_for_cast, self.cog.status_effects, hp_cost=actual_hp_cost)
                 log += skill_log
+                pact_stacks = min(3, int(self.player.combat_buffs.get("blood_pact_stacks", 0))) if core_active(self.player, "warlock") else 0
+                is_warlock_skill = bool((skill.get("req_points") or {}).get("warlock"))
+                lifesteal = float(skill.get("lifesteal", 0.0)) + (pact_stacks * 0.04 if is_warlock_skill else 0.0)
+                if total_damage > 0 and lifesteal > 0:
+                    before_hp = self.player.current_hp
+                    self.player.current_hp = min(self.player.max_hp, self.player.current_hp + max(1, int(total_damage * lifesteal)))
+                    gained = self.player.current_hp - before_hp
+                    if gained > 0:
+                        log += "\n" + t(lang, "combat.skill_lifesteal", "🩸 【{skill}】汲取了 {heal} HP！", skill=skill_name, heal=gained)
+                if total_damage > 0 and skill.get("grants_combo"):
+                    combo_log = self._gain_combo()
+                    if combo_log:
+                        log += f"\n{combo_log}"
 
         if self._all_monsters_dead():
             return log + self._process_victory()
@@ -962,11 +1033,20 @@ class TRPGCombat:
         # 攻防速強化（buff）：{"atk_mult":..,"def_mult":..,"spd_mult":..,"turns":..}
         buff = skill.get("buff")
         if buff:
-            for k in ("atk_mult", "def_mult", "spd_mult"):
+            for k in ("atk_mult", "def_mult", "mdef_mult", "magic_mult", "spd_mult"):
                 if buff.get(k):
                     p.combat_buffs[k] = buff[k]
             p.combat_buffs["turns"] = max(p.combat_buffs.get("turns", 0), buff.get("turns", 3))
             parts.append(t(lang, "combat.skill_buff", "💪 【{skill}】強化了你的戰鬥能力！（{turns}回合）", skill=skill_name, turns=buff.get("turns", 3)))
+
+        coating = skill.get("weapon_coating")
+        if coating:
+            coating_state = dict(coating)
+            # Buffs tick at the beginning of the next player turn. Add one
+            # internal tick so a displayed 3-turn coating empowers 3 attacks.
+            coating_state["turns"] = int(coating.get("turns", 3)) + 1
+            p.combat_buffs["weapon_coating"] = coating_state
+            parts.append(t(lang, "combat.skill_coating", "⚗️ 【{skill}】為武器附上 {element} 元素（{turns}回合）；新的塗層會覆蓋舊塗層。", skill=skill_name, element=coating.get("element", "?"), turns=coating.get("turns", 3)))
 
         # 持續治癒（HoT）：{"pct":..,"amount":..,"turns":..}
         regen = skill.get("regen")
@@ -1082,7 +1162,7 @@ class TRPGCombat:
         max_gold = monster.get("money_max", 0)
         if max_gold < min_gold:
             max_gold = min_gold
-        luck = getattr(self.player, "base_luck", 0)
+        luck = getattr(self.player, "fortune", 0)
         gold = int(random.randint(min_gold, max_gold) * luck_gold_mult(luck))
         exp = int(monster.get("exp", 0) * luck_exp_mult(luck))
         return gold, exp
@@ -1090,7 +1170,7 @@ class TRPGCombat:
     def _roll_drops_for(self, monster: dict) -> str:
         lang = self.player.language
         drop_log = ""
-        luck_mult = luck_drop_rate_mult(getattr(self.player, "base_luck", 0))
+        luck_mult = luck_drop_rate_mult(getattr(self.player, "fortune", 0))
         for item_id, rate in monster.get("drops", {}).items():
             effective_rate = min(1.0, rate * luck_mult)
             if random.random() < effective_rate:

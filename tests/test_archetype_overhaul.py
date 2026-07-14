@@ -4,7 +4,9 @@ from collections import Counter
 from pathlib import Path
 
 from trpg.balance import ARCHETYPE_BALANCE_VERSION, LUCK_CRIT_BONUS_PER_POINT
+from trpg.archetypes import FORTUNE_MAX, FORTUNE_MIN
 from trpg.player import TRPGPlayer
+from trpg.stats import STAT_KEYS
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,8 +41,10 @@ class ArchetypeOverhaulTests(unittest.TestCase):
             )
             self.assertEqual(actual, expected, archetype)
 
-    def test_luck_is_progression_first(self):
-        self.assertEqual(LUCK_CRIT_BONUS_PER_POINT, 0.001)
+    def test_luck_is_bounded_hidden_fortune_not_allocatable_progression(self):
+        self.assertNotIn("luck", STAT_KEYS)
+        self.assertEqual((FORTUNE_MIN, FORTUNE_MAX), (-10, 10))
+        self.assertEqual(LUCK_CRIT_BONUS_PER_POINT, 0.005)
         self.assertNotIn("luck", self.skills["status_hunter"]["req_points"])
         self.assertEqual(self.skills["status_hunter"]["req_points"], {"rogue": 25})
 

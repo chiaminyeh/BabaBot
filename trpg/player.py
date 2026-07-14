@@ -7,7 +7,7 @@ from trpg.dungeon import SEALED_FIELDS
 
 # Bump this when you change the save schema in a way that needs real migration
 # logic (not just a new defaulted field). Stored on every player save.
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 # Immutable scalar defaults (safe to share — never mutated in place).
 _SCALAR_DEFAULTS = {
@@ -51,6 +51,8 @@ _SCALAR_DEFAULTS = {
     "onboarding_done": False,
     # 新角色直接使用目前平衡版本；舊存檔在 from_dict 會被標成 0，取得一次免費重置。
     "archetype_balance_version": ARCHETYPE_BALANCE_VERSION,
+    "core_ability": None,
+    "fortune": 0,
 }
 
 
@@ -78,6 +80,7 @@ def _fresh_containers() -> dict:
         "mystery_shop_items": [],
         "dungeon_state": {"floor": 1, "choices": [], "in_run": False},
         "hidden_quest_progress": {},
+        "pending_event": {},  # unresolved choice event: {"event_id": ...}
         "repeatable_cooldowns": {},  # {quest_id: "YYYY-MM-DD"} 可重複/每日任務上次完成日期
         "dungeon_buffs": {},
         "dungeon_relic_effects": {},  # 地下城遺物/裝備彙整出的戰鬥 hook（僅 run 內生效）

@@ -1,4 +1,5 @@
 import discord
+from trpg.archetypes import CORE_ABILITIES, CORE_POINT_REQUIREMENT, core_available, fortune_tier, localized_core, set_core_ability
 from trpg.i18n import t, tf
 from trpg.stats import (
     get_unspent_points,
@@ -19,7 +20,7 @@ def prestige_hall_accessible(player) -> bool:
 class CharLayout:
     _STAT_ALLOC_BUTTONS = (
         ("knight", "⚔️"), ("rogue", "🗡️"), ("mage", "✨"),
-        ("warlock", "🌑"), ("luck", "🍀"),
+        ("warlock", "🌑"),
     )
 
     @staticmethod
@@ -108,6 +109,48 @@ class CharLayout:
         )
 
     @staticmethod
+    def build_core_ability_menu(view, notice=""):
+        view.clear_items()
+        view.current_menu_state = "core_ability"
+        lang = view.player.language
+        selected = getattr(view.player, "core_ability", None)
+        lines = []
+        if notice:
+            lines.extend([notice, ""])
+        lines.append(t(lang, "core.menu_title", "🌟 【核心能力】\n同一時間只能啟用一個核心被動；核心能力不占技能欄。"))
+        if selected:
+            name, desc = localized_core(selected, lang)
+            lines.append(t(lang, "core.current", "\n目前核心：{name}\n{desc}", name=name, desc=desc))
+        else:
+            lines.append(t(lang, "core.none_selected", "\n目前尚未選擇核心能力。"))
+        lines.append(t(lang, "fortune.school_hint", "\n🍀 命運徵兆：{tier}", tier=fortune_tier(getattr(view.player, "fortune", 0), lang)))
+
+        for core_key in CORE_ABILITIES:
+            name, desc = localized_core(core_key, lang)
+            available = core_available(view.player, core_key)
+            active = selected == core_key and available
+            label = ("✅ " if active else "") + name
+            if not available:
+                label = t(lang, "core.locked_label", "🔒 {name}（需 {points} 點）", name=name, points=CORE_POINT_REQUIREMENT)
+            view.add_action_button(
+                label=label[:80], style=discord.ButtonStyle.success if active else discord.ButtonStyle.primary,
+                custom_id=f"core_select_{core_key}", disabled=(not available or active),
+            )
+            lines.append(f"\n**{name}**\n{desc}")
+        view.log_message = "\n".join(lines)
+        view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_school_menu", emoji="🔙")
+
+    @staticmethod
+    def handle_core_select(view, core_key: str):
+        lang = view.player.language
+        if not set_core_ability(view.player, core_key):
+            CharLayout.build_core_ability_menu(view, t(lang, "core.select_failed", "❌ 尚未達成這個流派的核心能力條件。"))
+            return
+        view.cog.save_players(player=view.player)
+        name, _ = localized_core(core_key, lang)
+        CharLayout.build_core_ability_menu(view, t(lang, "core.selected", "✅ 已將核心能力切換為【{name}】。", name=name))
+
+    @staticmethod
     def handle_stat_alloc_menu(view, notice=""):
         view.clear_items()
         lang = view.player.language
@@ -117,7 +160,7 @@ class CharLayout:
             prefix
             + t(lang, "char.stat_alloc_header", "📊 【流派點數分配】每級 2 點，死亡後重置。\n")
             + format_stat_alloc_summary(view.player)
-            + t(lang, "char.stat_alloc_legend", "\n\n騎士：提升近戰、血量與防禦 | 盜賊：提升速度、暴擊與收割 | 法師：提升魔力與魔力值 | 術士：提升詛咒、吸取與混傷 | 幸運：提升暴擊、掉寶、經驗與金幣收益")
+            + t(lang, "char.stat_alloc_legend", "\n\n戰士：提升近戰、血量與防禦 | 盜賊：提升速度、暴擊與連擊 | 法師：提升魔力與魔力值 | 術士：提升獻祭、吸取與混傷\n🍀 幸運已改為由事件選擇影響的隱藏命運。")
         )
         if unspent > 0:
             view.log_message += t(
@@ -128,11 +171,11 @@ class CharLayout:
             )
 
             for idx, (key, emoji) in enumerate(CharLayout._STAT_ALLOC_BUTTONS):
-                row = 0 if idx < 3 else 1
+                row = 0 if idx < 2 else 1
                 label = stat_display_name(key, lang)
                 view.add_action_button(label=f"+1 {label}", style=discord.ButtonStyle.primary, custom_id=f"stat_add_{key}", row=row, emoji=emoji)
             for idx, (key, emoji) in enumerate(CharLayout._STAT_ALLOC_BUTTONS):
-                row = 2 if idx < 3 else 3
+                row = 2 if idx < 2 else 3
                 label = stat_display_name(key, lang)
                 view.add_action_button(label=t(lang, "char.btn_stat_manual", "輸入 {stat}", stat=label), style=discord.ButtonStyle.success, custom_id=f"stat_manual_{key}", row=row, emoji=emoji)
 
@@ -301,11 +344,11 @@ class CharLayout:
         lang = view.player.language
         view.log_message = t(lang, "skill.codex_prompt", "📖 【冒險者技能圖鑑】\n在這裡你可以查看世界上所有已知的魔法與技能，以及學會它們所需的等級與流派點數。")
         
-        view.add_action_button(label=t(lang, "skill.codex_knight", "🛡️ 騎士技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_knight", row=0)
+        view.add_action_button(label=t(lang, "skill.codex_knight", "⚔️ 戰士技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_knight", row=0)
         view.add_action_button(label=t(lang, "skill.codex_rogue", "🚀 盜賊技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_rogue", row=0)
         view.add_action_button(label=t(lang, "skill.codex_mage", "🔮 法師技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_mage", row=0)
         view.add_action_button(label=t(lang, "skill.codex_warlock", "🌑 術士技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_warlock", row=1)
-        view.add_action_button(label=t(lang, "skill.codex_luck", "🍀 幸運收益"), style=discord.ButtonStyle.primary, custom_id="codex_cat_luck", row=1)
+        view.add_action_button(label=t(lang, "skill.codex_luck", "🍀 隱藏命運"), style=discord.ButtonStyle.primary, custom_id="codex_cat_luck", row=1)
         view.add_action_button(label=t(lang, "skill.codex_common", "📜 通用技能"), style=discord.ButtonStyle.primary, custom_id="codex_cat_common", row=1)
         
         view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_school_menu", row=2, emoji="🔙")
@@ -320,11 +363,11 @@ class CharLayout:
         skills = categories.get(category, [])
         
         cat_names = {
-            "knight": t(lang, "skill.codex_knight", "🛡️ 騎士技能"),
+            "knight": t(lang, "skill.codex_knight", "⚔️ 戰士技能"),
             "rogue": t(lang, "skill.codex_rogue", "🚀 盜賊技能"),
             "mage": t(lang, "skill.codex_mage", "🔮 法師技能"),
             "warlock": t(lang, "skill.codex_warlock", "🌑 術士技能"),
-            "luck": t(lang, "skill.codex_luck", "🍀 幸運收益"),
+            "luck": t(lang, "skill.codex_luck", "🍀 隱藏命運"),
             "common": t(lang, "skill.codex_common", "📜 通用技能")
         }
         cat_name = cat_names.get(category, category)
@@ -332,29 +375,11 @@ class CharLayout:
         lines = [f"📖 【{cat_name}】\n"]
 
         if category == "luck":
-            from trpg.balance import (
-                LUCK_CRIT_BONUS_PER_POINT,
-                LUCK_DROP_RATE_BONUS_PER_POINT,
-                LUCK_EXP_BONUS_PER_POINT,
-                LUCK_GOLD_BONUS_PER_POINT,
-            )
-            effective_luck = max(0, int(getattr(view.player, "base_luck", 0) or 0))
             lines.append(t(
                 lang,
                 "skill.luck_benefits",
-                "幸運不解鎖戰鬥技能，而是把流派點數換成長期成長與經濟收益。\n\n"
-                "每 1 點有效 LUCK：暴擊 +{crit_each:.1f}%｜掉落率 +{drop_each:.1f}%｜經驗 +{exp_each:.1f}%｜金幣 +{gold_each:.1f}%\n\n"
-                "目前有效 LUCK：{luck}\n"
-                "總收益：暴擊 +{crit_total:.1f}%｜掉落率 +{drop_total:.1f}%｜經驗 +{exp_total:.1f}%｜金幣 +{gold_total:.1f}%",
-                crit_each=LUCK_CRIT_BONUS_PER_POINT * 100,
-                drop_each=LUCK_DROP_RATE_BONUS_PER_POINT * 100,
-                exp_each=LUCK_EXP_BONUS_PER_POINT * 100,
-                gold_each=LUCK_GOLD_BONUS_PER_POINT * 100,
-                luck=effective_luck,
-                crit_total=effective_luck * LUCK_CRIT_BONUS_PER_POINT * 100,
-                drop_total=effective_luck * LUCK_DROP_RATE_BONUS_PER_POINT * 100,
-                exp_total=effective_luck * LUCK_EXP_BONUS_PER_POINT * 100,
-                gold_total=effective_luck * LUCK_GOLD_BONUS_PER_POINT * 100,
+                "命運不再接受流派點數投資，也不顯示精確數字。事件中的選擇會讓命運偏向幸運或厄運，進而小幅影響暴擊、掉落、經驗、金幣與抽獎。某些幸運結果也可能消耗這份眷顧。\n\n目前徵兆：{tier}",
+                tier=fortune_tier(getattr(view.player, "fortune", 0), lang),
             ))
         
         for skill_id, skill in skills:

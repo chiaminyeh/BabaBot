@@ -62,6 +62,15 @@ class MainMenuLayout:
             view.build_colosseum_menu()
             return
 
+        real = getattr(view.player, "real_player", view.player)
+        pending_event_id = (getattr(real, "pending_event", None) or {}).get("event_id")
+        if pending_event_id:
+            pending_event = getattr(view.cog, "events", {}).get(pending_event_id, {})
+            if pending_event.get("choices"):
+                view.build_event_choice_menu()
+                return
+            real.pending_event = {}
+
         lang = view.player.language
         shop_button_label = t(lang, "shop.btn_shop", "商店")
         shop_emoji = SHOP_EMOJIS.get(view.player.current_area, "🛒")
@@ -338,6 +347,7 @@ class MainMenuLayout:
         view.clear_items()
         lang = view.player.language
         view.log_message = t(lang, "menu.school_prompt", "🏫 【米酥學院】\n充滿魔法與智慧氣息的地方。在這裡你可以配置戰鬥技能、研讀卷軸學習魔法，或是查閱圖鑑瞭解冒險技能的奧秘。")
+        view.add_action_button(label=t(lang, "menu.btn_core_ability", "核心能力"), style=discord.ButtonStyle.success, custom_id="btn_core_ability", emoji="🌟")
         view.add_action_button(label=t(lang, "menu.btn_skill_config", "技能配置"), style=discord.ButtonStyle.primary, custom_id="btn_skill_equip", emoji="🔧")
         view.add_action_button(label=t(lang, "menu.btn_learn_magic", "學習魔法"), style=discord.ButtonStyle.primary, custom_id="btn_skill_learn", emoji="📖")
         view.add_action_button(label=t(lang, "menu.btn_skill_codex", "技能圖鑑"), style=discord.ButtonStyle.primary, custom_id="btn_skill_codex", emoji="📚")

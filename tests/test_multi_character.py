@@ -16,7 +16,7 @@ from trpg.view import TRPGGameView
 from trpg.player import TRPGPlayer
 from trpg.combat import execute_skill
 from trpg.entity import PlayerCombatant, MonsterCombatant
-from trpg.stats import migrate_player_stats, prune_unqualified_skills
+from trpg.stats import get_unspent_points, migrate_player_stats, prune_unqualified_skills
 
 class MockBot:
     class Baba:
@@ -326,8 +326,9 @@ class TestMultiCharacter(unittest.TestCase):
         self.assertEqual(player.stat_alloc["knight"], 10)
         self.assertEqual(player.stat_alloc["mage"], 5)
         self.assertEqual(player.stat_alloc["rogue"], 3)
-        self.assertEqual(player.stat_alloc["luck"], 2)
+        self.assertNotIn("luck", player.stat_alloc)
         self.assertEqual(player.stat_alloc["warlock"], 0)
+        self.assertEqual(get_unspent_points(player), 2)
 
     def test_prune_unqualified_skills_removes_invalid_learned_and_equipped_skills(self):
         player = TRPGPlayer("78787")
@@ -490,6 +491,26 @@ class TestMultiCharacter(unittest.TestCase):
         self.assertEqual(view.monster_slots[0]["hp"], 0)
         self.assertEqual(view.monster_slots[1]["hp"], 30)
         self.assertNotIn("再補了一擊", log)
+
+    def test_elemental_immunity_does_not_build_rogue_combo(self):
+        cog = TRPGCog(self.bot)
+        cog.items["fire_sword"] = {"name": "Fire Sword", "element": "fire"}
+        player = cog.get_player("90005")
+        player.onboarding_done = True
+        player.weapon = "fire_sword"
+        player.base_atk = 50
+        player.stat_alloc = {"knight": 0, "rogue": 10, "mage": 0, "warlock": 0}
+        player.core_ability = "rogue"
+        view = TRPGGameView(cog, "90005")
+        view.start_combat([
+            {"id": "fire_spirit", "name": "Fire Spirit", "max_hp": 30, "atk": 1, "def": 0, "immunity": ["fire"]},
+        ])
+
+        with patch("trpg.combat.random.uniform", return_value=1.0), patch("trpg.combat.random.random", return_value=1.0):
+            view.combat.player_attack()
+
+        self.assertEqual(view.monster_slots[0]["hp"], 30)
+        self.assertEqual(player.combat_buffs.get("combo_stacks", 0), 0)
 
     def test_dungeon_flee_clears_dungeon_buffs_and_relic_effects(self):
         cog = TRPGCog(self.bot)

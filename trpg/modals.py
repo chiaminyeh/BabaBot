@@ -97,11 +97,10 @@ class StatPointModal(discord.ui.Modal):
 
 class BulkStatAllocModal(discord.ui.Modal):
     STAT_FIELDS = (
-        ("knight", "Knight / 騎士"),
+        ("knight", "Warrior / 戰士"),
         ("rogue", "Rogue / 盜賊"),
         ("mage", "Mage / 法師"),
         ("warlock", "Warlock / 術士"),
-        ("luck", "Luck / 幸運"),
     )
 
     def __init__(self, game_view):
