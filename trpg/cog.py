@@ -345,6 +345,7 @@ class TRPGCog(commands.Cog):
 
     @app_commands.command(name="trpg", description=" 登入並開啟你的專屬 TRPG 冒險面板")
     async def start_trpg(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         uid = str(interaction.user.id)
 
         # 停用這名玩家還開著的舊面板（如果有）：兩份面板同時活著會共用同一個
@@ -369,7 +370,7 @@ class TRPGCog(commands.Cog):
         view = TRPGGameView(self, interaction.user.id)
         self.active_views[uid] = view
         embed = view.generate_embed()
-        await interaction.response.send_message(embed=embed, view=view)
+        await interaction.edit_original_response(embed=embed, view=view)
         try:
             view.message = await interaction.original_response()
         except Exception:
@@ -381,12 +382,12 @@ class TRPGCog(commands.Cog):
         app_commands.Choice(name="English", value="en"),
     ])
     async def set_language(self, interaction: discord.Interaction, lang: app_commands.Choice[str]):
+        await interaction.response.defer(ephemeral=True)
         player = self.get_player(interaction.user.id)
         player.language = lang.value
         self.save_players(player=player)
-        await interaction.response.send_message(
-            t(player.language, "lang.switched", "✅ 語言已切換為繁體中文。"),
-            ephemeral=True,
+        await interaction.edit_original_response(
+            content=t(player.language, "lang.switched", "✅ 語言已切換為繁體中文。"),
         )
 
 

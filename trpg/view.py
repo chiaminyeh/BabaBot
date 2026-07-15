@@ -27,6 +27,7 @@ from trpg.balance import MYSTERY_MERCHANT_CHANCE
 from trpg.views.battle import BattleLayout
 from trpg.views.char import CharLayout, prestige_hall_accessible
 from trpg.archetypes import change_fortune, core_active, fortune_tier
+from interaction_errors import is_transient_interaction_error
 
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,13 @@ def _interaction_log_fields(interaction: discord.Interaction, **fields) -> str:
 
 class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
     async def on_error(self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item) -> None:
+        if is_transient_interaction_error(error):
+            logger.warning(
+                "Transient Discord interaction failure ignored custom_id=%s error=%s",
+                getattr(item, "custom_id", "unknown"),
+                type(error).__name__,
+            )
+            return
         logger.error(
             "INTERACTION_FAILURE component=trpg_view stage=callback %s",
             _interaction_log_fields(interaction, custom_id=getattr(item, "custom_id", "unknown")),

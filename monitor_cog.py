@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import aiohttp
 import contextlib
 import io
 import logging
@@ -70,7 +71,13 @@ class MonitorCog(commands.Cog):
                 return
 
         for start in range(0, len(text), 1900):
-            await destination.send(text[start:start + 1900])
+            try:
+                await destination.send(text[start:start + 1900])
+            except (aiohttp.ClientConnectionError, asyncio.TimeoutError, ConnectionError) as exc:
+                # Discord/gateway reconnect noise is not an actionable Baba failure. The next
+                # monitor tick can deliver future incidents after the connection recovers.
+                logger.warning("Monitor delivery skipped during transient Discord connection failure: %s", type(exc).__name__)
+                return
 
     @staticmethod
     def _run_monitor_once() -> tuple[int, str]:

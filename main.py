@@ -14,6 +14,7 @@ import logging
 import os, asyncio, json, tempfile, threading
 from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
+from interaction_errors import is_transient_interaction_error
 import random
 load_dotenv()
 
@@ -69,6 +70,13 @@ async def on_command_error(ctx, error):
 
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if is_transient_interaction_error(error):
+        logger.warning(
+            "Transient Discord app-command interaction failure ignored command=%s error=%s",
+            getattr(getattr(interaction, "command", None), "qualified_name", "unknown"),
+            type(error).__name__,
+        )
+        return
     logger.error(
         "INTERACTION_FAILURE component=app_command stage=callback command=%s user_id=%s guild_id=%s channel_id=%s",
         getattr(getattr(interaction, "command", None), "qualified_name", "unknown"),

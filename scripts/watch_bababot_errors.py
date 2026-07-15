@@ -55,6 +55,18 @@ RECONNECT_SIGNATURES = (
     "websocket closed with 1006",
     "wsserverhandshakeerror: 503",
 )
+TRANSIENT_INTERACTION_SIGNATURES = (
+    "unknown interaction",
+    "serverdisconnectederror",
+    "clientconnectordnserror",
+)
+MONITOR_DELIVERY_SIGNATURES = (
+    "serverdisconnectederror",
+    "clientconnectordnserror",
+    "clientconnectorerror",
+    "connectionreseterror",
+    "timeouterror",
+)
 REQUIRED_TRPG_CONTENT = {
     "areas": "areas.json",
     "monsters": "monsters.json",
@@ -217,9 +229,18 @@ def bootstrap_state(state: dict[str, Any]) -> None:
 
 def file_excerpt_for_marker(lines: list[str], marker_index: int) -> str:
     start = max(0, marker_index - 3)
-    end = min(len(lines), marker_index + 25)
+    end = min(len(lines), marker_index + 60)
+    error_header = re.compile(r"^\[?\d{4}-\d{2}-\d{2}.*(?:\[error|\berror\b)", re.IGNORECASE)
+    for idx in range(marker_index + 1, end):
+        if error_header.search(lines[idx]):
+            end = idx
+            break
     excerpt = "\n".join(lines[start:end]).strip()
-    return excerpt[-1600:]
+    if len(excerpt) <= 1600:
+        return excerpt
+    # Keep both the error header/context and the final exception type; the middle of
+    # long aiohttp/Discord tracebacks is less useful and previously hid the root cause.
+    return excerpt[:650].rstrip() + "\n... traceback middle omitted ...\n" + excerpt[-900:].lstrip()
 
 
 def canonical_marker_index(lowered_lines: list[str], marker_index: int) -> int:
@@ -242,9 +263,14 @@ def canonical_marker_index(lowered_lines: list[str], marker_index: int) -> int:
 def is_ignored_error_excerpt(excerpt: str) -> bool:
     """Suppress user mistakes and transient Discord reconnect noise, never UI failures."""
     lowered = excerpt.lower()
+    if any(signature in lowered for signature in TRANSIENT_INTERACTION_SIGNATURES):
+        return True
     if any(signature in lowered for signature in INTERACTION_SIGNATURES):
         return False
     if any(signature in lowered for signature in IGNORED_COMMAND_SIGNATURES):
+        return True
+    monitor_task = "_send_monitor_message" in lowered or "monitorcog.monitor_checker" in lowered
+    if monitor_task and any(signature in lowered for signature in MONITOR_DELIVERY_SIGNATURES):
         return True
     return any(signature in lowered for signature in RECONNECT_SIGNATURES)
 
