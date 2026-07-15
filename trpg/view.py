@@ -2,6 +2,7 @@
 
 import asyncio
 import discord
+import logging
 import random
 from datetime import datetime
 
@@ -28,7 +29,27 @@ from trpg.views.char import CharLayout, prestige_hall_accessible
 from trpg.archetypes import change_fortune, core_active, fortune_tier
 
 
+logger = logging.getLogger(__name__)
+
+
+def _interaction_log_fields(interaction: discord.Interaction, **fields) -> str:
+    payload = {
+        "user_id": getattr(getattr(interaction, "user", None), "id", "unknown"),
+        "guild_id": getattr(interaction, "guild_id", None) or "dm",
+        "channel_id": getattr(interaction, "channel_id", None) or "unknown",
+        **fields,
+    }
+    return " ".join(f"{key}={value}" for key, value in payload.items())
+
+
 class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
+    async def on_error(self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item) -> None:
+        logger.error(
+            "INTERACTION_FAILURE component=trpg_view stage=callback %s",
+            _interaction_log_fields(interaction, custom_id=getattr(item, "custom_id", "unknown")),
+            exc_info=(type(error), error, error.__traceback__),
+        )
+
     def __init__(self, cog, user_id):
         super().__init__(timeout=600)  # 10分鐘不操作才超時
         self.cog = cog
@@ -400,8 +421,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.build_battle_menu()
             try:
                 await interaction.message.edit(embed=self.generate_embed(), view=self)
-            except Exception as e:
-                print(f"戰鬥中阻擋舊按鈕後更新失敗: {e}")
+            except Exception:
+                logger.exception("INTERACTION_FAILURE component=trpg_view stage=blocked_battle_edit %s", _interaction_log_fields(interaction, custom_id=custom_id))
             return
 
         # Routes with bespoke logic that doesn't fit the declarative table.
@@ -460,16 +481,16 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         # （任務彈窗可能會呼叫 LLM 產生 NPC 對話，若放在更新畫面前會讓殺怪後卡一下）
         try:
             await interaction.message.edit(embed=self.generate_embed(), view=self)
-        except Exception as e:
-            print(f"UI更新失敗: {e}")
+        except Exception:
+            logger.exception("INTERACTION_FAILURE component=trpg_view stage=message_edit %s", _interaction_log_fields(interaction, custom_id=custom_id))
 
         # 教學戰進行中：提示彈窗取代任務彈窗（新玩家還沒有任何任務可觸發，也不該被
         # 突發委託打斷第一場戰鬥）。教學戰以外的一切互動仍走原本的任務彈窗流程。
         if getattr(self, "in_tutorial_battle", False):
             try:
                 await self._maybe_send_tutorial_tip(interaction)
-            except Exception as e:
-                print(f"教學提示處理失敗: {e}")
+            except Exception:
+                logger.exception("INTERACTION_FAILURE component=trpg_view stage=tutorial_tip %s", _interaction_log_fields(interaction, custom_id=custom_id))
             return
 
         # 任務彈出視窗（達成獎勵 / 突發委託邀請）— 放在面板更新之後，AI 對話的延遲不再卡住主畫面。
@@ -483,8 +504,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             await process_quest_popups(self, interaction, allow_offer=is_world_action)
             # 任務獎勵可能改變了等級／金幣，完成後再刷新一次讓數值同步
             await interaction.message.edit(embed=self.generate_embed(), view=self)
-        except Exception as e:
-            print(f"任務彈出視窗處理失敗: {e}")
+        except Exception:
+            logger.exception("INTERACTION_FAILURE component=trpg_view stage=quest_popup %s", _interaction_log_fields(interaction, custom_id=custom_id))
 
     # --- UI 構建分流 (全部改用 add_action_button) ---
 

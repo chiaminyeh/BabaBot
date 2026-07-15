@@ -28,10 +28,32 @@ TOKEN_ENV = "DISCORD_TOKEN"
 ERROR_MARKERS = (
     "traceback (most recent call last):",
     "[error",
+    "interaction_failure",
+    "ignoring exception in view",
+    "ignoring exception in modal",
     "failed to load extension",
     "extensionfailed",
     "modulenotfounderror",
     "commandinvokeerror",
+)
+INTERACTION_SIGNATURES = (
+    "interaction_failure",
+    "ignoring exception in view",
+    "ignoring exception in modal",
+    "discord.ui.view",
+    "discord.ui.modal",
+)
+IGNORED_COMMAND_SIGNATURES = (
+    "commandnotfound",
+    "command is not found",
+    "ignoring exception in command none",
+)
+RECONNECT_SIGNATURES = (
+    "attempting a reconnect",
+    "reconnecting",
+    "successfully resumed session",
+    "websocket closed with 1006",
+    "wsserverhandshakeerror: 503",
 )
 REQUIRED_TRPG_CONTENT = {
     "areas": "areas.json",
@@ -201,13 +223,39 @@ def file_excerpt_for_marker(lines: list[str], marker_index: int) -> str:
 
 
 def canonical_marker_index(lowered_lines: list[str], marker_index: int) -> int:
-    """Collapse the [ERROR] line and the following Traceback into one incident."""
+    """Collapse an ERROR header and its following traceback into one incident."""
     line = lowered_lines[marker_index]
     if "traceback (most recent call last):" in line:
         for idx in range(marker_index - 1, max(-1, marker_index - 8), -1):
-            if "[error" in lowered_lines[idx]:
+            candidate = lowered_lines[idx]
+            if (
+                "[error" in candidate
+                or " error " in candidate
+                or "interaction_failure" in candidate
+                or "ignoring exception in view" in candidate
+                or "ignoring exception in modal" in candidate
+            ):
                 return idx
     return marker_index
+
+
+def is_ignored_error_excerpt(excerpt: str) -> bool:
+    """Suppress user mistakes and transient Discord reconnect noise, never UI failures."""
+    lowered = excerpt.lower()
+    if any(signature in lowered for signature in INTERACTION_SIGNATURES):
+        return False
+    if any(signature in lowered for signature in IGNORED_COMMAND_SIGNATURES):
+        return True
+    return any(signature in lowered for signature in RECONNECT_SIGNATURES)
+
+
+def normalized_error_fingerprint(excerpt: str) -> str:
+    """Ignore changing timestamps/incident IDs while retaining callback and custom_id context."""
+    normalized = excerpt.lower()
+    normalized = re.sub(r"\b\d{4}-\d{2}-\d{2}[ t]\d{2}:\d{2}:\d{2}(?:[,.]\d+)?z?\b", "<timestamp>", normalized)
+    normalized = re.sub(r"\binc-\d{14}-[0-9a-f]{10}\b", "<incident>", normalized)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    return normalized
 
 
 def make_incident_id(source: Path, excerpt: str) -> str:
@@ -222,13 +270,19 @@ def detect_error_events(text: str, source: Path, seen_hashes: set[str]) -> list[
 
     lines = text.splitlines()
     lowered = [line.lower() for line in lines]
+    processed_roots: set[int] = set()
     for idx, line in enumerate(lowered):
         if not any(marker in line for marker in ERROR_MARKERS):
             continue
-        excerpt = file_excerpt_for_marker(lines, canonical_marker_index(lowered, idx))
-        if not excerpt:
+        root = canonical_marker_index(lowered, idx)
+        if root in processed_roots:
             continue
-        digest = hashlib.sha256(f"{source.resolve()}::{excerpt}".encode("utf-8", "replace")).hexdigest()
+        processed_roots.add(root)
+        excerpt = file_excerpt_for_marker(lines, root)
+        if not excerpt or is_ignored_error_excerpt(excerpt):
+            continue
+        fingerprint = normalized_error_fingerprint(excerpt)
+        digest = hashlib.sha256(f"{source.resolve()}::{fingerprint}".encode("utf-8", "replace")).hexdigest()
         if digest in seen_hashes:
             continue
         seen_hashes.add(digest)

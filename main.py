@@ -50,6 +50,33 @@ intents = discord.Intents.all()
 intents.voice_states  = True 
 bot = commands.Bot(command_prefix=["baba ","BABA ","Baba "], intents=intents)
 bot.remove_command('help')
+
+
+@bot.event
+async def on_command_error(ctx, error):
+    """Ignore normal bad commands; preserve actionable command failures in the monitor log."""
+    if isinstance(error, commands.CommandNotFound):
+        return
+    logger.error(
+        "COMMAND_FAILURE command=%s user_id=%s guild_id=%s channel_id=%s",
+        getattr(ctx.command, "qualified_name", "unknown"),
+        getattr(ctx.author, "id", "unknown"),
+        getattr(ctx.guild, "id", None) or "dm",
+        getattr(ctx.channel, "id", "unknown"),
+        exc_info=(type(error), error, error.__traceback__),
+    )
+
+
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    logger.error(
+        "INTERACTION_FAILURE component=app_command stage=callback command=%s user_id=%s guild_id=%s channel_id=%s",
+        getattr(getattr(interaction, "command", None), "qualified_name", "unknown"),
+        getattr(getattr(interaction, "user", None), "id", "unknown"),
+        getattr(interaction, "guild_id", None) or "dm",
+        getattr(interaction, "channel_id", None) or "unknown",
+        exc_info=(type(error), error, error.__traceback__),
+    )
 # bot = commands.Bot(command_prefix=["baba ","BABA ","Baba "], intents=discord.Intents.all())
 
 # @bot.command()

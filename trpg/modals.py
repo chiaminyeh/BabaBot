@@ -1,9 +1,24 @@
 """Discord UI Modal dialogs (NPC question, bulk buy/sell)."""
 
 import discord
+import logging
 
 from trpg.i18n import t
 from trpg.view_shared import BABA_EMOJI_TEXT, baba_emoji_text
+
+
+logger = logging.getLogger(__name__)
+
+
+def log_modal_failure(modal, interaction: discord.Interaction, stage: str) -> None:
+    logger.exception(
+        "INTERACTION_FAILURE component=trpg_modal stage=%s modal=%s user_id=%s guild_id=%s channel_id=%s",
+        stage,
+        type(modal).__name__,
+        getattr(getattr(interaction, "user", None), "id", "unknown"),
+        getattr(interaction, "guild_id", None) or "dm",
+        getattr(interaction, "channel_id", None) or "unknown",
+    )
 
 
 class ElderChiefModal(discord.ui.Modal):
@@ -91,8 +106,8 @@ class StatPointModal(discord.ui.Modal):
             await self.game_view.handle_stat_add(self.stat_key, amount=amount)
             try:
                 await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
-            except Exception as e:
-                print(f"屬性點面板更新失敗: {e}")
+            except Exception:
+                log_modal_failure(self, interaction, "stat_point_message_edit")
 
 
 class BulkStatAllocModal(discord.ui.Modal):
@@ -172,8 +187,8 @@ class BulkStatAllocModal(discord.ui.Modal):
             )
             try:
                 await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
-            except Exception as e:
-                print(f"批量屬性分配面板更新失敗: {e}")
+            except Exception:
+                log_modal_failure(self, interaction, "bulk_stat_message_edit")
 
 
 class BuyItemModal(discord.ui.Modal):
@@ -204,8 +219,8 @@ class BuyItemModal(discord.ui.Modal):
             await self.game_view.execute_buy(self.item_id, amount)
             try:
                 await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
-            except Exception as e:
-                print(f"購買面板更新失敗: {e}")
+            except Exception:
+                log_modal_failure(self, interaction, "buy_message_edit")
 
 
 class SellItemModal(discord.ui.Modal):
@@ -236,5 +251,5 @@ class SellItemModal(discord.ui.Modal):
             await self.game_view.execute_sell(self.item_id, amount)
             try:
                 await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
-            except Exception as e:
-                print(f"出售面板更新失敗: {e}")
+            except Exception:
+                log_modal_failure(self, interaction, "sell_message_edit")
