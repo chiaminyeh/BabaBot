@@ -273,11 +273,11 @@
         "mp_cost": 25,
         "def_pierce": 0.5,
         "cd": 5,
-        "req_level": 20,
+        "req_level": 15,
         "base_power": 190,
         "magic_scaling": 1.8,
         "name_en": "🌑 Soul Pyre",
-        "desc_en": "Pay 15% max HP to deal 190 base dark damage (CD: 5).",
+        "desc_en": "Pay 15% max HP to deal 190 base dark damage (CD: 5, requires Lv.15, Warlock 25).",
         "req_points": {
             "warlock": 25
         },

@@ -803,7 +803,7 @@
     "combat.combo_gained": "🔄 Combo Rhythm rises to {stacks}/5.",
     "combat.weapon_coating_source": "[Elemental Coating]",
     "combat.skill_combo_insufficient": "❌ [{skill}] requires {cost} Combo.",
-    "combat.blood_pact_gained": "🩸 Blood Pact rises to {stacks}/3.\n",
+    "combat.blood_pact_gained": "🩸 Blood Pact rises to {stacks}/5.\\n",
     "combat.combo_spent": "🔄 Spent {stacks} Combo to empower [{skill}].\n",
     "combat.skill_lifesteal": "🩸 [{skill}] siphoned {heal} HP!",
     "combat.skill_coating": "⚗️ [{skill}] coats your weapon with {element} for {turns} turns; a new coating replaces the old one.",

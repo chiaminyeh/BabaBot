@@ -322,8 +322,8 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
                 dmg = max(1, int(dmg * status_synergy))
             caster_player = getattr(caster, "player", None)
             if dmg > 0 and caster_player is not None and core_active(caster_player, "warlock") and skill.get("req_points", {}).get("warlock"):
-                pact_stacks = min(3, int((getattr(caster_player, "combat_buffs", None) or {}).get("blood_pact_stacks", 0)))
-                dmg = max(1, int(dmg * (1.0 + pact_stacks * 0.08)))
+                pact_stacks = min(5, int((getattr(caster_player, "combat_buffs", None) or {}).get("blood_pact_stacks", 0)))
+                dmg = max(1, int(dmg * (1.0 + pact_stacks * 0.12)))
 
             # 物理跟 HP 獻祭流都可以暴擊，魔法傷害不會
             caster_fortune = getattr(getattr(caster, "player", None), "fortune", 0)
@@ -1047,9 +1047,9 @@ class TRPGCombat:
             self.player.current_hp -= actual_hp_cost
             log += t(lang, "combat.skill_hp_sacrifice", "🩸 你殘忍地獻祭了自己 {cost} 點生命值！\n", cost=actual_hp_cost)
             if core_active(self.player, "warlock"):
-                current_pact = min(3, int(self.player.combat_buffs.get("blood_pact_stacks", 0)))
-                self.player.combat_buffs["blood_pact_stacks"] = min(3, current_pact + 1)
-                log += t(lang, "combat.blood_pact_gained", "🩸 血契累積至 {stacks}/3。\n", stacks=self.player.combat_buffs["blood_pact_stacks"])
+                current_pact = min(5, int(self.player.combat_buffs.get("blood_pact_stacks", 0)))
+                self.player.combat_buffs["blood_pact_stacks"] = min(5, current_pact + 1)
+                log += t(lang, "combat.blood_pact_gained", "🩸 血契累積至 {stacks}/5。\\n", stacks=self.player.combat_buffs["blood_pact_stacks"])
 
         skill_for_cast = dict(skill)
         # 套用技能等級的效果加成到 skill_for_cast
@@ -1098,9 +1098,9 @@ class TRPGCombat:
                 targets = [MonsterCombatant(slot, self.cog.status_effects, self.player.language) for slot in target_slots]
                 skill_log, total_damage = execute_skill(caster, targets, skill_for_cast, self.cog.status_effects, hp_cost=actual_hp_cost)
                 log += skill_log
-                pact_stacks = min(3, int(self.player.combat_buffs.get("blood_pact_stacks", 0))) if core_active(self.player, "warlock") else 0
+                pact_stacks = min(5, int(self.player.combat_buffs.get("blood_pact_stacks", 0))) if core_active(self.player, "warlock") else 0
                 is_warlock_skill = bool((skill.get("req_points") or {}).get("warlock"))
-                lifesteal = float(skill.get("lifesteal", 0.0)) + (pact_stacks * 0.04 if is_warlock_skill else 0.0)
+                lifesteal = float(skill.get("lifesteal", 0.0)) + (pact_stacks * 0.06 if is_warlock_skill else 0.0)
                 if total_damage > 0 and lifesteal > 0:
                     before_hp = self.player.current_hp
                     self.player.current_hp = min(self.player.max_hp, self.player.current_hp + max(1, int(total_damage * lifesteal)))
