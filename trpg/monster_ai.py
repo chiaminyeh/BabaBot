@@ -247,7 +247,11 @@ def ai_kamikaze(combat, slot, log):
     if hp > 0 and hp < max_hp * 0.3:
         import random
         if random.random() < 0.8:  # 80% chance
-            dmg = hp
+            # 自爆傷害：怪物最大 HP 的 15%，並給予玩家 40% DEF 減傷（非完全真實傷害）
+            from trpg.combat import get_player_def
+            base_dmg = int(max_hp * 0.15)
+            player_def_reduction = int(get_player_def(combat.player, combat.cog.items) * 0.4)
+            dmg = max(1, base_dmg - player_def_reduction)
             log += t(lang, "monster_ai.kamikaze_explode", "\n💥 **{name} 體內的魔力失去控制，發生了劇烈自爆！**", name=tf(slot["monster"], "name", lang))
             combat.player.current_hp -= dmg
             log += t(lang, "monster_ai.kamikaze_damage", "\n💥 對你造成了 {dmg} 點真實傷害！", dmg=dmg)

@@ -11,19 +11,21 @@ class BattleLayout:
 
         if "berserk" in getattr(view.player, "status_effects", {}):
             view.add_action_button(label=t(lang, "menu.btn_berserk_attack", "狂暴攻擊"), style=discord.ButtonStyle.danger, custom_id="b_atk", row=0, emoji="😡")
+            view.add_action_button(label=t(lang, "menu.btn_consumables", "消耗品"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=0, emoji="🧪")
             view.add_action_button(label=t(lang, "menu.btn_flee", "逃跑"), style=discord.ButtonStyle.secondary, custom_id="b_fle", row=0, emoji="🏃")
-            view.add_action_button(label=t(lang, "menu.btn_items", "物品"), style=discord.ButtonStyle.success, custom_id="b_sta", row=0, emoji="🎒")
             view.add_action_button(label=t(lang, "battle.btn_end_turn", "結束回合"), style=discord.ButtonStyle.secondary, custom_id="b_end", row=1, emoji="⏭️")
             return
 
+        # Keep Defend and Dodge separate: Defend is reliable mitigation, while Dodge
+        # rewards SPD builds with an all-or-nothing answer to telegraphed attacks.
         view.add_action_button(label=t(lang, "menu.btn_attack", "攻擊"), style=discord.ButtonStyle.danger, custom_id="b_atk", row=0, emoji="🗡️")
         view.add_action_button(label=t(lang, "menu.btn_skill", "技能"), style=discord.ButtonStyle.success, custom_id="b_ski", row=0, emoji="✨")
         view.add_action_button(label=t(lang, "menu.btn_defend", "防禦"), style=discord.ButtonStyle.primary, custom_id="b_def", row=0, emoji="🛡️")
         view.add_action_button(label=t(lang, "menu.btn_dodge", "閃避"), style=discord.ButtonStyle.primary, custom_id="b_dod", row=0, emoji="💨")
 
-        view.add_action_button(label=t(lang, "menu.btn_item", "道具"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=1, emoji="🎒")
+        # Battle only needs usable consumables; the full Bag belongs outside combat.
+        view.add_action_button(label=t(lang, "menu.btn_consumables", "消耗品"), style=discord.ButtonStyle.secondary, custom_id="b_itm", row=1, emoji="🧪")
         view.add_action_button(label=t(lang, "menu.btn_flee", "逃跑"), style=discord.ButtonStyle.secondary, custom_id="b_fle", row=1, emoji="🏃")
-        view.add_action_button(label=t(lang, "menu.btn_items", "物品"), style=discord.ButtonStyle.success, custom_id="b_sta", row=1, emoji="🎒")
         view.add_action_button(label=t(lang, "battle.btn_end_turn", "結束回合"), style=discord.ButtonStyle.secondary, custom_id="b_end", row=1, emoji="⏭️")
 
     @staticmethod
@@ -98,7 +100,7 @@ class BattleLayout:
         for item_id, count in view.player.inventory.items():
             if count > 0:
                 item = view.cog.items.get(item_id)
-                if item and item.get("type") in ("potion", "cure", "buff_item"):
+                if item and item.get("type") in ("potion", "cure", "buff_item", "damage_item"):
                     usable.append(item_id)
 
         total_items = len(usable)

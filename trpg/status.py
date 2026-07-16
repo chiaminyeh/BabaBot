@@ -204,9 +204,10 @@ def _tick_status(combatant, status_defs: dict, is_player: bool, lang: str = "zh"
         elif sid == "paralysis":
             # 麻痺：機率跳過回合 (看臉)
             skip_chance = info.get("skip_chance", 0.5)
-            if random.random() < skip_chance:
-                can_act = False
-                log_parts.append(t(lang, "status.paralysis_skip", "⚡ {target}身體一陣麻痺，這回合無法控制自己！", target=target_label))
+            if not is_player:
+                if random.random() < skip_chance:
+                    can_act = False
+                    log_parts.append(t(lang, "status.paralysis_skip", "⚡ {target}身體一陣麻痺，這回合無法控制自己！", target=target_label))
 
         elif sid == "sleep":
             # 睡眠：100% 無法行動，但受到傷害會立刻清醒（在傷害發生處呼叫 break_sleep_on_damage）

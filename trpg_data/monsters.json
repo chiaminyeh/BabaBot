@@ -65,8 +65,7 @@
         ],
         "ai": "poison_spitter",
         "drops": {
-            "poison_stinger": 0.5,
-            "scroll_venom_cloud": 0.05
+            "poison_stinger": 0.5
         },
         "name_en": "Venomous Spider Queen",
         "traits": [
@@ -544,8 +543,7 @@
             "wind"
         ],
         "drops": {
-            "medium_health_potion": 0.25,
-            "scroll_shadow_step": 0.1
+            "medium_health_potion": 0.25
         },
         "ai": "flee_low_hp",
         "name_en": "Harpy",
@@ -600,8 +598,7 @@
         ],
         "ai": "void_mage",
         "drops": {
-            "ectoplasm": 0.6,
-            "scroll_void_eruption": 0.02
+            "ectoplasm": 0.6
         },
         "name_en": "Void Weaver",
         "traits": [
@@ -626,8 +623,7 @@
         ],
         "ai": "heavy_tank",
         "drops": {
-            "ancient_wood": 0.8,
-            "scroll_earthquake": 0.05
+            "ancient_wood": 0.8
         },
         "name_en": "Ancient Guardian",
         "traits": [
@@ -1186,7 +1182,6 @@
             "sargeras_crown": 1.0,
             "demon_core": 3.0,
             "void_crystal": 5.0,
-            "scroll_abyssal_requiem": 0.16,
             "netherblade": 0.1,
             "netherplate": 0.1,
             "nethercrown": 0.1,
@@ -1654,8 +1649,6 @@
         "money_min": 120,
         "money_max": 250,
         "drops": {
-            "scroll_shadow_step": 0.45,
-            "scroll_combo_attack": 0.55,
             "bronze_sword": 0.2
         },
         "ai": "none",
@@ -1815,8 +1808,7 @@
             "thunder"
         ],
         "drops": {
-            "ectoplasm": 0.5,
-            "scroll_iron_skin": 0.1
+            "ectoplasm": 0.5
         },
         "ai": "time_thief",
         "name_en": "Will-o'-the-Wisp"
@@ -1842,7 +1834,6 @@
         ],
         "drops": {
             "royal_honey": 0.7,
-            "scroll_blood_strike": 0.2,
             "mage_staff": 0.35,
             "iron_armor": 0.3
         },
@@ -2089,11 +2080,8 @@
         "money_max": 700,
         "drops": {
             "holy_sword": 0.15,
-            "scroll_inferno": 0.2,
-            "scroll_divine_thunder": 0.15,
             "medium_health_potion": 0.5,
             "elixir_of_cleansing": 0.2,
-            "scroll_status_hunter": 0.12,
             "toxic_needle": 0.08,
             "hazmat_plate": 0.08
         },
@@ -2355,7 +2343,6 @@
         "drops": {
             "lich_soulstone": 0.4,
             "dragon_plate": 0.15,
-            "scroll_divine_thunder": 0.2,
             "high_mana_potion": 0.5
         },
         "status_on_hit": [
@@ -2560,7 +2547,6 @@
             "holy_sword": 0.2,
             "dragon_plate": 0.15,
             "pure_blood_essence": 0.12,
-            "scroll_blood_awakening": 0.12,
             "crimson_rapier": 0.08,
             "noble_vampire_coat": 0.08,
             "blood_ring": 0.08
@@ -2809,7 +2795,6 @@
         ],
         "drops": {
             "dragon_scale_shard": 0.3,
-            "scroll_inferno": 0.04,
             "phoenix_scepter": 0.04
         },
         "money_min": 240,
@@ -2851,8 +2836,6 @@
             "drake_fang": 1.0,
             "dragon_plate": 0.2,
             "mystery_phoenix_feather": 0.06,
-            "scroll_titan_crash": 0.12,
-            "scroll_phoenix_rite": 0.12,
             "phoenix_blade": 0.08,
             "phoenix_mail": 0.08,
             "phoenix_feather_charm": 0.08
@@ -3043,7 +3026,6 @@
         "drops": {
             "void_shard": 0.4,
             "echo_herb": 0.5,
-            "scroll_void_eruption": 0.03,
             "void_orb": 0.04
         },
         "money_min": 330,
@@ -3169,7 +3151,6 @@
             "demon_core": 0.3,
             "voidwalker_glaive": 0.12,
             "mystery_lucky_coin": 0.05,
-            "scroll_rift_strike": 0.12,
             "voidwalker_plate": 0.08,
             "voidwalker_band": 0.08,
             "void_orb": 0.08

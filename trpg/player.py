@@ -93,6 +93,10 @@ def _fresh_containers() -> dict:
         "tower_state": {"safe_room_visited": False, "merchant_spawned": False, "merchant_items": []},
         # 修羅鬥技場的連戰進度：round 0/1 是小怪輪，2 是冠軍戰；死亡會重置回第一輪。
         "colosseum_state": {"round": 0},
+        # 技能升級系統：skill_levels 記錄各技能的強化等級（1~5），
+        # skill_usage 記錄各技能累計施放次數（用於熟練度自動升級）。
+        "skill_levels": {},   # {skill_id: level}，預設等級為 1（不存在 key 時視作 1）
+        "skill_usage": {},    # {skill_id: cast_count}
     }
 
 

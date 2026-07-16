@@ -71,6 +71,34 @@ class RoundAPCombatTests(unittest.TestCase):
         combat.player_ap = combat.player_max_ap
         return combat, view, player
 
+    def test_holy_talisman_deals_unmitigated_damage_and_consumes_one_ap(self):
+        combat, view, player = self.make_combat(player_spd=200, monster_spd=100)
+        view.cog.items["holy_talisman"] = {
+            "type": "damage_item", "damage": 80, "element": "holy", "true_damage": True,
+            "name": "Holy Talisman", "name_en": "Holy Talisman",
+        }
+        player.inventory["holy_talisman"] = 1
+        view.monster_slots[0]["monster"]["def"] = 999
+        with patch("trpg.combat.random.uniform", return_value=1.0), patch("trpg.combat.random.random", return_value=1.0):
+            log = combat.use_damage_item("holy_talisman")
+        self.assertEqual(9999 - 80, view.monster_slots[0]["hp"])
+        self.assertNotIn("holy_talisman", player.inventory)
+        self.assertEqual(combat.player_max_ap - 1, combat.player_ap)
+        self.assertIn("Holy Talisman", log)
+
+    def test_killing_damage_item_consumes_one_ap(self):
+        combat, view, player = self.make_combat(player_spd=200, monster_spd=100)
+        view.cog.items["holy_talisman"] = {
+            "type": "damage_item", "damage": 80, "element": "holy", "true_damage": True,
+            "name": "Holy Talisman", "name_en": "Holy Talisman",
+        }
+        player.inventory["holy_talisman"] = 1
+        view.monster_slots[0]["hp"] = 80
+        with patch.object(combat, "_process_victory", return_value=" victory"):
+            log = combat.use_damage_item("holy_talisman")
+        self.assertEqual(combat.player_max_ap - 1, combat.player_ap)
+        self.assertIn("victory", log)
+
     def test_speed_thresholds_are_capped_at_three(self):
         cases = ((149, 100, 1), (150, 100, 2), (249, 100, 2), (250, 100, 3), (9999, 1, 3))
         for actor, opponent, expected in cases:
@@ -137,6 +165,34 @@ class RoundAPCombatTests(unittest.TestCase):
         self.assertIn('"b_end"', view_source)
         self.assertIn('"⚠️" if self.combat._has_ultimate_warning(slot) else "❗"', view_source)
 
+    def test_paralysis_and_freeze_action_rules(self):
+        combat, view, player = self.make_combat(player_spd=250, monster_spd=100)
+        # Give player 3 AP this round
+        # Test Freeze (Set round_started=True to test intra-round behavior without tick decrement)
+        combat.round_started = True
+        player.current_hp = 100 # Allow potion use
+        player.status_effects = {"freeze": {"turns": 1}}
+        player.inventory["health_potion"] = 5
+        view.cog.items["health_potion"] = {"heal": 50, "heal_target": "hp"}
+
+        log = combat.use_potion("health_potion")
+        # Freeze breaks, consumes 1 AP, item not consumed
+        self.assertNotIn("freeze", player.status_effects)
+        self.assertEqual(combat.player_ap, 2)
+        self.assertEqual(player.inventory["health_potion"], 5)
+        self.assertIn("掙脫了冰凍", log)
+
+        # Test Paralysis
+        player.status_effects = {"paralysis": {"turns": 1}}
+        # Mock random to force a fail
+        with patch("trpg.combat.random.random", return_value=0.1):
+            log = combat.use_potion("health_potion")
+
+        # Action failed, item not consumed, AP consumed
+        self.assertEqual(combat.player_ap, 1)
+        self.assertEqual(player.inventory["health_potion"], 5)
+        self.assertIn("麻痺", log)
+        self.assertIn("paralysis", player.status_effects) # Not removed
 
 if __name__ == "__main__":
     unittest.main()

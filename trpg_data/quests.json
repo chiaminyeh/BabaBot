@@ -391,6 +391,9 @@
         "req_level": 5,
         "reward_exp": 500,
         "reward_money": 300,
+        "reward_skills": [
+            "mana_surge"
+        ],
         "quest_line": "main",
         "board": false,
         "npc_offer": false,

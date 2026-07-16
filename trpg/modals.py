@@ -21,6 +21,18 @@ def log_modal_failure(modal, interaction: discord.Interaction, stage: str) -> No
     )
 
 
+async def refresh_game_view_message(modal, interaction: discord.Interaction) -> None:
+    """Edit the persistent panel with a bot-token Message, never an expired interaction webhook."""
+    old_message = modal.game_view.message
+    message_id = getattr(old_message, "id", None)
+    channel = getattr(old_message, "channel", None) or interaction.channel
+    if not message_id or channel is None:
+        raise RuntimeError("TRPG panel message is unavailable")
+    message = await channel.fetch_message(message_id)
+    await message.edit(embed=modal.game_view.generate_embed(), view=modal.game_view)
+    modal.game_view.message = message
+
+
 class ElderChiefModal(discord.ui.Modal):
     def __init__(self, game_view):
         lang = getattr(game_view.player, "language", "zh")
@@ -92,20 +104,20 @@ class StatPointModal(discord.ui.Modal):
         self.add_item(self.amount)
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
         lang = getattr(self.game_view.player, "language", "zh")
         try:
             amount = int(self.amount.value.strip())
             if amount <= 0:
                 raise ValueError
         except ValueError:
-            await interaction.followup.send(t(lang, "modal.qty_invalid", "❌ 數量無效，請輸入正整數！"), ephemeral=True)
+            await interaction.response.send_message(t(lang, "modal.qty_invalid", "❌ 數量無效，請輸入正整數！"), ephemeral=True)
             return
 
+        await interaction.response.defer()
         async with self.game_view.mutation_lock:
             await self.game_view.handle_stat_add(self.stat_key, amount=amount)
             try:
-                await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
+                await refresh_game_view_message(self, interaction)
             except Exception:
                 log_modal_failure(self, interaction, "stat_point_message_edit")
 
@@ -136,7 +148,6 @@ class BulkStatAllocModal(discord.ui.Modal):
             self.add_item(box)
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
         lang = getattr(self.game_view.player, "language", "zh")
         values = {}
         try:
@@ -147,23 +158,24 @@ class BulkStatAllocModal(discord.ui.Modal):
                     raise ValueError
                 values[key] = amount
         except ValueError:
-            await interaction.followup.send(t(lang, "modal.qty_invalid", "❌ 數量無效，請輸入正整數。"), ephemeral=True)
+            await interaction.response.send_message(t(lang, "modal.qty_invalid", "❌ 數量無效，請輸入正整數。"), ephemeral=True)
             return
 
         total = sum(values.values())
         if total <= 0:
-            await interaction.followup.send(t(lang, "modal.bulk_stat_empty", "❌ 至少要分配 1 點。"), ephemeral=True)
+            await interaction.response.send_message(t(lang, "modal.bulk_stat_empty", "❌ 至少要分配 1 點。"), ephemeral=True)
             return
 
         from trpg.stats import get_unspent_points, recalc_player_stats, default_stat_alloc, stat_display_name
         unspent = get_unspent_points(self.game_view.player)
         if total > unspent:
-            await interaction.followup.send(
+            await interaction.response.send_message(
                 t(lang, "modal.bulk_stat_over", "❌ 你只剩 {unspent} 點，這次輸入了 {total} 點。", unspent=unspent, total=total),
                 ephemeral=True,
             )
             return
 
+        await interaction.response.defer()
         async with self.game_view.mutation_lock:
             if not getattr(self.game_view.player, "stat_alloc", None):
                 self.game_view.player.stat_alloc = default_stat_alloc()
@@ -186,7 +198,7 @@ class BulkStatAllocModal(discord.ui.Modal):
                 t(lang, "modal.bulk_stat_done", "✅ 已分配 {total} 點屬性。", total=total) + skill_notice
             )
             try:
-                await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
+                await refresh_game_view_message(self, interaction)
             except Exception:
                 log_modal_failure(self, interaction, "bulk_stat_message_edit")
 
@@ -206,19 +218,19 @@ class BuyItemModal(discord.ui.Modal):
         self.add_item(self.qty)
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
         lang = getattr(self.game_view.player, "language", "zh")
         try:
             amount = int(self.qty.value.strip())
             if amount <= 0: raise ValueError
         except ValueError:
-            await interaction.followup.send(t(lang, "modal.qty_invalid", "❌ 數量無效，請輸入正整數！"), ephemeral=True)
+            await interaction.response.send_message(t(lang, "modal.qty_invalid", "❌ 數量無效，請輸入正整數！"), ephemeral=True)
             return
 
+        await interaction.response.defer()
         async with self.game_view.mutation_lock:
             await self.game_view.execute_buy(self.item_id, amount)
             try:
-                await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
+                await refresh_game_view_message(self, interaction)
             except Exception:
                 log_modal_failure(self, interaction, "buy_message_edit")
 
@@ -238,18 +250,18 @@ class SellItemModal(discord.ui.Modal):
         self.add_item(self.qty)
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
         lang = getattr(self.game_view.player, "language", "zh")
         try:
             amount = int(self.qty.value.strip())
             if amount <= 0: raise ValueError
         except ValueError:
-            await interaction.followup.send(t(lang, "modal.qty_invalid", "❌ 數量無效，請輸入正整數！"), ephemeral=True)
+            await interaction.response.send_message(t(lang, "modal.qty_invalid", "❌ 數量無效，請輸入正整數！"), ephemeral=True)
             return
 
+        await interaction.response.defer()
         async with self.game_view.mutation_lock:
             await self.game_view.execute_sell(self.item_id, amount)
             try:
-                await self.game_view.message.edit(embed=self.game_view.generate_embed(), view=self.game_view)
+                await refresh_game_view_message(self, interaction)
             except Exception:
                 log_modal_failure(self, interaction, "sell_message_edit")

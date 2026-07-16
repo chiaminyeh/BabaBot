@@ -36,6 +36,20 @@ class QuestTimingAndAchievementPrivacyTests(unittest.TestCase):
                     offenders.append(f"{area_id}.{sub.get('id')}.events")
         self.assertFalse(offenders, f"cat quest prompt appears before forest unlock: {offenders}")
 
+    def test_early_elune_quest_grants_mana_surge(self):
+        quests = load_json("trpg_data/quests.json")
+        self.assertIn("mana_surge", quests["npc_elune_1"].get("reward_skills", []))
+
+    def test_class_skills_do_not_have_scroll_items(self):
+        items = load_json("trpg_data/items.json")
+        skills = load_json("trpg_data/skills.json")
+        offenders = [
+            item_id for item_id, item in items.items()
+            if item.get("type") == "skill_scroll"
+            and skills.get(item.get("teaches"), {}).get("req_points")
+        ]
+        self.assertEqual([], offenders)
+
     def test_locked_achievement_list_does_not_show_progress_numbers(self):
         view_source = (ROOT / "trpg" / "view.py").read_text(encoding="utf-8")
         handle_start = view_source.index("    def handle_achievements(self):")

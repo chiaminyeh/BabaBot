@@ -11,7 +11,7 @@ from trpg.balance import (
     XP_CURVE_BASE, XP_CURVE_EXP, PHYSICAL_CRIT_CHANCE, SKILL_CRIT_CHANCE,
     FLEE_BASE_CHANCE, FLEE_MIN_CHANCE, FLEE_MAX_CHANCE, FLEE_SPD_FACTOR,
     SCHRODINGER_DOUBLE_CHANCE, SCHRODINGER_DOUBLE_MULT, SCHRODINGER_HALVE_MULT,
-    BOSS_DAILY_SCROLL_CHANCE, FALLBACK_BOSS_SCROLLS, TOWER_MILESTONES,
+    BOSS_DAILY_REWARD_CHANCE, BOSS_SPECIFIC_REWARDS, TOWER_MILESTONES,
     LUCK_CRIT_BONUS_PER_POINT, LUCK_DROP_RATE_BONUS_PER_POINT,
     LUCK_EXP_BONUS_PER_POINT, LUCK_GOLD_BONUS_PER_POINT,
 )
@@ -29,6 +29,12 @@ from trpg.stats import (
     get_potion_heal_target,
     meets_skill_requirements,
     format_skill_point_requirements,
+)
+
+from trpg.skill_progression import (
+    record_successful_skill_use,
+    get_skill_effect_multiplier,
+    get_skill_cost_multiplier,
 )
 
 from trpg.entity import PlayerCombatant, MonsterCombatant
@@ -596,6 +602,25 @@ class TRPGCombat:
         """Compatibility name used by the UI; AP is now deterministic per round."""
         return self.monster_action_points(slot)
 
+    def _check_action_status(self) -> tuple[bool, str]:
+        """Per-action check for Paralysis and Freeze. Returns (can_act, log)."""
+        status_effects = getattr(self.player, "status_effects", {})
+        if not status_effects:
+            return True, ""
+        lang = self.player.language
+
+        if "freeze" in status_effects:
+            del status_effects["freeze"]
+            return False, t(lang, "combat.freeze_break", "🧊 你用力掙脫了冰凍，但也失去了這次行動的機會！")
+
+        if "paralysis" in status_effects:
+            info = self.cog.status_effects.get("paralysis", {})
+            skip_chance = info.get("skip_chance", 0.5)
+            if random.random() < skip_chance:
+                return False, t(lang, "status.paralysis_skip", "⚡ 你的身體一陣麻痺，無法順利行動！")
+
+        return True, ""
+
     @staticmethod
     def _has_ultimate_warning(slot: dict) -> bool:
         return bool(slot.get("telegraph") or slot.get("is_charging") or slot.get("bomb_fuse"))
@@ -702,8 +727,13 @@ class TRPGCombat:
         log = f"{dot_log}\n" if dot_log else ""
         if not can_act: return self.advance_time(log)
         
+        action_can, action_log = self._check_action_status()
+        if not action_can:
+            log += f"\n{action_log}" if log else action_log
+            return self.advance_time(log, ap_cost=1)
+
         self.is_defending = True
-        log += t(self.player.language, "combat.defend_stance", "🛡️ 你舉起武器採取防禦姿態，準備迎接衝擊！")
+        log += "\n" + t(self.player.language, "combat.defend_stance", "🛡️ 你舉起武器採取防禦姿態，準備迎接衝擊！")
         return self.advance_time(log)
 
     def dodge(self) -> str:
@@ -712,8 +742,13 @@ class TRPGCombat:
         log = f"{dot_log}\n" if dot_log else ""
         if not can_act: return self.advance_time(log)
 
+        action_can, action_log = self._check_action_status()
+        if not action_can:
+            log += f"\n{action_log}" if log else action_log
+            return self.advance_time(log, ap_cost=1)
+
         self.is_dodging = True
-        log += t(self.player.language, "combat.dodge_stance", "💨 你全神貫注地盯著敵人，準備進行閃避！")
+        log += "\n" + t(self.player.language, "combat.dodge_stance", "💨 你全神貫注地盯著敵人，準備進行閃避！")
         return self.advance_time(log)
     
     def player_attack(self) -> str:
@@ -722,7 +757,12 @@ class TRPGCombat:
         log = f"{dot_log}\n" if dot_log else ""
 
         if not can_act:
-            return self.advance_time(log) # 👈 被麻痺就直接過回合
+            return self.advance_time(log)
+
+        action_can, action_log = self._check_action_status()
+        if not action_can:
+            log += f"\n{action_log}" if log else action_log
+            return self.advance_time(log, ap_cost=1) # 👈 被麻痺就直接過回合
 
         # 前排目前沒有活著的目標（例如 BOSS 即將復活的空檔）：推進時間讓復活／小怪行動，避免攻擊到 None
         if self.monster is None:
@@ -923,6 +963,10 @@ class TRPGCombat:
     def _status_synergy_multiplier(self, target_status: dict) -> float:
         return _status_synergy_multiplier_from_skills(self.player, self.cog.skills, target_status)
 
+    def _record_skill_usage(self, skill_id: str, skill_name: str, lang: str) -> str:
+        """增加技能施放計數，若達到熟練度門檻則自動升級並回傳升級通知文字。"""
+        return record_successful_skill_use(self.player, skill_id, skill_name, lang)
+
     def _resolve_skill_targets(self, target_type: str) -> list:
 
         alive = [s for s in self.view.monster_slots if s["hp"] > 0]
@@ -961,8 +1005,13 @@ class TRPGCombat:
 
         # 👇 資源檢查必須在 _player_turn_start() 之前：否則 MP/HP 不足而施放失敗時，
         # 回合根本沒有真的發生（怪物不會行動），卻已經先扣了增益/冷卻的剩餘回合數。
-        mp_cost = skill.get("mp_cost", 0)
-        hp_cost_pct = skill.get("hp_cost_percent", 0.0)
+        # 包含等級切換所需的消耗塉算
+        _p_skill_level = (getattr(self.player, "skill_levels", None) or {}).get(skill_id, 1)
+        _eff_mult = get_skill_effect_multiplier(_p_skill_level)
+        _cost_mult = get_skill_cost_multiplier(_p_skill_level)
+
+        mp_cost = int(skill.get("mp_cost", 0) * _cost_mult)
+        hp_cost_pct = skill.get("hp_cost_percent", 0.0) * _cost_mult
         actual_hp_cost = int(self.player.max_hp * hp_cost_pct)
         combo_cost = int(skill.get("combo_cost", 0) or 0)
         ap_cost = max(1, int(skill.get("ap_cost", 1) or 1))
@@ -982,7 +1031,12 @@ class TRPGCombat:
         log = f"{dot_log}\n" if dot_log else ""
 
         if not can_act:
-            return self.advance_time(log) # 👈 修正：拔掉 _monster_counter
+            return self.advance_time(log)
+
+        action_can, action_log = self._check_action_status()
+        if not action_can:
+            log += f"\n{action_log}" if log else action_log
+            return self.advance_time(log, ap_cost=ap_cost)
 
         if skill.get("cd", 0) > 0: self.skill_cds[skill_id] = skill["cd"]
 
@@ -998,17 +1052,29 @@ class TRPGCombat:
                 log += t(lang, "combat.blood_pact_gained", "🩸 血契累積至 {stacks}/3。\n", stacks=self.player.combat_buffs["blood_pact_stacks"])
 
         skill_for_cast = dict(skill)
+        # 套用技能等級的效果加成到 skill_for_cast
+        if _p_skill_level > 1:
+            for _eff_key in ("base_power", "heal_amount", "mp_restore"):
+                if _eff_key in skill_for_cast and skill_for_cast[_eff_key]:
+                    skill_for_cast[_eff_key] = int(skill_for_cast[_eff_key] * _eff_mult)
+            for _eff_key in ("heal_percent",):
+                if _eff_key in skill_for_cast and skill_for_cast[_eff_key]:
+                    skill_for_cast[_eff_key] = skill_for_cast[_eff_key] * _eff_mult
+            if skill_for_cast.get("power_multiplier"):
+                skill_for_cast["power_multiplier"] = float(skill_for_cast["power_multiplier"]) * _eff_mult
+            if skill_for_cast.get("hp_scaling_multiplier"):
+                skill_for_cast["hp_scaling_multiplier"] = float(skill_for_cast["hp_scaling_multiplier"]) * _eff_mult
         if combo_cost:
             self._consume_combo(combo_cost)
         if skill.get("combo_consume_all"):
             spent = self._consume_combo(None)
-            skill_for_cast["power_multiplier"] = float(skill.get("power_multiplier", 1.0)) + spent * float(skill.get("combo_power_per_stack", 0.0))
+            skill_for_cast["power_multiplier"] = float(skill_for_cast.get("power_multiplier", 1.0)) + spent * float(skill.get("combo_power_per_stack", 0.0))
             if spent >= 5:
                 skill_for_cast["crit_bonus"] = 1.0
             log += t(lang, "combat.combo_spent", "🔄 消耗 {stacks} 層連擊強化【{skill}】。\n", stacks=spent, skill=skill_name)
 
         if skill_type == "support":
-            log += self._apply_support_skill(skill, skill_id, skill_name, lang)
+            log += self._apply_support_skill(skill_for_cast, skill_id, skill_name, lang)
         elif skill_type == "flee":
             flee_chance = skill.get("flee_chance", 0.85)
             if random.random() < flee_chance:
@@ -1045,6 +1111,9 @@ class TRPGCombat:
                     combo_log = self._gain_combo()
                     if combo_log:
                         log += f"\n{combo_log}"
+
+        # 累積技能施放次數，並處理熟練度自動升級
+        log += self._record_skill_usage(skill_id, skill_name, lang)
 
         if self._all_monsters_dead():
             return log + self._process_victory()
@@ -1143,6 +1212,11 @@ class TRPGCombat:
         if self.player.current_hp <= 0: return dot_log
         log = f"{dot_log}\n" if dot_log else ""
 
+        action_can, action_log = self._check_action_status()
+        if not action_can:
+            log += f"\n{action_log}" if log else action_log
+            return self.advance_time(log, ap_cost=1)
+
         self.player.inventory[item_id] -= 1
         if self.player.inventory[item_id] <= 0: del self.player.inventory[item_id]
 
@@ -1153,10 +1227,9 @@ class TRPGCombat:
 
         setattr(self.player, f"current_{heal_target}", min(getattr(self.player, f"max_{heal_target}"), getattr(self.player, f"current_{heal_target}") + heal))
         resource_name = t(lang, "combat.resource_mp", "魔力") if heal_target == "mp" else t(lang, "combat.resource_hp", "生命值")
-        log += t(lang, "combat.potion_drink", "🧪 你喝下藥水，回復了 {heal} 點{resource}。", heal=heal, resource=resource_name)
+        log += "\n" + t(lang, "combat.potion_drink", "🧪 你喝下藥水，回復了 {heal} 點{resource}。", heal=heal, resource=resource_name)
 
-        if not can_act: log += "\n" + t(lang, "combat.potion_still_paralyzed", "（麻痺/冰凍中，無法閃避反擊！）")
-        return self.advance_time(log) # 👈 修正
+        return self.advance_time(log)
 
     def use_cure_item(self, item_id: str) -> str:
         lang = self.player.language
@@ -1169,12 +1242,50 @@ class TRPGCombat:
         if self.player.current_hp <= 0: return dot_log
         log = f"{dot_log}\n" if dot_log else ""
 
+        action_can, action_log = self._check_action_status()
+        if not action_can:
+            log += f"\n{action_log}" if log else action_log
+            return self.advance_time(log, ap_cost=1)
+
         self.player.inventory[item_id] -= 1
         if self.player.inventory[item_id] <= 0: del self.player.inventory[item_id]
 
         log += cure_by_item(self.player, item_id, self.cog.items, self.cog.status_effects)
-        if not can_act: log += "\n" + t(lang, "combat.cure_item_still_affected", "（本回合仍受異常影響，但已解除狀態。）")
-        return self.advance_time(log) # 👈 修正
+        return self.advance_time(log)
+
+    def use_damage_item(self, item_id: str) -> str:
+        """Use a battle-only thrown/released item that deals fixed, unmitigated damage."""
+        lang = self.player.language
+        if self.player.inventory.get(item_id, 0) <= 0:
+            return t(lang, "combat.damage_item_not_owned", "❌ 背包裡沒有這個戰鬥道具。")
+        item_data = self.cog.items.get(item_id, {})
+        damage = int(item_data.get("damage", 0) or 0)
+        if damage <= 0:
+            return t(lang, "combat.damage_item_no_effect", "❌ 這個戰鬥道具沒有可用的傷害效果。")
+
+        dot_log, can_act = self._player_turn_start()
+        if self.player.current_hp <= 0:
+            return dot_log
+        log = f"{dot_log}\n" if dot_log else ""
+
+        action_can, action_log = self._check_action_status()
+        if not action_can:
+            log += f"\n{action_log}" if log else action_log
+            return self.advance_time(log, ap_cost=1)
+
+        self.player.inventory[item_id] -= 1
+        if self.player.inventory[item_id] <= 0:
+            del self.player.inventory[item_id]
+
+        item_name = tf(item_data, "name", lang) or item_id
+        # Fixed true damage intentionally skips ATK, DEF, MDEF, resistance, and crit.
+        self.view.monster_hp -= damage
+        log += "\n" + t(lang, "combat.damage_item_used", "✝️ 你釋放【{item_name}】，造成 {damage} 點神聖真實傷害！", item_name=item_name, damage=damage)
+
+        if self._all_monsters_dead():
+            self.player_ap = max(0, self.player_ap - 1)
+            return log + self._process_victory()
+        return self.advance_time(log)
 
     def use_buff_item(self, item_id: str) -> str:
         """給時光沙漏這類「用掉就給自己一段時間強化」的道具用，效果格式跟技能的
@@ -1191,6 +1302,11 @@ class TRPGCombat:
         dot_log, can_act = self._player_turn_start()
         if self.player.current_hp <= 0: return dot_log
         log = f"{dot_log}\n" if dot_log else ""
+
+        action_can, action_log = self._check_action_status()
+        if not action_can:
+            log += f"\n{action_log}" if log else action_log
+            return self.advance_time(log, ap_cost=1)
 
         self.player.inventory[item_id] -= 1
         if self.player.inventory[item_id] <= 0: del self.player.inventory[item_id]
@@ -1243,11 +1359,9 @@ class TRPGCombat:
         today_str = datetime.today().strftime("%Y-%m-%d")
         log = t(lang, "combat.boss_defeated", "👑 區域 BOSS 討伐成功！今日已無法再次挑戰。\n")
 
-        # Guaranteed scroll drop logic (100% first kill, BOSS_DAILY_SCROLL_CHANCE daily)
+        # Guaranteed reward drop logic (100% first kill, BOSS_DAILY_REWARD_CHANCE daily)
         boss_id = monster.get("id")
-        scroll_pool = [item_id for item_id in monster.get("drops", {}).keys() if "scroll" in item_id]
-        if not scroll_pool:
-            scroll_pool = FALLBACK_BOSS_SCROLLS.get(boss_id, ["scroll_heal_light"])
+        reward_pool = BOSS_SPECIFIC_REWARDS.get(boss_id, ["medium_health_potion"])
 
         area_id = self.player.current_area
         if not isinstance(getattr(self.player, "daily_boss_kills", None), dict):
@@ -1256,11 +1370,17 @@ class TRPGCombat:
         killed_bosses = getattr(self.player, "killed_bosses", [])
         is_first_kill = area_id not in killed_bosses
 
-        if is_first_kill or random.random() < BOSS_DAILY_SCROLL_CHANCE:
-            dropped_scroll = random.choice(scroll_pool)
-            self.player.inventory[dropped_scroll] = self.player.inventory.get(dropped_scroll, 0) + 1
-            scroll_name = tf(self.cog.items.get(dropped_scroll, {}), "name", lang) or dropped_scroll
-            log += t(lang, "combat.boss_scroll_reward", "🎁 討伐 BOSS 獎勵！獲得技能卷軸：{scroll} ", scroll=scroll_name)
+        if is_first_kill or random.random() < BOSS_DAILY_REWARD_CHANCE:
+            dropped = random.choice(reward_pool)
+            if isinstance(dropped, (list, tuple)):
+                dropped_item, qty = dropped[0], dropped[1]
+            else:
+                dropped_item, qty = dropped, 1
+
+            self.player.inventory[dropped_item] = self.player.inventory.get(dropped_item, 0) + qty
+            item_name = tf(self.cog.items.get(dropped_item, {}), "name", lang) or dropped_item
+            qty_text = f" x{qty}" if qty > 1 else ""
+            log += t(lang, "combat.boss_item_reward", "🎁 討伐 BOSS 獎勵！獲得：{item}{qty} ", item=item_name, qty=qty_text)
             if is_first_kill:
                 log += t(lang, "combat.boss_first_kill_tag", "(✨ 首殺首通確定獎勵！)\n")
                 killed_bosses.append(area_id)
@@ -1437,7 +1557,7 @@ class TRPGCombat:
             if auto_names:
                 log += "\n" + t(lang, "combat.skills_auto_equipped", "✅ 技能欄有空位，已自動裝備：{skills}", skills="、".join(auto_names))
 
-        achv_text = self.view.check_achievements()
+        achv_text = self.view.check_achievements({"monsters_killed", "level", "killed_bosses", "tower_floor", "prestige_count"})
         if achv_text:
             log += achv_text
 

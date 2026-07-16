@@ -324,6 +324,23 @@ def migrate_player_stats(player, items: dict, skills_data: dict | None = None):
     normalize_core_selection(player)
     player.skills = [skill_id for skill_id in (getattr(player, "skills", None) or []) if skill_id not in DEPRECATED_PROGRESSION_SKILLS]
     player.equipped_skills = [skill_id for skill_id in (getattr(player, "equipped_skills", None) or []) if skill_id not in DEPRECATED_PROGRESSION_SKILLS]
+    # Removed class-skill scrolls must not linger as unusable inventory entries in
+    # SQLite/legacy saves.  The item catalog is authoritative for valid inventory.
+    player.inventory = {
+        item_id: count for item_id, count in (getattr(player, "inventory", None) or {}).items()
+        if item_id in items and count > 0
+    }
+    # Cached regional shop rolls also persist item IDs; remove retired scrolls
+    # there so a later refresh cannot re-display an invalid offer.
+    for shop in (getattr(player, "shop_state", None) or {}).values():
+        if not isinstance(shop, dict):
+            continue
+        for key in ("items", "mystery_items"):
+            if isinstance(shop.get(key), list):
+                shop[key] = [item_id for item_id in shop[key] if item_id in items]
+    for key in ("shop_items", "mystery_shop_items"):
+        if isinstance(getattr(player, key, None), list):
+            setattr(player, key, [item_id for item_id in getattr(player, key) if item_id in items])
 
     if not hasattr(player, "base_int"):
         player.base_int = getattr(player, "base_magic", 0)

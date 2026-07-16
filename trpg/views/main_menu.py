@@ -349,6 +349,7 @@ class MainMenuLayout:
         view.log_message = t(lang, "menu.school_prompt", "🏫 【米酥學院】\n充滿魔法與智慧氣息的地方。在這裡你可以配置戰鬥技能、研讀卷軸學習魔法，或是查閱圖鑑瞭解冒險技能的奧秘。")
         view.add_action_button(label=t(lang, "menu.btn_core_ability", "核心能力"), style=discord.ButtonStyle.success, custom_id="btn_core_ability", emoji="🌟")
         view.add_action_button(label=t(lang, "menu.btn_skill_config", "技能配置"), style=discord.ButtonStyle.primary, custom_id="btn_skill_equip", emoji="🔧")
+        view.add_action_button(label=t(lang, "menu.btn_skill_upgrade", "強化技能"), style=discord.ButtonStyle.primary, custom_id="btn_skill_upgrade", emoji="⬆️")
         view.add_action_button(label=t(lang, "menu.btn_learn_magic", "學習魔法"), style=discord.ButtonStyle.primary, custom_id="btn_skill_learn", emoji="📖")
         view.add_action_button(label=t(lang, "menu.btn_skill_codex", "技能圖鑑"), style=discord.ButtonStyle.primary, custom_id="btn_skill_codex", emoji="📚")
         view.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")

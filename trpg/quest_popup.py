@@ -275,6 +275,15 @@ def _grant_quest_rewards(view, quest_info) -> str:
         player.inventory[item_id] = player.inventory.get(item_id, 0) + qty
         nm = tf(cog.items.get(item_id, {}), "name", lang) or item_id
         names.append(f"{nm} x{qty}")
+
+    # Quest-given skills bypass scroll drops but still respect the player's chosen
+    # eight-slot combat bar.  This keeps milestone rewards immediately usable.
+    for skill_id in quest_info.get("reward_skills") or []:
+        if skill_id not in cog.skills or skill_id in player.skills:
+            continue
+        player.skills.append(skill_id)
+        if len(player.equipped_skills) < 8:
+            player.equipped_skills.append(skill_id)
     sep = ", " if lang == "en" else "、"
     result = t(lang, "quest.reward_items_suffix", "、道具：{items}", items=sep.join(names)) if names else ""
     if leveled_up:

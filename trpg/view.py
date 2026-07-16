@@ -302,6 +302,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "event_choice_4": {"m": "handle_event_choice", "args": [4]},
         "btn_skill_codex": {"m": "handle_skill_codex_menu"},
         "btn_skill_equip": {"m": "handle_skill_equip_menu"},
+        "btn_skill_upgrade": {"m": "handle_skill_upgrade_menu"},
+        "btn_back_school": {"m": "build_school_menu", "await": False},
         "btn_tower_safe_room": {"m": "handle_tower_safe_room", "k": {"revisit": True}},
         "btn_tower_merchant": {"m": "handle_tower_merchant"},
         "btn_tower_next": {"m": "handle_tower_explore"},
@@ -317,6 +319,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "btn_blacksmith_menu": {"m": "handle_blacksmith_menu"},
         "btn_upgrade_weapon": {"m": "handle_upgrade_execute", "k": {"is_weapon": True}},
         "btn_upgrade_armor": {"m": "handle_upgrade_execute", "k": {"is_weapon": False}},
+        "btn_stone_upgrade_weapon": {"m": "handle_stone_upgrade_execute", "k": {"is_weapon": True}},
+        "btn_stone_upgrade_armor": {"m": "handle_stone_upgrade_execute", "k": {"is_weapon": False}},
         "b_atk": {"m": "handle_battle_attack", "guard": True},
         "b_end": {"m": "handle_battle_end_turn", "guard": True},
         "b_ski": {"m": "handle_skill_menu"},
@@ -356,6 +360,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         ("qaccept_", {"m": "handle_quest_accept", "arg": "suffix"}),
         ("stat_add_", {"m": "handle_stat_add", "arg": "suffix"}),
         ("craft_", {"m": "handle_craft_execute", "arg": "suffix"}),
+        ("btn_upgrade_skill_", {"m": "handle_upgrade_skill_action", "arg": "suffix", "i": True}),
         ("skill_", {"m": "handle_use_skill", "arg": "suffix"}),
         ("use_item_", {"m": "handle_use_item", "arg": "full"}),
     ]
@@ -787,8 +792,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             return val
         return 0
 
-    def check_achievements(self) -> str:
-        """檢查玩家成就，若有新解鎖的成就，回傳解鎖的公告文字，並將其加到 player.achievements"""
+    def check_achievements(self, types: set[str] | None = None) -> str:
+        """Unlock achievements relevant to this action; avoid delayed unrelated popups."""
         lang = self.player.language
         unlocked_msgs = []
         if not hasattr(self.player, "achievements"):
@@ -800,6 +805,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 continue
 
             achv_type = info.get("type")
+            if types is not None and achv_type not in types:
+                continue
             threshold = info.get("threshold", 0)
             current_val = self._achievement_progress_value(achv_type)
             if current_val >= threshold:
@@ -1267,6 +1274,11 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 self.log_message = self.combat.use_cure_item(item_id)
             else:
                 self.log_message = self.use_cure_item_out_of_battle(item_id)
+        elif item.get("type") == "damage_item":
+            if self.in_battle:
+                self.log_message = self.combat.use_damage_item(item_id)
+            else:
+                self.log_message = t(lang, "battle.damage_item_battle_only", "❌ 這個符咒只能在戰鬥中使用。")
         elif item.get("type") == "buff_item":
             if self.in_battle:
                 self.log_message = self.combat.use_buff_item(item_id)
@@ -1604,6 +1616,12 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         CharLayout.handle_skill_codex_category(self, category)
     async def handle_skill_equip_menu(self, notice="", paging=False):
         CharLayout.handle_skill_equip_menu(self, notice, paging)
+    async def handle_skill_upgrade_menu(self):
+        from trpg.views.upgrade_menu import build_upgrade_menu
+        build_upgrade_menu(self)
+    async def handle_upgrade_skill_action(self, interaction, skill_id: str):
+        from trpg.views.upgrade_menu import handle_upgrade_skill
+        await handle_upgrade_skill(self, interaction, skill_id)
     async def handle_skill_equip_action(self, skill_id: str, equip: bool):
         lang = self.player.language
         if not getattr(self.player, "equipped_skills", None):
@@ -1777,8 +1795,24 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.player.stat_alloc[stat_key] = current + add_amount
         recalc_player_stats(self.player, self.cog.items, heal_full=False)
         skill_notice = self.sync_qualified_skill_notice()
+
+        # 自動安裝核心能力：若玩家尚未選擇核心，且某個流派首次達到 10 點，
+        # 就自動安裝該流派的核心能力，免去手動進入選單的麻煩。
+        core_notice = ""
+        if not getattr(self.player, "core_ability", None):
+            from trpg.archetypes import CORE_KEYS, set_core_ability, localized_core, CORE_POINT_REQUIREMENT
+            alloc = getattr(self.player, "stat_alloc", {}) or {}
+            for ck in CORE_KEYS:
+                if int(alloc.get(ck, 0) or 0) >= CORE_POINT_REQUIREMENT:
+                    if set_core_ability(self.player, ck):
+                        core_name, _ = localized_core(ck, lang)
+                        core_notice = "\n" + t(lang, "char.core_auto_installed",
+                                               "🌟 【{name}】核心能力自動啟用！",
+                                               name=core_name)
+                        break  # 只安裝第一個達標的流派
+
         self.cog.save_players(player=self.player)
-        await self.handle_stat_alloc_menu(t(lang, "char.points_invested", "✅ 已將 {add_amount} 點投入【{stat_key}】。", add_amount=add_amount, stat_key=stat_display_name(stat_key, lang)) + skill_notice)
+        await self.handle_stat_alloc_menu(t(lang, "char.points_invested", "✅ 已將 {add_amount} 點投入【{stat_key}】。", add_amount=add_amount, stat_key=stat_display_name(stat_key, lang)) + core_notice + skill_notice)
 
     def _stat_reset_cost(self) -> int:
         """屬性重置費用：Lv.10 以下免費（新手試錯期），之後隨等級成長——
@@ -2180,7 +2214,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
 
     def build_leaderboard_embed(self) -> discord.Embed:
         lang = self.player.language
-        players = list(self.cog.players.values())
+        # 過濾掉非數字 ID（例如指令測試用的別名帳號 'ap-smoke'），避免出現在排行榜或造成 bank 錯誤
+        players = [p for p in self.cog.players.values() if str(p.id).isdigit()]
         no_data = t(lang, "leaderboard.no_data", "無資料")
 
         # 1. 等級排行 (Deduplicated by player.id)

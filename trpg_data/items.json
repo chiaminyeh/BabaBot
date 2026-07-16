@@ -1,4 +1,24 @@
 {
+    "skill_manual": {
+        "name": "技能指南",
+        "type": "upgrade_material",
+        "price": 500,
+        "sell_price": 250,
+        "shop_weight": 0,
+        "desc": "一本記載著強大武技與魔法原理的古老書冊。可於技能強化選單中消耗，無視金幣與熟練度需求升級技能。",
+        "name_en": "Skill Manual",
+        "desc_en": "An ancient tome containing powerful martial and magical principles. Consume it to upgrade a skill, ignoring gold and proficiency requirements."
+    },
+    "forging_stone": {
+        "name": "極致鍛造石",
+        "type": "upgrade_material",
+        "price": 500,
+        "sell_price": 250,
+        "shop_weight": 0,
+        "desc": "蘊含強大能量的礦石。交給鐵匠可直接無償強化武器或防具，必定成功。",
+        "name_en": "Ultimate Forging Stone",
+        "desc_en": "An ore brimming with immense energy. Give it to a blacksmith to guarantee a free equipment upgrade."
+    },
     "health_potion": {
         "name": "生命藥水",
         "type": "potion",
@@ -437,17 +457,6 @@
         "name_en": "Skill Scroll: Battle Focus",
         "desc_en": "Study this to learn [Battle Focus]."
     },
-    "scroll_fireball": {
-        "name": "技能卷軸：火球術",
-        "type": "skill_scroll",
-        "teaches": "fireball",
-        "price": 350,
-        "sell_price": 120,
-        "shop_weight": 15,
-        "desc": "研讀後可習得【火球術】",
-        "name_en": "Skill Scroll: Fireball",
-        "desc_en": "Study this to learn [Fireball]."
-    },
     "scroll_heal_light": {
         "name": "技能卷軸：初級治療",
         "type": "skill_scroll",
@@ -458,206 +467,6 @@
         "desc": "研讀後可習得【初級治療】",
         "name_en": "Skill Scroll: Basic Heal",
         "desc_en": "Study this to learn [Basic Heal]."
-    },
-    "scroll_double_strike": {
-        "name": "技能卷軸：連環快斬",
-        "type": "skill_scroll",
-        "teaches": "double_strike",
-        "price": 400,
-        "sell_price": 140,
-        "shop_weight": 15,
-        "desc": "研讀後可習得【連環快斬】",
-        "name_en": "Skill Scroll: Rapid Slash Combo",
-        "desc_en": "Study this to learn [Rapid Slash Combo]."
-    },
-    "ice_spear_scroll": {
-        "name": "技能卷軸：寒冰矛",
-        "type": "skill_scroll",
-        "teaches": "ice_spear",
-        "price": 320,
-        "sell_price": 110,
-        "shop_weight": 20,
-        "desc": "研讀後可習得【寒冰矛】",
-        "name_en": "Skill Scroll: Ice Spear",
-        "desc_en": "Study this to learn [Ice Spear]."
-    },
-    "thunder_strike_scroll": {
-        "name": "技能卷軸：落雷術",
-        "type": "skill_scroll",
-        "teaches": "thunder_strike",
-        "price": 500,
-        "sell_price": 150,
-        "shop_weight": 10,
-        "desc": "研讀後可習得【落雷術】",
-        "name_en": "Skill Scroll: Lightning Bolt",
-        "desc_en": "Study this to learn [Lightning Bolt]."
-    },
-    "scroll_inferno": {
-        "name": "技能卷軸：煉獄火",
-        "type": "skill_scroll",
-        "teaches": "inferno",
-        "price": 800,
-        "sell_price": 280,
-        "exclusive_level": 15,
-        "shop_weight": 8,
-        "desc": "研讀後可習得上位魔法【煉獄火】",
-        "name_en": "Skill Scroll: Hellfire",
-        "desc_en": "Study this to learn the advanced spell [Hellfire]."
-    },
-    "scroll_blizzard": {
-        "name": "技能卷軸：暴風雪",
-        "type": "skill_scroll",
-        "teaches": "blizzard",
-        "price": 700,
-        "sell_price": 240,
-        "exclusive_level": 12,
-        "shop_weight": 10,
-        "desc": "研讀後可習得上位魔法【暴風雪】",
-        "name_en": "Skill Scroll: Blizzard",
-        "desc_en": "Study this to learn the advanced spell [Blizzard]."
-    },
-    "scroll_divine_thunder": {
-        "name": "技能卷軸：神聖落雷",
-        "type": "skill_scroll",
-        "teaches": "divine_thunder",
-        "price": 950,
-        "sell_price": 320,
-        "exclusive_level": 18,
-        "shop_weight": 6,
-        "desc": "研讀後可習得上位魔法【神聖落雷】",
-        "name_en": "Skill Scroll: Holy Thunder",
-        "desc_en": "Study this to learn the advanced spell [Holy Thunder]."
-    },
-    "scroll_combo_attack": {
-        "name": "技能卷軸：連續攻擊",
-        "type": "skill_scroll",
-        "teaches": "combo_attack",
-        "price": 550,
-        "sell_price": 180,
-        "exclusive_level": 8,
-        "shop_weight": 12,
-        "desc": "研讀後習得被動【連續攻擊】，普攻可打兩次",
-        "name_en": "Skill Scroll: Combo Strike",
-        "desc_en": "Study this to learn the passive [Combo Strike], letting basic attacks hit twice."
-    },
-    "scroll_water_ball": {
-        "name": "技能卷軸：水球術",
-        "type": "skill_scroll",
-        "teaches": "water_ball",
-        "price": 400,
-        "sell_price": 140,
-        "exclusive_level": 5,
-        "shop_weight": 18,
-        "desc": "研讀後可習得水屬性魔法【水球術】",
-        "name_en": "Skill Scroll: Water Ball",
-        "desc_en": "Study this to learn the water-elemental spell [Water Ball]."
-    },
-    "scroll_stone_spike": {
-        "name": "技能卷軸：堡壘岩刺",
-        "type": "skill_scroll",
-        "teaches": "stone_spike",
-        "price": 550,
-        "sell_price": 180,
-        "exclusive_level": 20,
-        "shop_weight": 15,
-        "desc": "研讀後可習得戰士技能【堡壘岩刺】",
-        "name_en": "Skill Scroll: Fortress Spike",
-        "desc_en": "Study this to learn the Warrior skill [Fortress Spike]."
-    },
-    "scroll_dark_orb": {
-        "name": "技能卷軸：暗影球",
-        "type": "skill_scroll",
-        "teaches": "dark_orb",
-        "price": 650,
-        "sell_price": 220,
-        "exclusive_level": 10,
-        "shop_weight": 12,
-        "desc": "研讀後可習得暗屬性魔法【暗影球】",
-        "name_en": "Skill Scroll: Shadow Orb",
-        "desc_en": "Study this to learn the dark-elemental spell [Shadow Orb]."
-    },
-    "scroll_hypnotic_gaze": {
-        "name": "技能卷軸：魅惑安眠",
-        "type": "skill_scroll",
-        "teaches": "hypnotic_gaze",
-        "price": 800,
-        "sell_price": 270,
-        "exclusive_level": 15,
-        "shop_weight": 10,
-        "desc": "研讀後可習得暗屬性魔法【魅惑安眠】",
-        "name_en": "Skill Scroll: Charming Slumber",
-        "desc_en": "Study this to learn the dark-elemental spell [Charming Slumber]."
-    },
-    "scroll_holy_smash": {
-        "name": "技能卷軸：神聖制裁",
-        "type": "skill_scroll",
-        "teaches": "holy_smash",
-        "price": 800,
-        "sell_price": 280,
-        "exclusive_level": 20,
-        "shop_weight": 10,
-        "desc": "研讀後可習得戰士技能【神聖制裁】",
-        "name_en": "Skill Scroll: Holy Judgment",
-        "desc_en": "Study this to learn the Warrior skill [Holy Judgment]."
-    },
-    "scroll_venom_cloud": {
-        "name": "劇毒之雲卷軸",
-        "type": "skill_scroll",
-        "teaches": "venom_cloud",
-        "price": 1800,
-        "sell_price": 500,
-        "shop_weight": 0,
-        "desc": "【學習條件：Lv.10、術士 18】散播劇毒雲霧，讓所有敵人痛苦掙扎",
-        "name_en": "Toxic Cloud Scroll",
-        "desc_en": "[Requires Lv.10, Warlock 18] Spreads a cloud of deadly poison across all enemies."
-    },
-    "scroll_frost_nova": {
-        "name": "冰霜陷阱卷軸",
-        "type": "skill_scroll",
-        "teaches": "frost_nova",
-        "price": 2500,
-        "sell_price": 700,
-        "exclusive_level": 50,
-        "shop_weight": 0,
-        "desc": "【學習條件：Lv.50、盜賊 50】設下以速度引爆的全體冰霜陷阱",
-        "name_en": "Frost Trap Scroll",
-        "desc_en": "[Requires Lv.50, Rogue 50] Sets a SPD-scaled frost trap against all enemies."
-    },
-    "scroll_meteor_swarm": {
-        "name": "隕石風暴卷軸",
-        "type": "skill_scroll",
-        "teaches": "meteor_swarm",
-        "price": 4500,
-        "sell_price": 1200,
-        "exclusive_level": 80,
-        "shop_weight": 0,
-        "desc": "【學習條件：Lv.80、法師 80】召喚毀滅性的隕石，將戰場化為火海",
-        "name_en": "Meteor Storm Scroll",
-        "desc_en": "[Requires Lv.80, Mage 80] Summons devastating meteors, turning the battlefield into a sea of fire."
-    },
-    "scroll_earthquake": {
-        "name": "大地震擊卷軸",
-        "type": "skill_scroll",
-        "teaches": "earthquake",
-        "price": 3000,
-        "sell_price": 800,
-        "exclusive_level": 80,
-        "shop_weight": 0,
-        "desc": "【學習條件：Lv.80、戰士 80】以防禦力撼動大地，重創全體敵人",
-        "name_en": "Earthshaker Scroll",
-        "desc_en": "[Requires Lv.80, Warrior 80] Ruptures the ground with DEF to strike all enemies."
-    },
-    "scroll_void_eruption": {
-        "name": "虛空爆發卷軸",
-        "type": "skill_scroll",
-        "teaches": "void_eruption",
-        "price": 4500,
-        "sell_price": 1200,
-        "exclusive_level": 20,
-        "shop_weight": 0,
-        "desc": "【學習條件：Lv.20、術士 25】撕裂空間釋放虛空之力，無視大量防禦",
-        "name_en": "Void Eruption Scroll",
-        "desc_en": "[Requires Lv.20, Warlock 25] Tears open space to unleash the void, ignoring most defense."
     },
     "antidote_herb": {
         "name": "解毒草",
@@ -806,30 +615,6 @@
         "name_en": "Eye of Insight",
         "desc_en": "[Main Quest] A mystic eye forged from the three magic shards. While in your bag it reveals enemies' elemental weaknesses and points the way to the Hero's Sword within the Legendary Cave."
     },
-    "scroll_shadow_step": {
-        "name": "技能卷軸：暗影步",
-        "type": "skill_scroll",
-        "teaches": "shadow_step",
-        "price": 600,
-        "sell_price": 200,
-        "exclusive_level": 5,
-        "shop_weight": 12,
-        "desc": "研讀後可習得【暗影步】，打不過就跑的最高境界",
-        "name_en": "Skill Scroll: Shadow Step",
-        "desc_en": "Study this to learn [Shadow Step] — the highest art of running away when you can't win."
-    },
-    "scroll_blood_strike": {
-        "name": "技能卷軸：血之獻祭",
-        "type": "skill_scroll",
-        "teaches": "blood_strike",
-        "price": 1200,
-        "sell_price": 400,
-        "exclusive_level": 10,
-        "shop_weight": 8,
-        "desc": "研讀後可習得【血之獻祭】，燃燒生命換取極致輸出的狂戰士技能",
-        "name_en": "Skill Scroll: Blood Sacrifice",
-        "desc_en": "Study this to learn [Blood Sacrifice], a berserker skill that burns your own life for maximum damage output."
-    },
     "immortal_totem": {
         "name": "不死圖騰",
         "type": "etc",
@@ -868,19 +653,6 @@
         "desc": "神秘商人專賣，虛空之力纏繞的終極利刃",
         "name_en": "Void Shortblade",
         "desc_en": "Sold only by the Mysterious Merchant. An ultimate blade wreathed in the power of the void."
-    },
-    "mystery_sage_tome": {
-        "name": "賢者秘典卷軸",
-        "type": "skill_scroll",
-        "teaches": "void_eruption",
-        "price": 4000,
-        "sell_price": 1200,
-        "exclusive_level": 25,
-        "shop_weight": 0,
-        "mystery_only": true,
-        "desc": "神秘商人專賣，記載著禁忌魔法【虛空爆發】的古老卷軸",
-        "name_en": "Sage's Grimoire Scroll",
-        "desc_en": "Sold only by the Mysterious Merchant. An ancient scroll recording the forbidden spell [Void Burst]."
     },
     "mystery_elixir": {
         "name": "賢者萬靈藥",
@@ -1084,28 +856,6 @@
             "warlock": 80
         }
     },
-    "scroll_iron_skin": {
-        "name": "技能卷軸：鋼鐵之軀",
-        "type": "skill_scroll",
-        "teaches": "iron_skin",
-        "price": 320,
-        "sell_price": 110,
-        "shop_weight": 14,
-        "desc": "研讀後可習得【鋼鐵之軀】",
-        "name_en": "Skill Scroll: Iron Skin",
-        "desc_en": "Study this to learn [Iron Skin]."
-    },
-    "scroll_battle_cry": {
-        "name": "技能卷軸：戰吼",
-        "type": "skill_scroll",
-        "teaches": "battle_cry",
-        "price": 480,
-        "sell_price": 160,
-        "shop_weight": 12,
-        "desc": "研讀後可習得【戰吼】",
-        "name_en": "Skill Scroll: Battle Cry",
-        "desc_en": "Study this to learn [Battle Cry]."
-    },
     "scroll_regeneration": {
         "name": "技能卷軸：再生術",
         "type": "skill_scroll",
@@ -1138,17 +888,6 @@
         "desc": "研讀後可習得【魔力湧泉】",
         "name_en": "Skill Scroll: Mana Surge",
         "desc_en": "Study this to learn [Mana Surge]."
-    },
-    "scroll_blade_dance": {
-        "name": "技能卷軸：劍舞",
-        "type": "skill_scroll",
-        "teaches": "blade_dance",
-        "price": 600,
-        "sell_price": 200,
-        "shop_weight": 11,
-        "desc": "研讀後可習得【劍舞】",
-        "name_en": "Skill Scroll: Blade Dance",
-        "desc_en": "Study this to learn [Blade Dance]."
     },
     "guardian_hammer": {
         "name": "守護者戰錘",
@@ -2086,83 +1825,6 @@
         "desc": "從吸血鬼真祖體內提煉出的純淨鮮血，是禁忌儀式的核心材料。",
         "desc_en": "Purified blood drawn from the Vampire Progenitor, the core material of a forbidden ritual."
     },
-    "scroll_shield_bash": {
-        "name": "技能卷軸：🛡️ 盾擊",
-        "name_en": "Skill Scroll: 🛡️ Shield Bash",
-        "type": "skill_scroll",
-        "teaches": "shield_bash",
-        "price": 150,
-        "sell_price": 52,
-        "shop_weight": 25,
-        "desc": "研讀後可習得【🛡️ 盾擊】",
-        "desc_en": "Study this to learn [🛡️ Shield Bash]."
-    },
-    "scroll_status_hunter": {
-        "name": "技能卷軸：☠️ 獵異追擊",
-        "name_en": "Skill Scroll: ☠️ Status Hunter",
-        "type": "skill_scroll",
-        "teaches": "status_hunter",
-        "price": 950,
-        "sell_price": 380,
-        "shop_weight": 10,
-        "desc": "研讀後可習得【☠️ 獵異追擊】",
-        "desc_en": "Study this to learn [☠️ Status Hunter]."
-    },
-    "scroll_blood_awakening": {
-        "name": "技能卷軸：🩸 血醒儀式",
-        "name_en": "Skill Scroll: 🩸 Blood Awakening",
-        "type": "skill_scroll",
-        "teaches": "blood_awakening",
-        "price": 1650,
-        "sell_price": 660,
-        "shop_weight": 8,
-        "desc": "研讀後可習得【🩸 血醒儀式】",
-        "desc_en": "Study this to learn [🩸 Blood Awakening]."
-    },
-    "scroll_titan_crash": {
-        "name": "技能卷軸：🛡️💥 泰坦鎮擊",
-        "name_en": "Skill Scroll: 🛡️💥 Titan Crash",
-        "type": "skill_scroll",
-        "teaches": "titan_crash",
-        "price": 2050,
-        "sell_price": 820,
-        "shop_weight": 8,
-        "desc": "研讀後可習得【🛡️💥 泰坦鎮擊】",
-        "desc_en": "Study this to learn [🛡️💥 Titan Crash]."
-    },
-    "scroll_phoenix_rite": {
-        "name": "技能卷軸：🔥🕊️ 鳳凰儀式",
-        "name_en": "Skill Scroll: 🔥🕊️ Phoenix Rite",
-        "type": "skill_scroll",
-        "teaches": "phoenix_rite",
-        "price": 2450,
-        "sell_price": 980,
-        "shop_weight": 7,
-        "desc": "研讀後可習得【🔥🕊️ 鳳凰儀式】",
-        "desc_en": "Study this to learn [🔥🕊️ Phoenix Rite]."
-    },
-    "scroll_rift_strike": {
-        "name": "技能卷軸：🌌⚔️ 裂隙突襲",
-        "name_en": "Skill Scroll: 🌌⚔️ Rift Strike",
-        "type": "skill_scroll",
-        "teaches": "rift_strike",
-        "price": 2850,
-        "sell_price": 1140,
-        "shop_weight": 7,
-        "desc": "研讀後可習得【🌌⚔️ 裂隙突襲】",
-        "desc_en": "Study this to learn [🌌⚔️ Rift Strike]."
-    },
-    "scroll_abyssal_requiem": {
-        "name": "技能卷軸：🌑🎼 深淵安魂曲",
-        "name_en": "Skill Scroll: 🌑🎼 Abyssal Requiem",
-        "type": "skill_scroll",
-        "teaches": "abyssal_requiem",
-        "price": 3250,
-        "sell_price": 1300,
-        "shop_weight": 6,
-        "desc": "研讀後可習得【🌑🎼 深淵安魂曲】",
-        "desc_en": "Study this to learn [🌑🎼 Abyssal Requiem]."
-    },
     "thunder_ward_shield": {
         "name": "雷擊盾",
         "name_en": "Thunder Ward Shield",
@@ -2305,5 +1967,20 @@
         "desc": "在森林裡找到的家貓，看起來有點受驚。",
         "name_en": "Lost Cat",
         "desc_en": "A cat found in the forest."
+    },
+    "holy_talisman": {
+        "name": "✝️ 聖裁符咒",
+        "type": "damage_item",
+        "damage": 80,
+        "element": "holy",
+        "true_damage": true,
+        "price": 600,
+        "sell_price": 180,
+        "shop_weight": 0,
+        "mystery_only": true,
+        "exclusive_level": 10,
+        "desc": "戰鬥中釋放，對前排敵人造成 80 點神聖真實傷害（無視防禦、抗性與暴擊）。",
+        "name_en": "✝️ Talisman of Holy Judgment",
+        "desc_en": "Battle-only. Deals 80 holy true damage to the front enemy, ignoring defense, resistance, and critical hits."
     }
 }

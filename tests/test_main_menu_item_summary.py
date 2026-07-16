@@ -31,10 +31,17 @@ class TestMainMenuItemSummary(unittest.TestCase):
         for stale_section in ('char.level_exp', 'char.wallet_balance', 'char.combat_core_stats', 'char.learned_skills', 'char.status_effects'):
             self.assertNotIn(stale_section, handler)
 
-    def test_main_and_battle_buttons_are_labeled_items(self):
-        for source in (MAIN_MENU_SOURCE, BATTLE_MENU_SOURCE):
-            self.assertIn('menu.btn_items', source)
-            self.assertNotIn('menu.btn_status', source)
+    def test_main_buttons_show_bag_but_battle_does_not(self):
+        self.assertIn('menu.btn_items', MAIN_MENU_SOURCE)
+        self.assertNotIn('menu.btn_status', MAIN_MENU_SOURCE)
+        self.assertNotIn('menu.btn_items', BATTLE_MENU_SOURCE)
+        self.assertNotIn('menu.btn_status', BATTLE_MENU_SOURCE)
+
+    def test_battle_has_one_consumables_entry_not_a_full_bag(self):
+        self.assertIn('menu.btn_consumables', BATTLE_MENU_SOURCE)
+        self.assertIn('custom_id="b_itm"', BATTLE_MENU_SOURCE)
+        self.assertNotIn('custom_id="b_sta"', BATTLE_MENU_SOURCE)
+        self.assertNotIn('menu.btn_items', BATTLE_MENU_SOURCE)
 
 
 if __name__ == "__main__":

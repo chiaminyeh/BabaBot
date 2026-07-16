@@ -57,25 +57,24 @@ SCHRODINGER_DOUBLE_CHANCE = 0.6
 SCHRODINGER_DOUBLE_MULT = 2
 SCHRODINGER_HALVE_MULT = 0.5
 
-# First-kill/repeat boss scroll drop: guaranteed 100% on first kill, this% on repeat clears.
-BOSS_DAILY_SCROLL_CHANCE = 0.30
+# First-kill/repeat boss drop: guaranteed 100% on first kill, this% on repeat clears.
+BOSS_DAILY_REWARD_CHANCE = 0.30
 
-# Fallback scroll pool for area bosses whose "drops" table has no scroll entry.
-FALLBACK_BOSS_SCROLLS = {
-    "goblin_chief": ["scroll_heal_light", "scroll_power_slash", "scroll_fireball"],
-    "forest_guardian": ["scroll_shadow_step", "scroll_combo_attack"],
-    "bee_queen": ["scroll_blood_strike", "scroll_double_strike", "ice_spear_scroll"],
-    "mad_doctor": ["scroll_inferno", "scroll_divine_thunder", "scroll_blizzard"],
-    "lich": ["scroll_divine_thunder", "scroll_blizzard"],
-    "vampire_lord": ["scroll_divine_thunder", "scroll_inferno"],
-    "rat_king": ["scroll_venom_cloud"],
-    "bone_knight": ["scroll_frost_nova"],
-    "orc_warlord": ["scroll_earthquake"],
-    "abyss_overlord": ["scroll_meteor_swarm", "scroll_void_eruption"],
-    "ancient_dragon": ["scroll_inferno", "scroll_earthquake", "scroll_meteor_swarm"],
-    "void_sovereign": ["scroll_void_eruption", "scroll_meteor_swarm", "scroll_blizzard"],
-    "colosseum_champion": ["scroll_holy_smash", "scroll_divine_thunder", "scroll_power_slash"],
-    "sargeras": ["scroll_meteor_swarm", "scroll_holy_smash", "scroll_divine_thunder"],
+BOSS_SPECIFIC_REWARDS = {
+    "goblin_chief": ["bronze_sword", "ancient_wood", "medium_health_potion", "skill_manual", "forging_stone"],
+    "forest_guardian": ["bronze_sword", "ancient_wood", "medium_health_potion", "skill_manual", "forging_stone"],
+    "bee_queen": ["royal_honey", "poison_stinger", "skill_manual", "forging_stone"],
+    "mad_doctor": ["ectoplasm", "medium_health_potion", "skill_manual", "forging_stone"],
+    "lich": ["ectoplasm", "void_orb", "pure_blood_essence", ("skill_manual", 2), ("forging_stone", 2)],
+    "vampire_lord": ["pure_blood_essence", "void_orb", ("skill_manual", 2), ("forging_stone", 2)],
+    "rat_king": ["medium_health_potion", "bronze_sword", "skill_manual", "forging_stone"],
+    "bone_knight": ["ectoplasm", "bronze_sword", ("skill_manual", 2), ("forging_stone", 2)],
+    "orc_warlord": ["bronze_sword", "ancient_wood", ("skill_manual", 2), ("forging_stone", 2)],
+    "abyss_overlord": ["void_orb", "dragon_scale_shard", ("skill_manual", 3), ("forging_stone", 3)],
+    "ancient_dragon": ["dragon_scale_shard", "phoenix_scepter", ("skill_manual", 3), ("forging_stone", 3)],
+    "void_sovereign": ["void_orb", "pure_blood_essence", ("skill_manual", 4), ("forging_stone", 4)],
+    "colosseum_champion": ["bronze_sword", "high_health_potion", ("skill_manual", 4), ("forging_stone", 4)],
+    "sargeras": ["dragon_scale_shard", "phoenix_scepter", ("skill_manual", 5), ("forging_stone", 5)],
 }
 
 # Magic Tower milestone rewards, keyed by the floor number just completed.
@@ -85,7 +84,7 @@ TOWER_MILESTONES = {
     25: {"trophy_key": "combat.trophy_silver", "trophy_fallback": "🥈 銀魔箱勳章", "gold": 0, "item": "mystery_power_ring"},
     50: {"trophy_key": "combat.trophy_gold", "trophy_fallback": "🥇 金魔箱勳章", "gold": 0, "item": "mystery_void_blade"},
     75: {"trophy_key": "combat.trophy_diamond", "trophy_fallback": "💎 鑽石魔箱勳章", "gold": 0, "item": "immortal_totem"},
-    99: {"trophy_key": "combat.trophy_champion", "trophy_fallback": "👑 冠軍魔箱勳章", "gold": 0, "item": "scroll_divine_thunder"},
+    99: {"trophy_key": "combat.trophy_champion", "trophy_fallback": "👑 冠軍魔箱勳章", "gold": 0, "item": "dragon_scale_shard"},
 }
 
 # --- Monster scaling (tower / dungeon, per floor) ---------------------------

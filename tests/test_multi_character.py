@@ -436,13 +436,16 @@ class TestMultiCharacter(unittest.TestCase):
         }
 
         changed = view._refresh_daily_state()
-
         self.assertTrue(changed)
         self.assertEqual(player.daily_boss_kills, {"area_00village": today})
         player.killed_bosses = []
         log = view.combat._handle_boss_kill_rewards({"id": "boss_village", "is_boss": True, "drops": {"scroll_heal_light": 1.0}})
         self.assertEqual(player.daily_boss_kills["area_00village"], today)
-        self.assertIn("scroll_heal_light", player.inventory)
+        # Verify the player got one of the boss rewards
+        from trpg.balance import BOSS_SPECIFIC_REWARDS
+        boss_rewards = BOSS_SPECIFIC_REWARDS.get("boss_village", ["medium_health_potion"])
+        dropped = any(item in player.inventory for item in boss_rewards)
+        self.assertTrue(dropped)
         self.assertIn("首殺", log)
 
     def test_elemental_immunity_not_raised_to_one_by_status_synergy(self):

@@ -194,7 +194,7 @@ class ShopMixin:
 
         self.player.inventory[item_id] = self.player.inventory.get(item_id, 0) + amount
         self.cog.save_players(player=self.player)
-        achv_text = self.check_achievements()
+        achv_text = self.check_achievements({"money_spent"})
         notice_text = t(lang, "shop.buy_success", "✅ 購買了 {amount} 個【{name}】！", amount=amount, name=item_name, total_cost=total_cost)
         if achv_text:
             notice_text += achv_text
@@ -391,11 +391,94 @@ class ShopMixin:
         self.log_message += "\n" + t(lang, "blacksmith.weapon_upgrade_section", "**武器強化：**\n{desc}\n", desc=w_desc)
         self.log_message += "\n" + t(lang, "blacksmith.armor_upgrade_section", "**防具強化：**\n{desc}\n", desc=a_desc)
 
+        # --- Forging Stone section ---
+        p_inv = getattr(p, "inventory", {}) or {}
+        forging_stones = p_inv.get("forging_stone", 0)
+        stone_name = tf(self.cog.items.get("forging_stone", {}), "name", lang) or t(lang, "blacksmith.forging_stone", "極致鍛造石")
+
+        def _stone_cost(current_up: int) -> int:
+            """鍛造石消耗量 = 目前強化等級（+0→+1 需 1 顆，+4→+5 需 4 顆），最小為 1。"""
+            return max(1, current_up)
+
+        can_up_w_stone = False
+        can_up_a_stone = False
+        if w_id and w_up < MAX_UPGRADE_LEVEL:
+            need_w_stone = _stone_cost(w_up)
+            can_up_w_stone = forging_stones >= need_w_stone
+        if a_id and a_up < MAX_UPGRADE_LEVEL:
+            need_a_stone = _stone_cost(a_up)
+            can_up_a_stone = forging_stones >= need_a_stone
+
+        if forging_stones > 0:
+            self.log_message += "\n" + t(lang, "blacksmith.forging_stone_hint",
+                "🔥 **鍛造石（持有 {have} 顆）**：可無視金幣與材料直接強化，必定成功！",
+                have=forging_stones)
+
         self.add_action_button(label=t(lang, "blacksmith.btn_upgrade_weapon", "強化武器"), style=discord.ButtonStyle.primary if can_up_w else discord.ButtonStyle.secondary, custom_id="btn_upgrade_weapon", disabled=not can_up_w)
         self.add_action_button(label=t(lang, "blacksmith.btn_upgrade_armor", "強化防具"), style=discord.ButtonStyle.primary if can_up_a else discord.ButtonStyle.secondary, custom_id="btn_upgrade_armor", disabled=not can_up_a)
+        if can_up_w_stone:
+            need_w_stone = _stone_cost(w_up)
+            self.add_action_button(label=t(lang, "blacksmith.btn_stone_weapon", "🔥 鍛造石強化武器 (×{n})", n=need_w_stone), style=discord.ButtonStyle.success, custom_id="btn_stone_upgrade_weapon")
+        if can_up_a_stone:
+            need_a_stone = _stone_cost(a_up)
+            self.add_action_button(label=t(lang, "blacksmith.btn_stone_armor", "🔥 鍛造石強化防具 (×{n})", n=need_a_stone), style=discord.ButtonStyle.success, custom_id="btn_stone_upgrade_armor")
         self.add_action_button(label=t(lang, "menu.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
+    async def handle_stone_upgrade_execute(self, is_weapon: bool):
+        """使用鍛造石強化武器或防具（無視材料/金幣，必定成功）。"""
+        if not blacksmith_accessible(self.player):
+            self.build_main_menu()
+            self.log_message = t(self.player.language, "blacksmith.locked_lab", "🔒 鐵匠鋪設在瘋狂博士實驗室，請前往 Lv.20 區域使用。")
+            return
+        p = self.player
+        lang = p.language
+        slot = "weapon" if is_weapon else "armor"
+        item_id = getattr(p, slot, None)
+        if not item_id:
+            await self.handle_blacksmith_menu(t(lang, "blacksmith.err_no_equipment", "❌ 你沒有裝備任何對應的裝備！"))
+            return
+
+        upgrades_dict = getattr(p, f"{slot}_upgrades", None)
+        if not isinstance(upgrades_dict, dict):
+            upgrades_dict = {}
+            setattr(p, f"{slot}_upgrades", upgrades_dict)
+        current_up = upgrades_dict.get(item_id, 0)
+        if current_up >= MAX_UPGRADE_LEVEL:
+            await self.handle_blacksmith_menu(t(lang, "blacksmith.err_max_level_v2", "❌ 該裝備已達到最高強化等級 (+{max})！", max=MAX_UPGRADE_LEVEL))
+            return
+
+        need = max(1, current_up)
+        inv = getattr(p, "inventory", {}) or {}
+        have = inv.get("forging_stone", 0)
+        if have < need:
+            stone_name = tf(self.cog.items.get("forging_stone", {}), "name", lang) or t(lang, "blacksmith.forging_stone", "極致鍛造石")
+            await self.handle_blacksmith_menu(
+                t(lang, "blacksmith.err_no_stones",
+                  "❌ 鍛造石不足！需要 {need} 顆，目前持有 {have} 顆。",
+                  need=need, have=have)
+            )
+            return
+
+        # 消耗鍛造石
+        inv["forging_stone"] = have - need
+        if inv["forging_stone"] == 0:
+            del inv["forging_stone"]
+
+        # 必定成功強化
+        next_lvl = current_up + 1
+        upgrades_dict[item_id] = next_lvl
+        recalc_player_stats(p, self.cog.items, heal_full=False)
+        item_name = tf(self.cog.items.get(item_id, {}), "name", lang) or item_id
+        notice_text = t(lang, "blacksmith.stone_upgrade_success",
+                        "🔥 鍛造石強化成功！消耗 {need} 顆鍛造石，你的【{name}】已提升至 +{lvl}！（必定成功）",
+                        need=need, name=item_name, lvl=next_lvl)
+
+        self.cog.save_players(player=self.player)
+        notice_text += self.check_achievements()
+        await self.handle_blacksmith_menu(notice_text)
+
     async def handle_upgrade_execute(self, is_weapon: bool):
+        """Normal blacksmith upgrade using gold + materials (with chance of failure)."""
         if not blacksmith_accessible(self.player):
             self.build_main_menu()
             self.log_message = t(self.player.language, "blacksmith.locked_lab", "🔒 鐵匠鋪設在瘋狂博士實驗室，請前往 Lv.20 區域使用。")

@@ -68,6 +68,16 @@ class ArchetypeReworkRegressionTests(unittest.TestCase):
         self.assertIn("shield_bash", p.skills)
         self.assertIn("flame_coating", p.skills)
 
+    def test_migration_removes_retired_scrolls_from_inventory(self):
+        p = TRPGPlayer("legacy-scroll")
+        p.inventory = {"scroll_combo_attack": 2, "health_potion": 3}
+        p.shop_state = {"area_01grassland": {"items": ["scroll_combo_attack", "health_potion"]}}
+        p.shop_items = ["scroll_combo_attack", "health_potion"]
+        migrate_player_stats(p, {"health_potion": {}}, self.skills)
+        self.assertEqual({"health_potion": 3}, p.inventory)
+        self.assertEqual(["health_potion"], p.shop_state["area_01grassland"]["items"])
+        self.assertEqual(["health_potion"], p.shop_items)
+
     def test_endgame_boss_gear_cannot_be_equipped_at_low_level(self):
         expected = {
             "dragonbone_greatsword": "knight",
