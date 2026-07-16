@@ -64,7 +64,7 @@
     "upgrade.panel_header": "⬆️ **【強化技能】**\n達成熟練度後花費 Bababucks 強化已裝備的技能，或查看熟練度進度。\n",
     "upgrade.proficiency_progress": "熟練度：{used}/{need} 次",
     "upgrade.skill_not_found": "❌ 找不到該技能資料，請聯絡管理員。",
-    "upgrade.skill_row": "**{name}**  Lv.{lv}  |  {progress}\n  效果：{eff}  /  消耗：{cost}{upg}",
+    "upgrade.skill_row": "**{name}**  Lv.{lv}",
     "upgrade.success": "✅ 成功強化【{skill}】至 Lv.{lv}！消耗了 {cost} Bababucks。\n\n",
     "upgrade.upgrade_cost": "  💰 花費 Bababucks 強化：{cost}",
     "combat.damage_item_not_owned": "❌ 背包裡沒有這個戰鬥道具。",

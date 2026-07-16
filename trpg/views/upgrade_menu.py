@@ -19,8 +19,6 @@ from trpg.skill_progression import (
     get_proficiency_requirement,
     get_base_upgrade_cost,
     is_proficiency_ready,
-    get_skill_effect_multiplier,
-    get_skill_cost_multiplier,
     validate_paid_upgrade,
     apply_paid_upgrade,
     get_manual_cost,
@@ -50,58 +48,14 @@ def _format_upgrade_panel(player, skills_data: dict, lang: str) -> str:
     lines.append(t(lang, "upgrade.money_display", "💰 Bababucks：{money}", money=money))
     lines.append("")
 
-    manual_count = (getattr(player, "inventory", None) or {}).get("skill_manual", 0)
     for sid in equipped:
         skill = skills_data.get(sid)
         if not skill or skill.get("type") == "passive":
             continue
         name = tf(skill, "name", lang) or sid
         lv = _skill_level(player, sid)
-        usage = _skill_usage(player, sid)
 
-        if lv >= MAX_SKILL_LEVEL:
-            progress = t(lang, "upgrade.max_level", "✅ 已達最高等級")
-        else:
-            threshold = get_proficiency_requirement(lv)
-            progress = t(lang, "upgrade.proficiency_progress",
-                         "熟練度：{used}/{need} 次",
-                         used=usage, need=threshold)
-
-        upgrade_line = ""
-        if lv < MAX_SKILL_LEVEL:
-            need_manuals = get_manual_cost(lv)
-            if manual_count >= need_manuals:
-                upgrade_line = t(lang, "upgrade.manual_available",
-                                 "  📖 可用技能指南升級：消耗 {need} 本（持有 {have} 本）",
-                                 need=need_manuals, have=manual_count)
-            else:
-                cost = get_base_upgrade_cost(lv)
-                if is_proficiency_ready(player, sid, lv):
-                    upgrade_line = t(lang, "upgrade.upgrade_cost", "  💰 花費 Bababucks 強化：{cost}", cost=cost)
-                else:
-                    upgrade_line = t(lang, "upgrade.proficiency_progress", "熟練度：{used}/{need} 次", used=usage, need=get_proficiency_requirement(lv))
-
-        # 效果預覽
-        eff = get_skill_effect_multiplier(lv)
-        next_eff = get_skill_effect_multiplier(lv + 1) if lv < MAX_SKILL_LEVEL else None
-        cost_rate = get_skill_cost_multiplier(lv)
-        next_cost_rate = get_skill_cost_multiplier(lv + 1) if lv < MAX_SKILL_LEVEL else None
-
-        eff_str = f"×{eff:.2f}"
-        cost_str = f"×{cost_rate:.2f}"
-        if next_eff is not None:
-            arrow = t(lang, "upgrade.arrow", " → ")
-            eff_str += f"{arrow}×{next_eff:.2f}"
-            cost_str += f"{arrow}×{next_cost_rate:.2f}"
-
-        lines.append(
-            t(lang, "upgrade.skill_row",
-              "**{name}**  Lv.{lv}  |  {progress}\n"
-              "  效果：{eff}  /  消耗：{cost}{upg}",
-              name=name, lv=lv, progress=progress,
-              eff=eff_str, cost=cost_str,
-              upg=f"\n{upgrade_line}" if upgrade_line else "")
-        )
+        lines.append(t(lang, "upgrade.skill_row", "**{name}**  Lv.{lv}", name=name, lv=lv))
         lines.append("")
 
     return "\n".join(lines).strip()

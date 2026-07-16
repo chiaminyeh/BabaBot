@@ -289,7 +289,7 @@ class ShopMixin:
                 can_craft = False
 
             recipe_name = tf(recipe, "name", lang)
-            self.log_message += "\n" + t(lang, "craft.recipe_line", "• **{name}** | {gold}$ | 材料: {materials}", name=recipe_name, gold=recipe["gold"], materials=", ".join(materials_desc))
+            self.log_message += "\n" + t(lang, "craft.recipe_line", "• **{name}**", name=recipe_name, gold=recipe["gold"], materials=", ".join(materials_desc))
             mark = "✅" if can_craft else "❌"
             options.append((f"{mark} {recipe_name}（{recipe['gold']}$）", f"craft_{item_id}", ", ".join(materials_desc)[:100], "🔨"))
 
