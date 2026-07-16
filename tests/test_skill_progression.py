@@ -66,18 +66,18 @@ class TestSkillProgression(unittest.TestCase):
         self.assertEqual(p.skill_levels["test_skill"], 1)
         self.assertEqual(p.skill_usage["test_skill"], 1)
 
-        # Trigger level up
+        # Proficiency unlocks the paid upgrade but does not level automatically
         p.skill_usage["test_skill"] = 19
         msg = record_successful_skill_use(p, "test_skill", "Test Skill", "zh")
-        self.assertIn("升級至 Lv.2", msg)
-        self.assertEqual(p.skill_levels["test_skill"], 2)
-        self.assertEqual(p.skill_usage["test_skill"], 0)
+        self.assertIn("熟練度已達標", msg)
+        self.assertEqual(p.skill_levels["test_skill"], 1)
+        self.assertEqual(p.skill_usage["test_skill"], 20)
 
         # Max level shouldn't increase usage
         p.skill_levels["test_skill"] = MAX_SKILL_LEVEL
         msg = record_successful_skill_use(p, "test_skill", "Test Skill", "zh")
         self.assertEqual(msg, "")
-        self.assertEqual(p.skill_usage["test_skill"], 0)
+        self.assertEqual(p.skill_usage["test_skill"], 20)
 
     def test_validate_paid_upgrade(self):
         p = MockPlayer()
@@ -88,36 +88,37 @@ class TestSkillProgression(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("未裝備", msg)
 
-        # Equipped but not enough money
+        # Equipped but proficiency is not ready
         p.equipped_skills = ["test_skill"]
         ok, msg, cost = validate_paid_upgrade(p, skill_data, "test_skill")
         self.assertFalse(ok)
-        self.assertIn("金幣不足", msg)
+        self.assertIn("熟練度", msg)
 
-        # Enough money
+        # Enough proficiency and money
+        p.skill_usage["test_skill"] = 20
         p.money = 1000
         ok, msg, cost = validate_paid_upgrade(p, skill_data, "test_skill")
         self.assertTrue(ok)
         self.assertEqual(msg, "")
         self.assertEqual(cost, 500)
 
-        # Discount
+        # Proficiency is required; partial progress never discounts the cost
         p.skill_usage["test_skill"] = 10
         ok, msg, cost = validate_paid_upgrade(p, skill_data, "test_skill")
-        self.assertTrue(ok)
-        self.assertEqual(cost, 250)
+        self.assertFalse(ok)
+        self.assertIn("熟練度", msg)
 
     def test_apply_paid_upgrade(self):
         p = MockPlayer()
         p.money = 1000
         p.skill_levels["test_skill"] = 1
-        p.skill_usage["test_skill"] = 15
+        p.skill_usage["test_skill"] = 20
 
-        apply_paid_upgrade(p, "test_skill", 250)
-        self.assertEqual(p.money, 750)
+        apply_paid_upgrade(p, "test_skill", 500)
+        self.assertEqual(p.money, 500)
         self.assertEqual(p.skill_levels["test_skill"], 2)
         self.assertEqual(p.skill_usage["test_skill"], 0)
-        self.assertEqual(p.stats["money_spent"], 250)
+        self.assertEqual(p.stats["money_spent"], 500)
 
 if __name__ == '__main__':
     unittest.main()

@@ -46,6 +46,17 @@ def get_upgrade_cost_with_discount(current_level: int, current_usage: int) -> in
     discount = int(base_cost * (current_usage / threshold))
     return max(0, base_cost - discount)
 
+def is_proficiency_ready(player, skill_id: str, current_level: int | None = None) -> bool:
+    lv = current_level or normalize_skill_level((getattr(player, "skill_levels", None) or {}).get(skill_id, 1))
+    threshold = get_proficiency_requirement(lv)
+    if threshold <= 0:
+        return True
+    try:
+        usage = max(0, int((getattr(player, "skill_usage", None) or {}).get(skill_id, 0)))
+    except (ValueError, TypeError):
+        usage = 0
+    return usage >= threshold
+
 def get_skill_effect_multiplier(level: int) -> float:
     level = normalize_skill_level(level)
     return EFFECT_MULTIPLIER_PER_LEVEL ** (level - 1)
@@ -76,11 +87,10 @@ def record_successful_skill_use(player, skill_id: str, skill_name: str, lang: st
     threshold = get_proficiency_requirement(current_lv)
 
     if usage >= threshold:
-        player.skill_levels[skill_id] = current_lv + 1
-        player.skill_usage[skill_id] = 0
-        return "\n" + t(lang, "combat.skill_level_up",
-                        "✨ 【{skill}】熟練度提升，升級至 Lv.{lv}！",
-                        skill=skill_name, lv=current_lv + 1)
+        player.skill_usage[skill_id] = threshold
+        return "\n" + t(lang, "combat.skill_proficiency_ready",
+                        "✨ 【{skill}】熟練度已達標！現在可以花費 {cost} Bababucks 升級至 Lv.{lv}。",
+                        skill=skill_name, cost=get_base_upgrade_cost(current_lv), lv=current_lv + 1)
 
     player.skill_usage[skill_id] = usage
     return ""
@@ -105,14 +115,20 @@ def validate_paid_upgrade(player, skill_data, skill_id: str) -> tuple[bool, str,
         name = skill_data.get("name", {}).get(lang, skill_id) if isinstance(skill_data.get("name"), dict) else skill_data.get("name", skill_id)
         return False, t(lang, "upgrade.already_max", "✅ 【{skill}】已達 Lv.{max} 滿級，無法再強化！", skill=name, max=MAX_SKILL_LEVEL), 0
 
-    usage = (getattr(player, "skill_usage", None) or {}).get(skill_id, 0)
-    cost = get_upgrade_cost_with_discount(lv, usage)
+    if not is_proficiency_ready(player, skill_id, lv):
+        threshold = get_proficiency_requirement(lv)
+        usage = (getattr(player, "skill_usage", None) or {}).get(skill_id, 0)
+        return False, t(lang, "upgrade.proficiency_required",
+              "❌ 需要先達到熟練度 {need} 次，目前為 {have}/{need}，才能使用 Bababucks 升級。",
+              have=usage, need=threshold), 0
+
+    cost = get_base_upgrade_cost(lv)
 
     money = getattr(player, "money", 0) or 0
     if money < cost:
         name = skill_data.get("name", {}).get(lang, skill_id) if isinstance(skill_data.get("name"), dict) else skill_data.get("name", skill_id)
         return False, t(lang, "upgrade.not_enough_gold",
-              "❌ 金幣不足！強化【{skill}】至 Lv.{next_lv} 需要 {cost} G，你目前只有 {have} G。",
+              "❌ Bababucks 不足！強化【{skill}】至 Lv.{next_lv} 需要 {cost} Bababucks，你目前只有 {have}。",
               skill=name, next_lv=lv + 1, cost=cost, have=money), cost
 
     return True, "", cost

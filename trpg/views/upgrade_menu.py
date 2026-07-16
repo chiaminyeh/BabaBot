@@ -17,7 +17,8 @@ from trpg.skill_progression import (
     MAX_SKILL_LEVEL,
     normalize_skill_level,
     get_proficiency_requirement,
-    get_upgrade_cost_with_discount,
+    get_base_upgrade_cost,
+    is_proficiency_ready,
     get_skill_effect_multiplier,
     get_skill_cost_multiplier,
     validate_paid_upgrade,
@@ -46,7 +47,7 @@ def _format_upgrade_panel(player, skills_data: dict, lang: str) -> str:
 
     lines = [t(lang, "upgrade.panel_header", "⬆️ **【強化技能】**\n在這裡花費金幣直接強化已裝備的技能，或查看熟練度進度。\n")]
     money = getattr(player, "money", 0) or 0
-    lines.append(t(lang, "upgrade.gold_display", "💰 目前持有金幣：{money}", money=money))
+    lines.append(t(lang, "upgrade.money_display", "💰 Bababucks：{money}", money=money))
     lines.append("")
 
     manual_count = (getattr(player, "inventory", None) or {}).get("skill_manual", 0)
@@ -74,8 +75,11 @@ def _format_upgrade_panel(player, skills_data: dict, lang: str) -> str:
                                  "  📖 可用技能指南升級：消耗 {need} 本（持有 {have} 本）",
                                  need=need_manuals, have=manual_count)
             else:
-                cost = get_upgrade_cost_with_discount(lv, usage)
-                upgrade_line = t(lang, "upgrade.upgrade_cost", "  💰 花費金幣強化：{cost} G", cost=cost)
+                cost = get_base_upgrade_cost(lv)
+                if is_proficiency_ready(player, sid, lv):
+                    upgrade_line = t(lang, "upgrade.upgrade_cost", "  💰 花費 Bababucks 強化：{cost}", cost=cost)
+                else:
+                    upgrade_line = t(lang, "upgrade.proficiency_progress", "熟練度：{used}/{need} 次", used=usage, need=get_proficiency_requirement(lv))
 
         # 效果預覽
         eff = get_skill_effect_multiplier(lv)
@@ -132,10 +136,11 @@ def build_upgrade_menu(view):
             can_act = True
             style = discord.ButtonStyle.primary
         else:
-            cost = get_upgrade_cost_with_discount(lv, usage)
+            cost = get_base_upgrade_cost(lv)
             money = getattr(player, "money", 0) or 0
-            can_act = money >= cost
-            label = f"⬆️ {name} ({cost}G)"
+            ready = is_proficiency_ready(player, sid, lv)
+            can_act = ready and money >= cost
+            label = f"⬆️ {name} ({cost} Bababucks)" if ready else f"🔒 {name} ({usage}/{get_proficiency_requirement(lv)})"
             style = discord.ButtonStyle.success if can_act else discord.ButtonStyle.secondary
         view.add_action_button(
             label=label,
