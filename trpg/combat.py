@@ -1282,9 +1282,10 @@ class TRPGCombat:
                 if target_slots and target_slots[0].get("status", {}).get("blood_mark") and skill.get("marked_lifesteal"):
                     lifesteal = float(skill["marked_lifesteal"])
                     target_slots[0]["status"].pop("blood_mark", None)
-                    marked_cd_reduction = int(skill.get("marked_cd_reduction", 0))
-                    if marked_cd_reduction and self.skill_cds.get("blood_strike", 0):
-                        self.skill_cds["blood_strike"] = max(0, self.skill_cds["blood_strike"] - marked_cd_reduction)
+                    marked_pact_gain = int(skill.get("marked_pact_gain", 0))
+                    if marked_pact_gain and core_active(self.player, "warlock"):
+                        current_pact = int(self.player.combat_buffs.get("blood_pact_stacks", 0))
+                        self.player.combat_buffs["blood_pact_stacks"] = min(3, current_pact + marked_pact_gain)
                 lifesteal += float(self.player.combat_buffs.get("lifesteal_bonus", 0.0) or 0.0)
                 if total_damage > 0 and lifesteal > 0:
                     drain_cap = int(self.player.max_hp * float(skill.get("drain_cap_max_hp", 1.0)))

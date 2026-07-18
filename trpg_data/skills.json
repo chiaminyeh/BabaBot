@@ -231,7 +231,7 @@
     },
     "dark_orb": {
         "name": "🩸 血液汲取",
-        "desc": "消耗 14 MP，造成暗屬性魔法傷害並汲取 35%；消耗血印時提升至 65% 並使放血刻印 CD -1（CD: 3）",
+        "desc": "消耗 14 MP，造成暗屬性魔法傷害並汲取 35%；消耗血印時提升至 65% 並獲得 1 層血契（CD: 3）",
         "type": "magic",
         "element": "dark",
         "mp_cost": 14,
@@ -241,13 +241,13 @@
         "base_power": 70,
         "magic_scaling": 0.9,
         "name_en": "🩸 Blood Siphon",
-        "desc_en": "Spend 14 MP for dark magic damage and 35% drain; consuming Blood Mark raises drain to 65% and reduces Bloodletting Mark CD by 1 (CD: 3).",
+        "desc_en": "Spend 14 MP for dark magic damage and 35% drain; consuming Blood Mark raises drain to 65% and grants 1 Blood Pact stack (CD: 3).",
         "req_points": {
             "warlock": 10
         },
         "lifesteal": 0.35,
         "marked_lifesteal": 0.65,
-        "marked_cd_reduction": 1,
+        "marked_pact_gain": 1,
         "target_type": "front"
     },
     "hypnotic_gaze": {

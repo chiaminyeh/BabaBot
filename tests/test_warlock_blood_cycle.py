@@ -131,6 +131,20 @@ class WarlockBloodCycleTests(unittest.TestCase):
         self.assertEqual(player.combat_buffs["blood_pact_stacks"], 3)
         self.assertGreater(view.monster_slots[0]["status"]["blood_mark"]["turns"], 0)
 
+    def test_blood_siphon_consumes_mark_and_grants_one_bounded_pact(self):
+        combat, view, player = make_combat(hp=300, mp=100)
+        target = view.monster_slots[0]
+        target["status"]["blood_mark"] = {"turns": 3}
+        player.combat_buffs["blood_pact_stacks"] = 2
+        combat.use_skill("dark_orb")
+        self.assertNotIn("blood_mark", target["status"])
+        self.assertEqual(player.combat_buffs["blood_pact_stacks"], 3)
+        target["status"]["blood_mark"] = {"turns": 3}
+        combat.player_ap = 1
+        combat.skill_cds["dark_orb"] = 0
+        combat.use_skill("dark_orb")
+        self.assertEqual(player.combat_buffs["blood_pact_stacks"], 3)
+
     def test_failed_sacrifice_consumes_nothing(self):
         combat, _view, player = make_combat(hp=100, max_hp=500, mp=50)
         before = (player.current_hp, player.current_mp, combat.player_ap, dict(combat.skill_cds), dict(player.combat_buffs))
@@ -378,6 +392,8 @@ class WarlockBloodCycleTests(unittest.TestCase):
         self.assertTrue(ids.issubset(skills))
         self.assertEqual(skills["blood_strike"]["hp_cost_percent"], 0.12)
         self.assertEqual(skills["hypnotic_gaze"]["summon"], "blood_demon")
+        self.assertEqual(skills["dark_orb"]["marked_pact_gain"], 1)
+        self.assertNotIn("marked_cd_reduction", skills["dark_orb"])
         self.assertNotIn("apply_status_chance", skills["hypnotic_gaze"])
         pact = skills["venom_cloud"]
         self.assertNotIn("def_mult", pact.get("buff", {}))
