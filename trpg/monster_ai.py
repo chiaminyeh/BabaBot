@@ -61,10 +61,10 @@ def _plain_attack(combat, slot: dict, log: str, atk_mult: float = 1.0) -> str:
         m_dmg = max(1, m_dmg // 2)
         log += t(lang, "monster_ai.defend_block", "\n🛡️ 防禦姿態擋下了大量傷害！")
 
-    combat.player.current_hp -= m_dmg
+    player_damage = combat.apply_player_damage(m_dmg)
     for note in trait_notes:
         log += f"\n{note}"
-    log += t(lang, "monster_ai.attack_hit", "\n🥊 {name} 行動！使你受到了 {dmg} 點傷害。", name=tf(monster, "name", lang), dmg=m_dmg)
+    log += t(lang, "monster_ai.attack_hit", "\n🥊 {name} 行動！使你受到了 {dmg} 點傷害。", name=tf(monster, "name", lang), dmg=player_damage)
 
     from trpg.status import break_sleep_on_damage
     wake_log = break_sleep_on_damage(combat.player.status_effects, combat.player.language)
@@ -76,11 +76,11 @@ def _plain_attack(combat, slot: dict, log: str, atk_mult: float = 1.0) -> str:
         log += f"\n{status_log}"
 
     # 被動特性：命中後的附帶效果（嗜血回血/破甲/魔力汲取...）——玩家死亡時跳過
-    if combat.player.current_hp > 0 and m_dmg > 0:
+    if combat.player.current_hp > 0 and player_damage > 0:
         for tname in monster.get("traits", ()):
             hook = TRAIT_REGISTRY.get(tname, {}).get("after_attack")
             if hook:
-                log = hook(combat, slot, m_dmg, log)
+                log = hook(combat, slot, player_damage, log)
 
     if combat.player.current_hp <= 0:
         return combat.view.process_death(log, t(lang, "monster_ai.death_attack", "💀 承受不住 {name} 的攻擊，你倒下了...", name=tf(monster, "name", lang)))
@@ -187,9 +187,13 @@ def ai_support_healer(combat, slot, log):
     lang = combat.player.language
     allies = [s for s in combat.view.monster_slots if s is not slot and s["hp"] > 0]
     wounded = [s for s in allies if s["hp"] < s["monster"]["max_hp"]]
-    if wounded and random.random() < 0.55:
+    if wounded and random.random() < float(slot["monster"].get("heal_chance", 0.55)):
         target = min(wounded, key=lambda s: s["hp"] / s["monster"]["max_hp"])
-        heal = max(1, int(target["monster"]["max_hp"] * 0.25))
+        target_pct = float(slot["monster"].get("heal_target_max_hp_pct", 0.25))
+        healer_pct = slot["monster"].get("heal_self_max_hp_cap_pct")
+        heal = max(1, int(target["monster"]["max_hp"] * target_pct))
+        if healer_pct is not None:
+            heal = min(heal, max(1, int(slot["monster"]["max_hp"] * float(healer_pct))))
         before = target["hp"]
         target["hp"] = min(target["monster"]["max_hp"], target["hp"] + heal)
         actual = target["hp"] - before
@@ -253,8 +257,8 @@ def ai_kamikaze(combat, slot, log):
             player_def_reduction = int(get_player_def(combat.player, combat.cog.items) * 0.4)
             dmg = max(1, base_dmg - player_def_reduction)
             log += t(lang, "monster_ai.kamikaze_explode", "\n💥 **{name} 體內的魔力失去控制，發生了劇烈自爆！**", name=tf(slot["monster"], "name", lang))
-            combat.player.current_hp -= dmg
-            log += t(lang, "monster_ai.kamikaze_damage", "\n💥 對你造成了 {dmg} 點真實傷害！", dmg=dmg)
+            player_damage = combat.apply_player_damage(dmg)
+            log += t(lang, "monster_ai.kamikaze_damage", "\n💥 對你造成了 {dmg} 點真實傷害！", dmg=player_damage)
             from trpg.status import break_sleep_on_damage
             wake_log = break_sleep_on_damage(combat.player.status_effects, combat.player.language)
             if wake_log:
@@ -884,8 +888,13 @@ def _pick_active_skill(slot: dict):
         return None
     hp_pct = slot["hp"] / monster["max_hp"] if monster.get("max_hp") else 1
     counters = slot.setdefault("skill_turn_counters", {})
+    use_counts = slot.setdefault("skill_use_counts", {})
 
     for skill in skills:
+        skill_id = skill["id"]
+        max_uses = skill.get("max_uses")
+        if max_uses is not None and use_counts.get(skill_id, 0) >= int(max_uses):
+            continue
         trigger = skill.get("trigger", {})
         ttype = trigger.get("type")
         if ttype == "chance":
@@ -895,11 +904,11 @@ def _pick_active_skill(slot: dict):
             if hp_pct < trigger.get("value", 0.5):
                 return skill
         elif ttype == "interval":
-            count = counters.get(skill["id"], 0) + 1
+            count = counters.get(skill_id, 0) + 1
             if count >= trigger.get("value", 4):
-                counters[skill["id"]] = 0
+                counters[skill_id] = 0
                 return skill
-            counters[skill["id"]] = count
+            counters[skill_id] = count
     return None
 
 
@@ -912,7 +921,14 @@ def _find_minion_def(combat, minion_id: str):
         return pool_def, "pool"
 
     area_data = combat.cog.areas.get(combat.player.current_area, {})
-    area_def = area_data.get("boss_minions", {}).get(minion_id) or area_data.get("monsters", {}).get(minion_id)
+    boss_minions = area_data.get("boss_minions", {})
+    if isinstance(boss_minions, dict):
+        area_def = boss_minions.get(minion_id)
+    elif minion_id in boss_minions:
+        area_def = getattr(combat.cog, "monsters", {}).get(minion_id)
+    else:
+        area_def = None
+    area_def = area_def or area_data.get("monsters", {}).get(minion_id)
     if area_def:
         return area_def, "area"
     return None, None
@@ -984,7 +1000,12 @@ def _execute_cast_skill(combat, slot: dict, effect: dict, log: str) -> str:
 
     caster = MonsterCombatant(slot, combat.cog.status_effects, combat.player.language)
     target = PlayerCombatant(combat.player, combat.cog.items, combat.cog.status_effects)
+    before_hp = combat.player.current_hp
     skill_log, _ = execute_skill(caster, [target], spell, combat.cog.status_effects)
+    raw_damage = max(0, before_hp - combat.player.current_hp)
+    if raw_damage:
+        combat.player.current_hp = before_hp
+        combat.apply_player_damage(raw_damage)
     log += t(lang, "monster_ai.cast_skill", "\n🪄 {name} 發動了【{skill}】！\n{skill_log}", name=tf(monster, "name", lang), skill=tf(spell, "name", lang), skill_log=skill_log)
 
     if combat.player.current_hp <= 0:
@@ -997,6 +1018,10 @@ def _execute_active_skill(combat, slot: dict, skill: dict, log: str) -> str:
     effect = skill.get("effect", {})
     etype = effect.get("type")
     monster = slot["monster"]
+    skill_id = skill.get("id")
+    if skill_id:
+        use_counts = slot.setdefault("skill_use_counts", {})
+        use_counts[skill_id] = use_counts.get(skill_id, 0) + 1
 
     if etype == "heavy_attack":
         log = _plain_attack(combat, slot, log, atk_mult=effect.get("mult", 2.0))

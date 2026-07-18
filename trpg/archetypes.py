@@ -31,8 +31,8 @@ CORE_ABILITIES = {
     "warlock": {
         "name": "🩸 血之契約",
         "name_en": "🩸 Blood Covenant",
-        "desc": "核心被動：主動支付 HP 時獲得血契（最多 5 層）；每層使術士傷害 +12%、吸血 +6%。",
-        "desc_en": "Core Passive: Paying HP grants Blood Pact (max 5); each stack grants +12% Warlock damage and +6% lifesteal.",
+        "desc": "核心被動：主動支付 HP 時獲得血契（最多 3 層）；每層使術士汲取 +8%。",
+        "desc_en": "Core Passive: Paying HP grants Blood Pact (max 3); each stack grants +8% Warlock drain.",
     },
 }
 

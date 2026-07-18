@@ -803,7 +803,7 @@
     "combat.combo_gained": "🔄 Combo Rhythm rises to {stacks}/5.",
     "combat.weapon_coating_source": "[Elemental Coating]",
     "combat.skill_combo_insufficient": "❌ [{skill}] requires {cost} Combo.",
-    "combat.blood_pact_gained": "🩸 Blood Pact rises to {stacks}/5.\\n",
+    "combat.blood_pact_gained": "🩸 Blood Pact rises to {stacks}/3.\\n",
     "combat.combo_spent": "🔄 Spent {stacks} Combo to empower [{skill}].\n",
     "combat.skill_lifesteal": "🩸 [{skill}] siphoned {heal} HP!",
     "combat.skill_coating": "⚗️ [{skill}] coats your weapon with {element} for {turns} turns; a new coating replaces the old one.",
@@ -846,5 +846,11 @@
     "upgrade.not_enough_manuals": "❌ Not enough Upgrade Manuals.",
     "upgrade.passive_not_upgradable": "❌ Passive skills cannot be upgraded.",
     "upgrade.skill_not_equipped": "❌ This skill is not equipped and cannot be upgraded.",
-    "battle.damage_item_battle_only": "❌ This talisman can only be used in battle."
+    "battle.damage_item_battle_only": "❌ This talisman can only be used in battle.",
+    "combat.blood_demon_attack": "👿 The Blood-Pact Demon strikes the legal front for {damage} damage (blood shield -{fuel}).",
+    "combat.skill_drain": "🩸 {skill} drains HP {heal}, MP {mp}, and blood shield {shield}!",
+    "battle.hp_after_cast": "After cast:{hp}",
+    "battle.choose_target": "Choose a target",
+    "combat.skill_stale_target": "❌ The selected target is no longer valid. Choose again.",
+    "combat.blood_feast_bonus": "🌑 Blood Feast deals {damage} bonus dark damage!"
 }

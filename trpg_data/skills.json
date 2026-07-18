@@ -97,20 +97,23 @@
         }
     },
     "blood_strike": {
-        "name": "🩸🌑 血之獻祭",
-        "desc": "消耗 20% 最大 HP，並根據獻祭的血量造成 2.5 倍暗屬性真實傷害（CD: 4，需 Lv.5、術士 10）",
+        "name": "🩸 放血刻印",
+        "desc": "支付 12% 最大 HP，造成獻血量 2.4 倍暗屬性真實傷害並附加 3 回合血印（CD: 3）",
         "type": "physical",
         "element": "dark",
-        "hp_cost_percent": 0.2,
-        "hp_scaling_multiplier": 2.5,
-        "cd": 4,
+        "hp_cost_percent": 0.12,
+        "hp_scaling_multiplier": 2.4,
+        "cd": 3,
         "req_level": 5,
-        "name_en": "🩸🌑 Blood Sacrifice",
-        "desc_en": "Costs 20% max HP, dealing true dark damage equal to 2.5x the HP sacrificed (CD: 4, requires Lv.5, Warlock 10)",
+        "name_en": "🩸 Bloodletting Mark",
+        "desc_en": "Pay 12% max HP to deal 2.4x the offered HP as true dark damage and apply a 3-turn Blood Mark (CD: 3).",
         "dungeon_pool": true,
         "req_points": {
             "warlock": 10
-        }
+        },
+        "target_type": "front",
+        "apply_blood_mark": true,
+        "blood_mark_turns": 3
     },
     "fireball": {
         "name": "🔮🔥 火球術",
@@ -228,60 +231,60 @@
     },
     "dark_orb": {
         "name": "🩸 血液汲取",
-        "desc": "造成 70 點基礎暗屬性傷害，回復實際傷害的 30% HP；血契會進一步提高吸血（CD: 4）",
+        "desc": "消耗 14 MP，造成暗屬性魔法傷害並汲取 35%；消耗血印時提升至 65% 並使放血刻印 CD -1（CD: 3）",
         "type": "magic",
         "element": "dark",
-        "mp_cost": 20,
+        "mp_cost": 14,
         "def_pierce": 0.4,
-        "cd": 4,
+        "cd": 3,
         "req_level": 5,
         "base_power": 70,
         "magic_scaling": 0.9,
         "name_en": "🩸 Blood Siphon",
-        "desc_en": "Deal 70 base dark damage and heal for 30% dealt; Blood Pact further increases lifesteal (CD: 4).",
+        "desc_en": "Spend 14 MP for dark magic damage and 35% drain; consuming Blood Mark raises drain to 65% and reduces Bloodletting Mark CD by 1 (CD: 3).",
         "req_points": {
             "warlock": 10
         },
-        "lifesteal": 0.3
+        "lifesteal": 0.35,
+        "marked_lifesteal": 0.65,
+        "marked_cd_reduction": 1,
+        "target_type": "front"
     },
     "hypnotic_gaze": {
-        "name": "🔮🌑💤 魅惑安眠",
-        "desc": "支付 10% 最大 HP，造成 90 點暗屬性傷害，40% 機率使敵人沉睡（CD: 5）",
-        "type": "magic",
-        "element": "dark",
-        "mp_cost": 18,
-        "def_pierce": 0.3,
+        "name": "🩸 鮮血儀式",
+        "desc": "支付 20% 最大 HP 召喚血契惡魔；獻血成為血盾，惡魔每完整回合追擊前排並消耗 5% 最大 HP 血盾（CD: 5）",
+        "type": "support",
         "cd": 5,
-        "apply_status": "sleep",
-        "apply_status_chance": 0.4,
-        "status_turns": 3,
         "req_level": 10,
-        "base_power": 90,
-        "magic_scaling": 1.0,
-        "name_en": "🔮🌑💤 Charming Slumber",
-        "desc_en": "Pay 10% max HP, deal 90 dark damage, and have a 40% chance to inflict Sleep (CD: 5).",
+        "name_en": "🩸 Blood Rite",
+        "desc_en": "Pay 20% max HP to summon a Blood-Pact Demon. The offering becomes its shield; each complete round it attacks the legal front and spends 5% max-HP shield (CD: 5).",
         "req_points": {
             "warlock": 18
         },
-        "hp_cost_percent": 0.1
+        "hp_cost_percent": 0.2,
+        "summon": "blood_demon"
     },
     "inferno": {
-        "name": "🌑 靈魂燃燒",
-        "desc": "支付 15% 最大 HP，造成 190 點基礎暗屬性傷害（CD: 5）",
+        "name": "🌑 血焰爆裂",
+        "desc": "支付 15% 最大 HP 與 25 MP，對全體造成 150 基礎、1.35 倍魔力的暗傷；血印目標傷害 +50%。整次汲取實傷的 20%，回復總量上限為 35% 最大 HP（CD: 5）",
         "type": "magic",
         "element": "dark",
         "mp_cost": 25,
         "def_pierce": 0.5,
         "cd": 5,
         "req_level": 15,
-        "base_power": 190,
-        "magic_scaling": 1.8,
-        "name_en": "🌑 Soul Pyre",
-        "desc_en": "Pay 15% max HP to deal 190 base dark damage (CD: 5, requires Lv.15, Warlock 25).",
+        "base_power": 150,
+        "magic_scaling": 1.35,
+        "name_en": "🌑 Bloodflame Burst",
+        "desc_en": "Pay 15% max HP and 25 MP to deal 150 base + 1.35x Magic dark damage to all enemies; marked targets take +50% damage. Drain 20% of total actual damage, capped at 35% max HP per cast (CD: 5).",
         "req_points": {
             "warlock": 25
         },
-        "hp_cost_percent": 0.15
+        "hp_cost_percent": 0.15,
+        "target_type": "all",
+        "lifesteal": 0.2,
+        "drain_cap_max_hp": 0.35,
+        "marked_target_damage_mult": 1.5
     },
     "blizzard": {
         "name": "🔮❄️ 暴風雪",
@@ -325,43 +328,43 @@
         }
     },
     "void_eruption": {
-        "name": "🔮🌑 虛空爆發",
-        "desc": "支付 15% 最大 HP，造成 220 點暗屬性傷害並無視 60% 防禦（CD: 6）",
+        "name": "🌑 虛空處決",
+        "desc": "支付 15% 最大 HP，以虛空處決單體；可消耗血契提高傷害與穿透（CD: 6）",
         "type": "magic",
         "element": "dark",
-        "mp_cost": 45,
+        "mp_cost": 35,
         "def_pierce": 0.6,
         "cd": 6,
         "req_level": 20,
         "base_power": 220,
         "magic_scaling": 1.8,
-        "name_en": "🔮🌑 Void Eruption",
-        "desc_en": "Pay 15% max HP to deal 220 dark damage while ignoring 60% DEF (CD: 6).",
+        "name_en": "🌑 Void Execution",
+        "desc_en": "Pay 15% max HP to execute one target; Blood Pact stacks can empower damage and penetration (CD: 6).",
         "req_points": {
             "warlock": 25
         },
-        "hp_cost_percent": 0.15
+        "hp_cost_percent": 0.15,
+        "target_type": "any",
+        "consume_blood_pact": true
     },
     "venom_cloud": {
-        "name": "🌑 禁忌契約",
-        "desc": "支付 5% 最大 HP，犧牲 40% 防禦與魔防，換取攻擊與魔力 +60%，持續 3 回合（CD: 5）",
+        "name": "🌑 血宴契約",
+        "desc": "支付 5% 最大 HP，5 回合內汲取 +25%；每完整回合首次成功汲取追加回復量 50% 的暗傷（CD: 5）",
         "type": "support",
-        "mp_cost": 22,
+        "mp_cost": 12,
         "cd": 5,
-        "req_level": 10,
-        "name_en": "🌑 Forbidden Pact",
-        "desc_en": "Pay 5% max HP and sacrifice 40% DEF/MDEF for +60% ATK/Magic for 3 turns (CD: 5).",
+        "req_level": 12,
+        "name_en": "🌑 Blood Feast Pact",
+        "desc_en": "Pay 5% max HP for +25% drain for 5 rounds; the first successful drain each complete round deals bonus dark damage equal to 50% actually recovered (CD: 5).",
         "req_points": {
             "warlock": 18
         },
         "hp_cost_percent": 0.05,
         "buff": {
-            "atk_mult": 1.6,
-            "magic_mult": 1.6,
-            "def_mult": 0.6,
-            "mdef_mult": 0.6,
-            "turns": 3
-        }
+            "lifesteal_bonus": 0.25,
+            "turns": 5
+        },
+        "blood_feast": true
     },
     "frost_nova": {
         "name": "🗡️❄️ 冰霜陷阱",
@@ -543,28 +546,20 @@
         "target_type": "front"
     },
     "blood_awakening": {
-        "name": "🩸 血醒儀式",
-        "desc": "支付 15% 最大 HP：4 回合內攻擊與魔力 +45%、速度 +20%，每回合回復 5% 最大 HP（CD: 6）",
+        "name": "🩸 血之覺醒",
+        "desc": "支付 10% 最大 HP；之後的生命汲取溢出會累積為下一次 HP 獻祭折扣，折扣上限為 10% 最大 HP，使用一次後全數消耗，獻祭最低仍為 1 HP（CD: 6）",
         "type": "support",
-        "buff": {
-            "atk_mult": 1.45,
-            "magic_mult": 1.45,
-            "spd_mult": 1.2,
-            "turns": 4
-        },
-        "regen": {
-            "pct": 0.05,
-            "turns": 4
-        },
-        "mp_cost": 18,
+        "mp_cost": 30,
         "cd": 6,
         "req_level": 50,
         "name_en": "🩸 Blood Awakening",
-        "desc_en": "Pay 15% max HP: +45% ATK/Magic, +20% SPD, and restore 5% max HP each turn for 4 turns (CD: 6).",
+        "desc_en": "Pay 10% max HP; future HP-drain overflow accumulates as a discount on the next HP sacrifice, capped at 10% max HP. The whole discount is consumed once, and sacrifice still costs at least 1 HP (CD: 6).",
         "req_points": {
             "warlock": 50
         },
-        "hp_cost_percent": 0.15
+        "hp_cost_percent": 0.1,
+        "blood_awakening": true,
+        "overflow_discount_cap_max_hp": 0.1
     },
     "titan_crash": {
         "name": "🛡️💥 泰坦鎮擊",
@@ -629,26 +624,29 @@
         "grants_combo": true
     },
     "abyssal_requiem": {
-        "name": "🌑🎼 深淵安魂曲",
-        "desc": "支付 20% 最大 HP，對全體造成 520 點暗屬性傷害，65% 機率沉默並無視 70% 防禦（CD: 7）",
+        "name": "🌑 深淵血潮",
+        "desc": "支付 20% 最大 HP 與 60 MP，對全體造成 360 基礎、2.2 倍魔力的暗傷並無視 70% 魔防；血印目標傷害 +50%，65% 機率沉默 2 回合。整次汲取實傷的 25%，回復總量上限為 40% 最大 HP（CD: 7）",
         "type": "magic",
         "element": "dark",
         "target_type": "all",
-        "base_power": 520,
-        "magic_scaling": 2.8,
+        "base_power": 360,
+        "magic_scaling": 2.2,
         "def_pierce": 0.7,
         "apply_status": "silence",
         "apply_status_chance": 0.65,
         "status_turns": 2,
-        "mp_cost": 55,
+        "mp_cost": 60,
         "cd": 7,
         "req_level": 80,
-        "name_en": "🌑🎼 Abyssal Requiem",
-        "desc_en": "Pay 20% max HP to deal 520 dark damage to all, with 65% Silence and 70% DEF ignore (CD: 7).",
+        "name_en": "🌑 Abyssal Bloodtide",
+        "desc_en": "Pay 20% max HP and 60 MP to deal 360 base + 2.2x Magic dark damage to all enemies with 70% MDEF ignore; marked targets take +50% damage, with a 65% chance to Silence for 2 rounds. Drain 25% of total actual damage, capped at 40% max HP per cast (CD: 7).",
         "req_points": {
             "warlock": 80
         },
-        "hp_cost_percent": 0.2
+        "hp_cost_percent": 0.2,
+        "lifesteal": 0.25,
+        "drain_cap_max_hp": 0.4,
+        "marked_target_damage_mult": 1.5
     },
     "shield_bash": {
         "name": "🛡️ 盾擊",

@@ -45,9 +45,18 @@ class ArchetypeReworkRegressionTests(unittest.TestCase):
         self.assertFalse(any(skill.get("apply_status") == "poison" for skill in warlock.values()))
         self.assertGreater(warlock["dark_orb"].get("lifesteal", 0), 0)
         pact = warlock["venom_cloud"]
-        self.assertLess(pact["buff"]["def_mult"], 1)
-        self.assertGreater(pact["buff"]["atk_mult"], 1)
+        self.assertNotIn("def_mult", pact["buff"])
+        self.assertNotIn("mdef_mult", pact["buff"])
+        self.assertGreater(pact["buff"].get("lifesteal_bonus", 0), 0)
         self.assertGreater(pact.get("hp_cost_percent", 0), 0)
+
+    def test_warlock_core_is_three_stack_drain_not_old_damage_multiplier(self):
+        core = __import__("trpg.archetypes", fromlist=["CORE_ABILITIES"]).CORE_ABILITIES["warlock"]
+        self.assertIn("最多 3 層", core["desc"])
+        self.assertIn("+8%", core["desc"])
+        self.assertNotIn("傷害 +", core["desc"])
+        source = (ROOT / "trpg" / "combat.py").read_text(encoding="utf-8")
+        self.assertNotIn("pact_stacks * 0.12", source)
 
     def test_mage_regeneration_is_not_global_source_code(self):
         source = (ROOT / "trpg" / "combat.py").read_text(encoding="utf-8")

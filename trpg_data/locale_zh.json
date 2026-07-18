@@ -70,5 +70,11 @@
     "combat.damage_item_not_owned": "❌ 背包裡沒有這個戰鬥道具。",
     "combat.damage_item_no_effect": "❌ 這個戰鬥道具沒有可用的傷害效果。",
     "combat.damage_item_used": "✝️ 你釋放【{item_name}】，造成 {damage} 點神聖真實傷害！",
-    "battle.damage_item_battle_only": "❌ 這個符咒只能在戰鬥中使用。"
+    "battle.damage_item_battle_only": "❌ 這個符咒只能在戰鬥中使用。",
+    "combat.blood_demon_attack": "👿 血契惡魔追擊前排，造成 {damage} 點傷害（血盾 -{fuel}）。",
+    "combat.skill_drain": "🩸 【{skill}】汲取 HP {heal}、MP {mp}、血盾 {shield}！",
+    "battle.hp_after_cast": "施放後:{hp}",
+    "battle.choose_target": "選擇目標",
+    "combat.skill_stale_target": "❌ 選擇的目標已失效，請重新選擇。",
+    "combat.blood_feast_bonus": "🌑 血宴追加 {damage} 點暗傷！"
 }

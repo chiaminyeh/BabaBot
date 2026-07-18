@@ -254,7 +254,8 @@
         ],
         "immunity": [
             "sleep"
-        ]
+        ],
+        "vitality_type": "soul"
     },
     "shadow_assassin": {
         "id": "shadow_assassin",
@@ -314,7 +315,8 @@
         "immunity": [
             "poison",
             "sleep"
-        ]
+        ],
+        "vitality_type": "construct"
     },
     "dark_mage": {
         "id": "dark_mage",
@@ -577,7 +579,8 @@
         "immunity": [
             "poison",
             "sleep"
-        ]
+        ],
+        "vitality_type": "construct"
     },
     "void_weaver": {
         "id": "void_weaver",
@@ -655,7 +658,8 @@
         "name_en": "Vengeful Spirit",
         "immunity": [
             "sleep"
-        ]
+        ],
+        "vitality_type": "soul"
     },
     "orc_warlord": {
         "id": "orc_warlord",
@@ -872,7 +876,8 @@
         "immunity": [
             "poison",
             "sleep"
-        ]
+        ],
+        "vitality_type": "construct"
     },
     "abyss_overlord": {
         "id": "abyss_overlord",
@@ -1818,7 +1823,7 @@
         "name": "劇毒蜂后",
         "is_boss": true,
         "max_hp": 2808,
-        "atk": 95,
+        "atk": 50,
         "def": 0,
         "spd": 40,
         "exp": 10000,
@@ -1841,8 +1846,8 @@
             "poison",
             "paralysis"
         ],
-        "status_chance": 0.45,
-        "ai": "summoner",
+        "status_chance": 0.08,
+        "ai": "none",
         "active_skills": [
             {
                 "id": "summon_swarm",
@@ -1851,6 +1856,7 @@
                     "type": "interval",
                     "value": 4
                 },
+                "max_uses": 1,
                 "effect": {
                     "type": "summon_minion",
                     "summon_ids": [
@@ -1866,7 +1872,7 @@
             "hp_below": 0.5,
             "ai": "berserk_low_hp",
             "name_suffix": "（蜂群暴走）",
-            "heal_pct": 0.45,
+            "heal_pct": 0.15,
             "transform_text": "劇毒蜂后散發出濃烈的毒霾，瘋狂地振翅衝來！",
             "active_skills": [
                 {
@@ -1876,6 +1882,7 @@
                         "type": "hp_below",
                         "value": 0.2
                     },
+                    "max_uses": 2,
                     "effect": {
                         "type": "heavy_attack",
                         "mult": 2.3
@@ -1910,7 +1917,10 @@
         "name_en": "Worker Bee",
         "traits": [
             "avenger"
-        ]
+        ],
+        "heal_target_max_hp_pct": 0.25,
+        "heal_self_max_hp_cap_pct": 0.25,
+        "heal_chance": 0.55
     },
     "soldier_bee": {
         "id": "soldier_bee",
@@ -2200,7 +2210,8 @@
         "name_en": "Awakened Skeleton Soldier",
         "traits": [
             "play_dead"
-        ]
+        ],
+        "vitality_type": "soul"
     },
     "grave_goblin": {
         "id": "grave_goblin",
@@ -2255,7 +2266,8 @@
         "immunity": [
             "sleep",
             "paralysis"
-        ]
+        ],
+        "vitality_type": "soul"
     },
     "banshee": {
         "id": "banshee",
@@ -2419,7 +2431,8 @@
         "name_en": "Crypt Wraith",
         "immunity": [
             "sleep"
-        ]
+        ],
+        "vitality_type": "soul"
     },
     "gargoyle": {
         "id": "gargoyle",
@@ -3120,7 +3133,8 @@
         "name_en": "Phase Wraith",
         "immunity": [
             "paralysis"
-        ]
+        ],
+        "vitality_type": "soul"
     },
     "void_sovereign": {
         "id": "void_sovereign",

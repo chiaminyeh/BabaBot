@@ -41,6 +41,31 @@ from trpg.entity import PlayerCombatant, MonsterCombatant
 from trpg import dungeon as dg
 
 
+VITALITY_ICONS = {"blood": "🩸", "soul": "🔷", "construct": "⚙️"}
+
+
+def vitality_type(monster: dict) -> str:
+    value = monster.get("vitality_type", "blood")
+    return value if value in VITALITY_ICONS else "blood"
+
+
+def vitality_icon(monster: dict) -> str:
+    return VITALITY_ICONS[vitality_type(monster)]
+
+
+def can_pay_hp_cost(current_hp: int, cost: int) -> bool:
+    return int(cost) <= 0 or int(current_hp) - int(cost) >= 1
+
+
+def effective_hp_cost(player, base_cost: int) -> int:
+    """Return the one-shot discounted sacrifice cost without mutating state."""
+    base_cost = max(0, int(base_cost))
+    if base_cost == 0:
+        return 0
+    discount = max(0, int((getattr(player, "combat_buffs", None) or {}).get("blood_sacrifice_discount", 0)))
+    return max(1, base_cost - discount)
+
+
 def exp_to_next_level(level: int) -> int:
     return int(XP_CURVE_BASE * (level ** XP_CURVE_EXP))
 
@@ -320,11 +345,9 @@ def execute_skill(caster, targets: list, skill: dict, status_defs: dict, hp_cost
 
             if dmg > 0 and status_synergy != 1.0:
                 dmg = max(1, int(dmg * status_synergy))
-            caster_player = getattr(caster, "player", None)
-            if dmg > 0 and caster_player is not None and core_active(caster_player, "warlock") and skill.get("req_points", {}).get("warlock"):
-                pact_stacks = min(5, int((getattr(caster_player, "combat_buffs", None) or {}).get("blood_pact_stacks", 0)))
-                dmg = max(1, int(dmg * (1.0 + pact_stacks * 0.12)))
-
+            if (dmg > 0 and skill.get("marked_target_damage_mult")
+                    and target.status_effects.get("blood_mark")):
+                dmg = max(1, int(dmg * float(skill["marked_target_damage_mult"])))
             # 物理跟 HP 獻祭流都可以暴擊，魔法傷害不會
             caster_fortune = getattr(getattr(caster, "player", None), "fortune", 0)
             if skill_type != "magic" and random.random() < (SKILL_CRIT_CHANCE + crit_bonus + relic_crit + luck_crit_bonus(caster_fortune)):
@@ -381,6 +404,9 @@ class TRPGCombat:
         self.next_round_ap_penalty = 0
         self.is_defending = False
         self.is_dodging = False
+        self.blood_shield = 0
+        self.demon_skill_level = 1
+        self._demon_last_round = -1
 
 
 
@@ -393,6 +419,9 @@ class TRPGCombat:
         self.next_round_ap_penalty = 0
         self.is_defending = False
         self.is_dodging = False
+        self.blood_shield = 0
+        self.demon_skill_level = 1
+        self._demon_last_round = -1
         self.player.combat_debuffs = {}
         self.player.combat_buffs = {}
 
@@ -406,6 +435,97 @@ class TRPGCombat:
             if revive_cfg and not slot.get("revived"):
                 return False
         return True
+
+    @property
+    def demon_active(self) -> bool:
+        return self.blood_shield > 0
+
+    def legal_target_slots(self, target_type: str = "front") -> list:
+        alive = [slot for slot in self.view.monster_slots if slot.get("hp", 0) > 0]
+        if target_type in ("any", "all"):
+            return alive
+        if target_type == "back":
+            return alive[1:] if len(alive) > 1 else alive[:1]
+        return alive[:1]
+
+    def blood_runtime_state(self) -> dict:
+        return {
+            "blood_shield": max(0, int(self.blood_shield)),
+            "demon_skill_level": max(1, int(self.demon_skill_level)),
+            "demon_last_round": int(self._demon_last_round),
+        }
+
+    def load_blood_runtime_state(self, state: dict | None) -> None:
+        state = state or {}
+        self.blood_shield = max(0, int(state.get("blood_shield", 0) or 0))
+        self.demon_skill_level = max(1, int(state.get("demon_skill_level", 1) or 1))
+        demon_last_round = state.get("demon_last_round", -1)
+        self._demon_last_round = int(-1 if demon_last_round is None else demon_last_round)
+
+    def apply_player_damage(self, damage: int) -> int:
+        damage = max(0, int(damage))
+        absorbed = min(self.blood_shield, damage // 2) if self.demon_active else 0
+        self.blood_shield -= absorbed
+        player_damage = damage - absorbed
+        self.player.current_hp -= player_damage
+        return player_damage
+
+    def apply_drain(self, damage: int, rate: float, target_vitality: str, *, allow_shield: bool = True) -> tuple[int, int, int]:
+        raw = max(0, int(max(0, damage) * max(0.0, rate)))
+        hp_gain = mp_gain = shield_gain = 0
+        if target_vitality == "blood":
+            missing = max(0, self.player.max_hp - self.player.current_hp)
+            hp_gain = min(missing, raw)
+            self.player.current_hp += hp_gain
+            overflow = raw - hp_gain
+            buffs = getattr(self.player, "combat_buffs", None) or {}
+            discount_cap = max(0, int(buffs.get("blood_awakening_discount_cap", 0)))
+            if overflow > 0 and discount_cap:
+                buffs["blood_sacrifice_discount"] = min(
+                    discount_cap,
+                    max(0, int(buffs.get("blood_sacrifice_discount", 0))) + overflow,
+                )
+            if overflow > 0 and self.demon_active and allow_shield:
+                shield_gain = min(overflow, self.player.max_hp - self.blood_shield)
+                self.blood_shield += shield_gain
+        else:
+            efficiency = 0.7 if target_vitality == "soul" else 0.3
+            mp_gain = min(max(0, self.player.max_mp - self.player.current_mp), int(raw * efficiency))
+            self.player.current_mp += mp_gain
+        return hp_gain, mp_gain, shield_gain
+
+    def _apply_blood_feast_bonus(self, target_slot: dict, recovered: int, log: str) -> str:
+        buffs = getattr(self.player, "combat_buffs", None) or {}
+        if recovered <= 0 or int(buffs.get("blood_feast_turns", 0)) <= 0:
+            return log
+        if buffs.get("blood_feast_last_round") == self.round_number:
+            return log
+        bonus = max(1, int(recovered * 0.5))
+        before = target_slot.get("hp", 0)
+        MonsterCombatant(target_slot, self.cog.status_effects, self.player.language).hp = before - bonus
+        actual = before - target_slot.get("hp", 0)
+        buffs["blood_feast_last_round"] = self.round_number
+        return log + "\n" + t(self.player.language, "combat.blood_feast_bonus", "🌑 血宴追加 {damage} 點暗傷！", damage=actual)
+
+    def _demon_round_action(self, log: str) -> str:
+        if not self.demon_active or self._demon_last_round == self.round_number:
+            return log
+        targets = self.legal_target_slots("front")
+        if not targets:
+            return log
+        fuel = max(1, int(self.player.max_hp * 0.05))
+        self.blood_shield = max(0, self.blood_shield - fuel)
+        self._demon_last_round = self.round_number
+        target = targets[0]
+        base = 20 + 0.55 * get_player_magic(self.player, self.cog.items, self.cog.status_effects) + 0.25 * get_player_atk(self.player, self.cog.items, self.cog.status_effects)
+        if target.get("status", {}).get("blood_mark"):
+            base *= 1.5
+        damage = max(1, int(base * get_skill_effect_multiplier(self.demon_skill_level)))
+        before = target["hp"]
+        MonsterCombatant(target, self.cog.status_effects, self.player.language).hp = before - damage
+        actual = before - target["hp"]
+        self.apply_drain(actual, 0.2, vitality_type(target["monster"]), allow_shield=False)
+        return log + "\n" + t(self.player.language, "combat.blood_demon_attack", "👿 血契惡魔追擊前排，造成 {damage} 點傷害（血盾 -{fuel}）。", damage=actual, fuel=fuel)
 
 
 
@@ -535,6 +655,10 @@ class TRPGCombat:
 
         before_status_hp = self.player.current_hp
         log, can_act = process_turn_start(self.player, self.cog.status_effects)
+        raw_status_damage = max(0, before_status_hp - self.player.current_hp)
+        if raw_status_damage:
+            self.player.current_hp = before_status_hp
+            self.apply_player_damage(raw_status_damage)
         combo_log = self._reset_combo_after_damage(before_status_hp)
         if combo_log:
             log = f"{log}\n{combo_log}" if log else combo_log
@@ -576,6 +700,11 @@ class TRPGCombat:
                 for k in ("atk_mult", "def_mult", "mdef_mult", "magic_mult", "spd_mult", "turns"):
                     buffs.pop(k, None)
                 parts.append(t(lang, "combat.buff_expired", "💨 你的強化效果消退了。"))
+        if buffs.get("blood_feast_turns", 0) > 0:
+            buffs["blood_feast_turns"] -= 1
+            if buffs["blood_feast_turns"] <= 0:
+                for key in ("blood_feast_turns", "blood_feast_last_round", "lifesteal_bonus"):
+                    buffs.pop(key, None)
         coating = buffs.get("weapon_coating")
         if isinstance(coating, dict) and coating.get("turns", 0) > 0:
             coating["turns"] -= 1
@@ -647,6 +776,9 @@ class TRPGCombat:
         from trpg.status import process_monster_status
 
         self.player_ap = 0
+        log = self._demon_round_action(log)
+        if self._all_monsters_dead():
+            return log + self._process_victory()
         skipped_rounds = 0
         while skipped_rounds < 10 and self.player.current_hp > 0:
             for slot in list(self.view.monster_slots):
@@ -751,7 +883,9 @@ class TRPGCombat:
         log += "\n" + t(self.player.language, "combat.dodge_stance", "💨 你全神貫注地盯著敵人，準備進行閃避！")
         return self.advance_time(log)
     
-    def player_attack(self) -> str:
+    def player_attack(self, target_slot: dict | None = None) -> str:
+        if target_slot is not None and target_slot not in self.legal_target_slots("front"):
+            return t(self.player.language, "combat.skill_stale_target", "❌ The selected target is no longer valid. Choose again.")
         dot_log, can_act = self._player_turn_start()
         if self.player.current_hp <= 0: return dot_log
         log = f"{dot_log}\n" if dot_log else ""
@@ -968,17 +1102,10 @@ class TRPGCombat:
         return record_successful_skill_use(self.player, skill_id, skill_name, lang)
 
     def _resolve_skill_targets(self, target_type: str) -> list:
+        legal = self.legal_target_slots(target_type)
+        return legal if target_type == "all" else legal[:1]
 
-        alive = [s for s in self.view.monster_slots if s["hp"] > 0]
-        if not alive:
-            return []
-        if target_type == "all":
-            return alive
-        if target_type == "back":
-            return [alive[1]] if len(alive) > 1 else alive[:1]
-        return alive[:1]  # "front"（預設）：永遠只打最前面那一個
-
-    def use_skill(self, skill_id: str) -> str:
+    def use_skill(self, skill_id: str, target_slot: dict | None = None) -> str:
         lang = self.player.language
         skill = self.cog.skills.get(skill_id)
         if not skill: return t(lang, "combat.skill_unknown", "❌ 未知的技能。")
@@ -986,6 +1113,10 @@ class TRPGCombat:
         if skill_id not in getattr(self.player, "equipped_skills", []): return t(lang, "combat.skill_not_equipped", "❌ 技能未裝備，無法使用。")
 
         skill_name = tf(skill, "name", lang)
+
+        target_type = skill.get("target_type", "front")
+        if target_slot is not None and target_type != "all" and target_slot not in self.legal_target_slots(target_type):
+            return t(lang, "combat.skill_stale_target", "❌ The selected target is no longer valid. Choose again.")
 
         req_lv = skill.get("req_level", 1)
         if self.player.level < req_lv:
@@ -1012,14 +1143,15 @@ class TRPGCombat:
 
         mp_cost = int(skill.get("mp_cost", 0) * _cost_mult)
         hp_cost_pct = skill.get("hp_cost_percent", 0.0) * _cost_mult
-        actual_hp_cost = int(self.player.max_hp * hp_cost_pct)
+        base_hp_cost = int(self.player.max_hp * hp_cost_pct)
+        actual_hp_cost = effective_hp_cost(self.player, base_hp_cost)
         combo_cost = int(skill.get("combo_cost", 0) or 0)
         ap_cost = max(1, int(skill.get("ap_cost", 1) or 1))
 
         if mp_cost > 0 and self.player.current_mp < mp_cost:
             return t(lang, "combat.skill_mp_insufficient", "❌ MP 不足！需要 {cost} 點，目前只有 {have} 點。", cost=mp_cost, have=self.player.current_mp)
         if actual_hp_cost > 0:
-            if self.player.current_hp <= actual_hp_cost:
+            if not can_pay_hp_cost(self.player.current_hp, actual_hp_cost):
                 return t(lang, "combat.skill_hp_insufficient", "❌ HP 不足！【{skill}】需要獻祭 {cost} 點生命，你會把自己抽乾的！", skill=skill_name, cost=actual_hp_cost)
         if combo_cost > int((getattr(self.player, "combat_buffs", None) or {}).get("combo_stacks", 0)):
             return t(lang, "combat.skill_combo_insufficient", "❌ 【{skill}】需要 {cost} 層連擊。", skill=skill_name, cost=combo_cost)
@@ -1045,11 +1177,13 @@ class TRPGCombat:
         if mp_cost > 0: self.player.current_mp -= mp_cost
         if actual_hp_cost > 0:
             self.player.current_hp -= actual_hp_cost
+            if base_hp_cost > 0:
+                self.player.combat_buffs.pop("blood_sacrifice_discount", None)
             log += t(lang, "combat.skill_hp_sacrifice", "🩸 你殘忍地獻祭了自己 {cost} 點生命值！\n", cost=actual_hp_cost)
             if core_active(self.player, "warlock"):
-                current_pact = min(5, int(self.player.combat_buffs.get("blood_pact_stacks", 0)))
-                self.player.combat_buffs["blood_pact_stacks"] = min(5, current_pact + 1)
-                log += t(lang, "combat.blood_pact_gained", "🩸 血契累積至 {stacks}/5。\\n", stacks=self.player.combat_buffs["blood_pact_stacks"])
+                current_pact = min(3, int(self.player.combat_buffs.get("blood_pact_stacks", 0)))
+                self.player.combat_buffs["blood_pact_stacks"] = min(3, current_pact + 1)
+                log += t(lang, "combat.blood_pact_gained", "🩸 血契累積至 {stacks}/3。\\n", stacks=self.player.combat_buffs["blood_pact_stacks"])
 
         skill_for_cast = dict(skill)
         # 套用技能等級的效果加成到 skill_for_cast
@@ -1072,8 +1206,21 @@ class TRPGCombat:
             if spent >= 5:
                 skill_for_cast["crit_bonus"] = 1.0
             log += t(lang, "combat.combo_spent", "🔄 消耗 {stacks} 層連擊強化【{skill}】。\n", stacks=spent, skill=skill_name)
+        pact_to_consume = 0
+        if skill.get("consume_blood_pact") and core_active(self.player, "warlock"):
+            pact_to_consume = min(3, int(self.player.combat_buffs.get("blood_pact_stacks", 0)))
+            if pact_to_consume:
+                skill_for_cast["power_multiplier"] = float(skill_for_cast.get("power_multiplier", 1.0)) + 0.20 * pact_to_consume
+                skill_for_cast["def_pierce"] = min(1.0, float(skill_for_cast.get("def_pierce", 0.0)) + 0.08 * pact_to_consume)
 
         if skill_type == "support":
+            if skill.get("summon") == "blood_demon":
+                self.blood_shield = min(self.player.max_hp, self.blood_shield + actual_hp_cost)
+                self.demon_skill_level = _p_skill_level
+                self._demon_last_round = self.round_number
+            if skill.get("blood_awakening"):
+                cap = int(self.player.max_hp * float(skill.get("overflow_discount_cap_max_hp", 0.0)))
+                self.player.combat_buffs["blood_awakening_discount_cap"] = max(0, cap)
             log += self._apply_support_skill(skill_for_cast, skill_id, skill_name, lang)
         elif skill_type == "flee":
             flee_chance = skill.get("flee_chance", 0.85)
@@ -1088,25 +1235,53 @@ class TRPGCombat:
 
         else:
             # 👇 target_type 決定打誰：front=只打前排／back=打後排／all=打全體，預設 front
-            target_type = skill.get("target_type", "front")
-            target_slots = self._resolve_skill_targets(target_type)
+            legal_slots = self.legal_target_slots(target_type)
+            if target_slot is not None and target_type != "all":
+                target_slots = [target_slot] if target_slot in legal_slots else []
+            else:
+                target_slots = legal_slots if target_type == "all" else legal_slots[:1]
 
             if not target_slots:
                 log += t(lang, "combat.skill_no_target", "❌ 沒有可以攻擊的目標。")
             else:
                 caster = PlayerCombatant(self.player, self.cog.items, self.cog.status_effects, self.cog.skills)
                 targets = [MonsterCombatant(slot, self.cog.status_effects, self.player.language) for slot in target_slots]
+                target_hps_before = [slot.get("hp", 0) for slot in target_slots]
                 skill_log, total_damage = execute_skill(caster, targets, skill_for_cast, self.cog.status_effects, hp_cost=actual_hp_cost)
                 log += skill_log
-                pact_stacks = min(5, int(self.player.combat_buffs.get("blood_pact_stacks", 0))) if core_active(self.player, "warlock") else 0
+                if pact_to_consume:
+                    self.player.combat_buffs["blood_pact_stacks"] = max(0, int(self.player.combat_buffs.get("blood_pact_stacks", 0)) - pact_to_consume)
+                if skill.get("apply_blood_mark") and target_slots:
+                    target_slots[0].setdefault("status", {})["blood_mark"] = {"turns": int(skill.get("blood_mark_turns", 3))}
+                pact_stacks = min(3, int(self.player.combat_buffs.get("blood_pact_stacks", 0))) if core_active(self.player, "warlock") else 0
                 is_warlock_skill = bool((skill.get("req_points") or {}).get("warlock"))
-                lifesteal = float(skill.get("lifesteal", 0.0)) + (pact_stacks * 0.06 if is_warlock_skill else 0.0)
+                lifesteal = float(skill.get("lifesteal", 0.0)) + (pact_stacks * 0.08 if is_warlock_skill else 0.0)
+                if target_slots and target_slots[0].get("status", {}).get("blood_mark") and skill.get("marked_lifesteal"):
+                    lifesteal = float(skill["marked_lifesteal"])
+                    target_slots[0]["status"].pop("blood_mark", None)
+                    marked_cd_reduction = int(skill.get("marked_cd_reduction", 0))
+                    if marked_cd_reduction and self.skill_cds.get("blood_strike", 0):
+                        self.skill_cds["blood_strike"] = max(0, self.skill_cds["blood_strike"] - marked_cd_reduction)
+                lifesteal += float(self.player.combat_buffs.get("lifesteal_bonus", 0.0) or 0.0)
                 if total_damage > 0 and lifesteal > 0:
-                    before_hp = self.player.current_hp
-                    self.player.current_hp = min(self.player.max_hp, self.player.current_hp + max(1, int(total_damage * lifesteal)))
-                    gained = self.player.current_hp - before_hp
-                    if gained > 0:
-                        log += "\n" + t(lang, "combat.skill_lifesteal", "🩸 【{skill}】汲取了 {heal} HP！", skill=skill_name, heal=gained)
+                    drain_cap = int(self.player.max_hp * float(skill.get("drain_cap_max_hp", 1.0)))
+                    remaining = max(0, drain_cap)
+                    gained = gained_mp = shield = 0
+                    for slot, before_hp in zip(target_slots, target_hps_before):
+                        actual_damage = max(0, before_hp - slot.get("hp", 0))
+                        raw_recovery = min(remaining, max(0, int(actual_damage * lifesteal)))
+                        if raw_recovery <= 0:
+                            continue
+                        hp_part, mp_part, shield_part = self.apply_drain(
+                            raw_recovery, 1.0, vitality_type(slot["monster"])
+                        )
+                        gained += hp_part
+                        gained_mp += mp_part
+                        shield += shield_part
+                        remaining -= raw_recovery
+                    if gained or gained_mp or shield:
+                        log += "\n" + t(lang, "combat.skill_drain", "🩸 【{skill}】汲取 HP {heal}、MP {mp}、血盾 {shield}！", skill=skill_name, heal=gained, mp=gained_mp, shield=shield)
+                        log = self._apply_blood_feast_bonus(target_slots[0], gained + gained_mp + shield, log)
                 if total_damage > 0 and skill.get("grants_combo"):
                     combo_log = self._gain_combo()
                     if combo_log:
@@ -1116,6 +1291,7 @@ class TRPGCombat:
         log += self._record_skill_usage(skill_id, skill_name, lang)
 
         if self._all_monsters_dead():
+            self.player_ap = max(0, self.player_ap - ap_cost)
             return log + self._process_victory()
 
         return self.advance_time(log, ap_cost=ap_cost)
@@ -1154,9 +1330,12 @@ class TRPGCombat:
         # 攻防速強化（buff）：{"atk_mult":..,"def_mult":..,"spd_mult":..,"turns":..}
         buff = skill.get("buff")
         if buff:
-            for k in ("atk_mult", "def_mult", "mdef_mult", "magic_mult", "spd_mult"):
+            for k in ("atk_mult", "def_mult", "mdef_mult", "magic_mult", "spd_mult", "lifesteal_bonus"):
                 if buff.get(k):
                     p.combat_buffs[k] = buff[k]
+            if skill.get("blood_feast"):
+                p.combat_buffs["blood_feast_turns"] = int(buff.get("turns", 3))
+                p.combat_buffs.pop("blood_feast_last_round", None)
             p.combat_buffs["turns"] = max(p.combat_buffs.get("turns", 0), buff.get("turns", 3))
             parts.append(t(lang, "combat.skill_buff", "💪 【{skill}】強化了你的戰鬥能力！（{turns}回合）", skill=skill_name, turns=buff.get("turns", 3)))
 

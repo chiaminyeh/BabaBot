@@ -8,7 +8,7 @@ from datetime import datetime
 
 from trpg.i18n import t, tf
 from trpg.inns import INN_EVENT_CHANCE, INN_ROOMS, apply_inn_room, area_inn_config, inn_room_cost
-from trpg.combat import TRPGCombat, exp_to_next_level, get_player_atk, get_player_def, get_player_magic, get_player_spd
+from trpg.combat import TRPGCombat, exp_to_next_level, get_player_atk, get_player_def, get_player_magic, get_player_spd, vitality_icon
 from trpg.status import format_status_list, clear_all_status, get_daily_jester_immunity
 from trpg.monster_pool import pick_random_monster
 from trpg.quest_popup import process_quest_popups, accept_quest
@@ -72,6 +72,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.in_battle = False
         self.monster_slots = []  # [{"monster": {...}, "hp": int, "av": int, "status": {}}, ...]
         self.combat = TRPGCombat(self)
+        self.pending_target_action = None
         # 教學戰狀態（只在記憶體中，不落存檔）：是否正在教學戰、目前示範到第幾個提示。
         self.in_tutorial_battle = False
         self.tutorial_step = 0
@@ -111,6 +112,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.combat.skill_cds = pending_battle.get("skill_cds", {})
             self.combat.is_defending = pending_battle.get("is_defending", False)
             self.combat.is_dodging = pending_battle.get("is_dodging", False)
+            self.combat.load_blood_runtime_state(pending_battle.get("blood_runtime"))
         else:
             self.in_battle = False
             self.monster_slots = []
@@ -361,6 +363,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         ("stat_add_", {"m": "handle_stat_add", "arg": "suffix"}),
         ("craft_", {"m": "handle_craft_execute", "arg": "suffix"}),
         ("btn_upgrade_skill_", {"m": "handle_upgrade_skill_action", "arg": "suffix", "i": True}),
+        ("battle_target_", {"m": "handle_battle_target", "arg": "suffix"}),
         ("skill_", {"m": "handle_use_skill", "arg": "suffix"}),
         ("use_item_", {"m": "handle_use_item", "arg": "full"}),
     ]
@@ -381,7 +384,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "b_atk", "b_def", "b_dod", "b_fle", "b_end", "b_ski", "b_itm",
         "btn_back_battle", "btn_status", "b_sta", "btn_combat_history",
     }
-    _BATTLE_ALLOWED_PREFIXES = ("skill_", "use_item_")
+    _BATTLE_ALLOWED_PREFIXES = ("skill_", "use_item_", "battle_target_")
 
     def _blocked_during_battle(self, custom_id: str) -> bool:
         if not getattr(self, "in_battle", False) or not getattr(self, "monster_slots", None):
@@ -485,6 +488,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 "skill_cds": self.combat.skill_cds,
                 "is_defending": self.combat.is_defending,
                 "is_dodging": self.combat.is_dodging,
+                "blood_runtime": self.combat.blood_runtime_state(),
             }
         else:
             real_player.active_battle = None
@@ -1500,7 +1504,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                     row_tag = t(lang, "battle.row_back", "　 後排")
                 else:
                     row_tag = t(lang, "battle.row_defeated", "💀 已擊倒")
-                monster_name = tf(m, "name", lang)
+                drain_icon = vitality_icon(m)
+                mark_icon = "🩸" if slot.get("status", {}).get("blood_mark") else ""
+                monster_name = f"{mark_icon}{drain_icon} {tf(m, 'name', lang)}"
                 # One marker per enemy AP. A telegraphed large move replaces the first marker with ⚠️.
                 markers = ""
                 if slot["hp"] > 0:
@@ -1573,6 +1579,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
 
 
     async def handle_battle_attack(self):
+        if BattleLayout.build_target_menu(self, "attack", None, "front"):
+            return
         self.log_message = self.combat.player_attack()
         # 確保砍完重繪戰鬥按鈕
         if self.in_battle:
@@ -1597,9 +1605,34 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 self.build_main_menu()
             return
 
+        skill = self.cog.skills.get(skill_id, {})
+        target_type = skill.get("target_type", "front")
+        if target_type != "all" and BattleLayout.build_target_menu(self, "skill", skill_id, target_type):
+            return
         self.log_message = self.combat.use_skill(skill_id)
 
         # 確保施放完技能後重繪戰鬥按鈕
+        if self.in_battle:
+            self.build_battle_menu()
+
+    async def handle_battle_target(self, payload: str):
+        pending = self.pending_target_action
+        self.pending_target_action = None
+        try:
+            nonce_text, index_text = payload.rsplit("_", 1)
+            nonce, index = int(nonce_text), int(index_text)
+        except (AttributeError, TypeError, ValueError):
+            nonce, index = -1, -1
+        stale = (not pending or pending.get("nonce") != nonce
+                 or pending.get("monster_slots") is not self.monster_slots
+                 or index < 0 or index >= len(pending.get("slots", [])))
+        slot = None if stale else pending["slots"][index]
+        if stale or slot not in self.combat.legal_target_slots(pending["target_type"]):
+            self.log_message = t(self.player.language, "combat.skill_stale_target", "❌ The selected target is no longer valid. Choose again.")
+        elif pending["kind"] == "skill":
+            self.log_message = self.combat.use_skill(pending["id"], target_slot=slot)
+        else:
+            self.log_message = self.combat.player_attack(target_slot=slot)
         if self.in_battle:
             self.build_battle_menu()
 

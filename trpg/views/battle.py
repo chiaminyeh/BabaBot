@@ -1,10 +1,39 @@
 import discord
 from trpg.i18n import t, tf
 from trpg.view_shared import item_emoji
+from trpg.combat import effective_hp_cost, vitality_icon
+from trpg.skill_progression import get_skill_cost_multiplier
 
 class BattleLayout:
     @staticmethod
+    def build_target_menu(view, action_kind, action_id, target_type):
+        legal = view.combat.legal_target_slots(target_type)
+        if len(legal) <= 1:
+            return False
+        view.clear_items()
+        nonce = int(getattr(view, "target_action_nonce", 0)) + 1
+        view.target_action_nonce = nonce
+        view.pending_target_action = {"kind": action_kind, "id": action_id,
+                                      "target_type": target_type, "slots": list(legal),
+                                      "monster_slots": view.monster_slots, "nonce": nonce}
+        options = []
+        all_alive = view.combat.legal_target_slots("all")
+        for index, slot in enumerate(legal):
+            monster = slot["monster"]
+            mark = "🩸" if slot.get("status", {}).get("blood_mark") else ""
+            row = t(view.player.language, "battle.row_front", "🛡️ 前排") if all_alive.index(slot) == 0 else t(view.player.language, "battle.row_back", "　 後排")
+            hp_pct = int(max(0, slot["hp"]) * 100 / max(1, monster["max_hp"]))
+            options.append((f"{mark}{vitality_icon(monster)} {tf(monster, 'name', view.player.language)}",
+                            f"battle_target_{nonce}_{index}", f"HP {hp_pct}% · {row}", None))
+        view.add_action_select(t(view.player.language, "battle.choose_target", "Choose a target"),
+                               options, row=0, custom_id="sel_battle_target")
+        view.add_action_button(label=t(view.player.language, "battle.btn_back_to_battle", "返回戰鬥"),
+                               style=discord.ButtonStyle.secondary, custom_id="btn_back_battle", emoji="🔙")
+        return True
+
+    @staticmethod
     def build_battle_menu(view):
+        view.pending_target_action = None
         view.clear_items()
         view.in_battle = True
         lang = view.player.language
@@ -59,7 +88,13 @@ class BattleLayout:
             if skill.get("mp_cost"):
                 cost_texts.append(f"MP:{skill['mp_cost']}")
             if skill.get("hp_cost_percent"):
-                cost_texts.append(f"HP:{int(view.player.max_hp * skill['hp_cost_percent'])}")
+                skill_level = (getattr(view.player, "skill_levels", None) or {}).get(skill_id, 1)
+                cost_mult = get_skill_cost_multiplier(skill_level)
+                base_hp_cost = int(view.player.max_hp * skill["hp_cost_percent"] * cost_mult)
+                hp_cost = effective_hp_cost(view.player, base_hp_cost)
+                cost_texts.append(f"HP:{hp_cost}")
+                projected = view.player.current_hp - hp_cost
+                cost_texts.append(t(lang, "battle.hp_after_cast", "施放後:{hp}", hp=max(0, projected)))
             if skill.get("ap_cost", 1) > 1:
                 cost_texts.append(f"AP:{skill['ap_cost']}")
 

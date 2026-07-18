@@ -221,8 +221,7 @@
         },
         "boss": "bee_queen",
         "boss_minions": [
-            "worker_bee",
-            "soldier_bee"
+            "worker_bee"
         ],
         "area_name_en": "Deep Forest",
         "requires_boss": "area_05forest",
