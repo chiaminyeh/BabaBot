@@ -1870,10 +1870,11 @@
         ],
         "phase2": {
             "hp_below": 0.5,
-            "ai": "berserk_low_hp",
+            "ai": "none",
+            "atk_mult": 1.4,
             "name_suffix": "（蜂群暴走）",
             "heal_pct": 0.15,
-            "transform_text": "劇毒蜂后散發出濃烈的毒霾，瘋狂地振翅衝來！",
+            "transform_text": "劇毒蜂后散發出濃烈毒霾，基礎攻擊力提升至 70，瘋狂地振翅衝來！",
             "active_skills": [
                 {
                     "id": "venom_dive",
@@ -1891,7 +1892,7 @@
                 }
             ],
             "name_suffix_en": "(Swarm Frenzy)",
-            "transform_text_en": "The Venomous Bee Queen exudes a thick cloud of poisonous miasma, charging in a frenzied flurry of wings!"
+            "transform_text_en": "The Venomous Bee Queen releases a thick poisonous miasma; its base ATK rises to 70 as it charges in a frenzy!"
         },
         "name_en": "Venomous Bee Queen",
         "summon_ids": [

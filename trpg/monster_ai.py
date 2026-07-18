@@ -856,6 +856,8 @@ def _maybe_transform_phase2(combat, slot: dict, log: str) -> str:
         return log
 
     slot["phase2_triggered"] = True
+    if phase2.get("atk_mult"):
+        monster["atk"] = max(1, int(monster.get("atk", 1) * float(phase2["atk_mult"])))
     if phase2.get("ai"):
         monster["ai"] = phase2["ai"]
     if "active_skills" in phase2:

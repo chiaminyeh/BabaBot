@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from scripts.simulate_bee_queen_balance import make_player, run_benchmark, BenchCog
-from trpg.monster_ai import _pick_active_skill, ai_support_healer
+from trpg.monster_ai import _maybe_transform_phase2, _pick_active_skill, ai_support_healer
 from trpg.stats import meets_item_stat_requirements
 
 ROOT = Path(__file__).parents[1]
@@ -68,8 +68,18 @@ class BeeQueenBalanceTests(unittest.TestCase):
         self.assertEqual(monsters["bee_queen"]["status_chance"], 0.08)
         self.assertEqual(monsters["worker_bee"]["heal_self_max_hp_cap_pct"], 0.25)
         self.assertEqual(monsters["bee_queen"]["phase2"]["heal_pct"], 0.15)
+        self.assertEqual(monsters["bee_queen"]["phase2"]["atk_mult"], 1.4)
         self.assertEqual(monsters["bee_queen"]["active_skills"][0]["max_uses"], 1)
         self.assertEqual(monsters["bee_queen"]["phase2"]["active_skills"][0]["max_uses"], 2)
+
+    def test_bee_queen_phase_two_raises_visible_base_attack(self):
+        monsters = json.loads((ROOT / "trpg_data" / "monsters.json").read_text(encoding="utf-8"))
+        queen = monsters["bee_queen"]
+        slot = {"monster": queen, "hp": queen["max_hp"] // 2, "status": {}}
+        combat = SimpleNamespace(player=SimpleNamespace(language="zh"))
+        _maybe_transform_phase2(combat, slot, "")
+        self.assertEqual(queen["atk"], 70)
+        self.assertEqual(queen["ai"], "none")
 
     def test_active_skill_selection_does_not_consume_until_execution(self):
         skill = {"id": "summon", "trigger": {"type": "interval", "value": 1}, "max_uses": 2}
