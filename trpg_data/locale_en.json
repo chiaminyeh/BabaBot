@@ -849,7 +849,8 @@
     "battle.damage_item_battle_only": "❌ This talisman can only be used in battle.",
     "combat.blood_demon_attack": "👿 The Blood-Pact Demon strikes the legal front for {damage} damage (blood shield -{fuel}).",
     "combat.skill_drain": "🩸 {skill} drains HP {heal}, MP {mp}, and blood shield {shield}!",
-    "battle.hp_after_cast": "After cast:{hp}",
+    "battle.hp_after_cast": "After cast ({hp}/{max_hp})",
+    "battle.blood_demon_status": "👿 Blood-Pact Demon | ⚔️ ATK: `{attack}` | 🩸 Shield: `{shield}/{max_shield}`",
     "battle.choose_target": "Choose a target",
     "combat.skill_stale_target": "❌ The selected target is no longer valid. Choose again.",
     "combat.blood_feast_bonus": "🌑 Blood Feast deals {damage} bonus dark damage!"

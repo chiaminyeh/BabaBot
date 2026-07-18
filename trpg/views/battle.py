@@ -1,7 +1,7 @@
 import discord
 from trpg.i18n import t, tf
 from trpg.view_shared import item_emoji
-from trpg.combat import effective_hp_cost, vitality_icon
+from trpg.combat import can_pay_hp_cost, effective_hp_cost, vitality_icon
 from trpg.skill_progression import get_skill_cost_multiplier
 
 class BattleLayout:
@@ -85,6 +85,7 @@ class BattleLayout:
             cd_left = view.combat.skill_cds.get(skill_id, 0)
 
             cost_texts = []
+            hp_cost = 0
             if skill.get("mp_cost"):
                 cost_texts.append(f"MP:{skill['mp_cost']}")
             if skill.get("hp_cost_percent"):
@@ -94,7 +95,7 @@ class BattleLayout:
                 hp_cost = effective_hp_cost(view.player, base_hp_cost)
                 cost_texts.append(f"HP:{hp_cost}")
                 projected = view.player.current_hp - hp_cost
-                cost_texts.append(t(lang, "battle.hp_after_cast", "施放後:{hp}", hp=max(0, projected)))
+                cost_texts.append(t(lang, "battle.hp_after_cast", "施放後（{hp}/{max_hp}）", hp=max(0, projected), max_hp=view.player.max_hp))
             if skill.get("ap_cost", 1) > 1:
                 cost_texts.append(f"AP:{skill['ap_cost']}")
 
@@ -102,10 +103,8 @@ class BattleLayout:
             cd_text = f" [CD:{cd_left}]" if cd_left > 0 else ""
 
             mp_cost = skill.get("mp_cost", 0)
-            hp_cost_pct = skill.get("hp_cost_percent", 0.0)
-            actual_hp_cost = int(view.player.max_hp * hp_cost_pct)
             cant_afford = skill.get("ap_cost", 1) > view.combat.player_ap or (mp_cost > 0 and view.player.current_mp < mp_cost) or (
-                actual_hp_cost > 0 and view.player.current_hp <= actual_hp_cost
+                hp_cost > 0 and not can_pay_hp_cost(view.player.current_hp, hp_cost)
             )
             disabled = cd_left > 0 or cant_afford
 

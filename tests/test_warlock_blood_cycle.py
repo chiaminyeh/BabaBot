@@ -4,7 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from trpg.combat import TRPGCombat, can_pay_hp_cost, effective_hp_cost, vitality_icon
+from trpg.combat import TRPGCombat, can_pay_hp_cost, demon_attack_power, effective_hp_cost, format_blood_demon_status, vitality_icon
 from trpg.monster_ai import _execute_cast_skill, ai_kamikaze
 from trpg.player import TRPGPlayer
 from trpg.views.battle import BattleLayout
@@ -90,6 +90,29 @@ def make_combat(monsters=None, hp=500, max_hp=500, mp=0, max_mp=200, speed=100):
 
 
 class WarlockBloodCycleTests(unittest.TestCase):
+    def test_skill_menu_projects_hp_as_current_over_max(self):
+        combat, source_view, player = make_combat(hp=139, max_hp=195)
+        player.equipped_skills = ["hypnotic_gaze"]
+        labels = []
+        ui = SimpleNamespace(
+            player=player, cog=source_view.cog, combat=combat, in_battle=True,
+            clear_items=lambda: None,
+            add_action_button=lambda **kwargs: labels.append(kwargs["label"]),
+            log_message="",
+        )
+        BattleLayout.handle_skill_menu(ui)
+        self.assertTrue(any("（100/195）" in label for label in labels), labels)
+
+    def test_blood_demon_ui_shows_shared_attack_formula_and_shield(self):
+        combat, _view, player = make_combat(max_hp=195)
+        combat.blood_shield = 77
+        combat.demon_skill_level = 3
+        attack = demon_attack_power(combat)
+        status = format_blood_demon_status(combat, "zh")
+        self.assertGreater(attack, 0)
+        self.assertIn(f"ATK: `{attack}`", status)
+        self.assertIn("77/195", status)
+
     def test_hp_cost_allows_exactly_one_hp_but_never_zero(self):
         self.assertTrue(can_pay_hp_cost(101, 100))
         self.assertFalse(can_pay_hp_cost(100, 100))

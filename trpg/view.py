@@ -8,7 +8,7 @@ from datetime import datetime
 
 from trpg.i18n import t, tf
 from trpg.inns import INN_EVENT_CHANCE, INN_ROOMS, apply_inn_room, area_inn_config, inn_room_cost
-from trpg.combat import TRPGCombat, exp_to_next_level, get_player_atk, get_player_def, get_player_magic, get_player_spd, vitality_icon
+from trpg.combat import TRPGCombat, exp_to_next_level, format_blood_demon_status, get_player_atk, get_player_def, get_player_magic, get_player_spd, vitality_icon
 from trpg.status import format_status_list, clear_all_status, get_daily_jester_immunity
 from trpg.monster_pool import pick_random_monster
 from trpg.quest_popup import process_quest_popups, accept_quest
@@ -1463,6 +1463,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             mods_str = self._format_combat_mods(p)
             if mods_str:
                 player_desc += t(lang, "battle.mods_line", "🔺 增益/減益：{mods}", mods=mods_str) + "\n"
+            demon_status = format_blood_demon_status(self.combat, lang)
+            if demon_status:
+                player_desc += demon_status + "\n"
             player_desc += f"{status_line}{immune_str}"
         else:
             if unspent > 0:

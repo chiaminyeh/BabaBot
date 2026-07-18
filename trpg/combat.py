@@ -66,6 +66,29 @@ def effective_hp_cost(player, base_cost: int) -> int:
     return max(1, base_cost - discount)
 
 
+def demon_attack_power(combat) -> int:
+    """Single source of truth for the Blood-Pact Demon's displayed and dealt damage."""
+    base = (
+        20
+        + 0.55 * get_player_magic(combat.player, combat.cog.items, combat.cog.status_effects)
+        + 0.25 * get_player_atk(combat.player, combat.cog.items, combat.cog.status_effects)
+    )
+    return max(1, int(base * get_skill_effect_multiplier(combat.demon_skill_level)))
+
+
+def format_blood_demon_status(combat, lang: str) -> str:
+    if not combat.demon_active:
+        return ""
+    return t(
+        lang,
+        "battle.blood_demon_status",
+        "👿 血契惡魔｜⚔️ ATK: `{attack}`｜🩸 血盾: `{shield}/{max_shield}`",
+        attack=demon_attack_power(combat),
+        shield=max(0, int(combat.blood_shield)),
+        max_shield=max(1, int(combat.player.max_hp)),
+    )
+
+
 def exp_to_next_level(level: int) -> int:
     return int(XP_CURVE_BASE * (level ** XP_CURVE_EXP))
 
@@ -517,10 +540,10 @@ class TRPGCombat:
         self.blood_shield = max(0, self.blood_shield - fuel)
         self._demon_last_round = self.round_number
         target = targets[0]
-        base = 20 + 0.55 * get_player_magic(self.player, self.cog.items, self.cog.status_effects) + 0.25 * get_player_atk(self.player, self.cog.items, self.cog.status_effects)
+        base = demon_attack_power(self)
         if target.get("status", {}).get("blood_mark"):
             base *= 1.5
-        damage = max(1, int(base * get_skill_effect_multiplier(self.demon_skill_level)))
+        damage = max(1, int(base))
         before = target["hp"]
         MonsterCombatant(target, self.cog.status_effects, self.player.language).hp = before - damage
         actual = before - target["hp"]

@@ -73,7 +73,8 @@
     "battle.damage_item_battle_only": "❌ 這個符咒只能在戰鬥中使用。",
     "combat.blood_demon_attack": "👿 血契惡魔追擊前排，造成 {damage} 點傷害（血盾 -{fuel}）。",
     "combat.skill_drain": "🩸 【{skill}】汲取 HP {heal}、MP {mp}、血盾 {shield}！",
-    "battle.hp_after_cast": "施放後:{hp}",
+    "battle.hp_after_cast": "施放後（{hp}/{max_hp}）",
+    "battle.blood_demon_status": "👿 血契惡魔｜⚔️ ATK: `{attack}`｜🩸 血盾: `{shield}/{max_shield}`",
     "battle.choose_target": "選擇目標",
     "combat.skill_stale_target": "❌ 選擇的目標已失效，請重新選擇。",
     "combat.blood_feast_bonus": "🌑 血宴追加 {damage} 點暗傷！"
