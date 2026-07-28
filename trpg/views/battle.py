@@ -85,12 +85,13 @@ class BattleLayout:
             cd_left = view.combat.skill_cds.get(skill_id, 0)
 
             cost_texts = []
+            skill_level = (getattr(view.player, "skill_levels", None) or {}).get(skill_id, 1)
+            cost_mult = get_skill_cost_multiplier(skill_level)
+            mp_cost = int(skill.get("mp_cost", 0) * cost_mult)
             hp_cost = 0
-            if skill.get("mp_cost"):
-                cost_texts.append(f"MP:{skill['mp_cost']}")
+            if mp_cost:
+                cost_texts.append(f"MP:{mp_cost}")
             if skill.get("hp_cost_percent"):
-                skill_level = (getattr(view.player, "skill_levels", None) or {}).get(skill_id, 1)
-                cost_mult = get_skill_cost_multiplier(skill_level)
                 base_hp_cost = int(view.player.max_hp * skill["hp_cost_percent"] * cost_mult)
                 hp_cost = effective_hp_cost(view.player, base_hp_cost)
                 cost_texts.append(f"HP:{hp_cost}")
@@ -102,7 +103,6 @@ class BattleLayout:
             cost_str = " (" + ", ".join(cost_texts) + ")" if cost_texts else ""
             cd_text = f" [CD:{cd_left}]" if cd_left > 0 else ""
 
-            mp_cost = skill.get("mp_cost", 0)
             cant_afford = skill.get("ap_cost", 1) > view.combat.player_ap or (mp_cost > 0 and view.player.current_mp < mp_cost) or (
                 hp_cost > 0 and not can_pay_hp_cost(view.player.current_hp, hp_cost)
             )

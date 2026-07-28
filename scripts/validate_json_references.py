@@ -65,10 +65,12 @@ def main() -> int:
     events = load_json("events.json")
     quests = load_json("quests.json")
     shop = load_json("shop.json")
+    skills = load_json("skills.json")
 
     monster_ids = set(monsters)
     item_ids = set(items)
     event_ids = set(events)
+    skill_ids = set(skills)
 
     for area_id, area in areas.items():
         for monster_id in as_ids(area.get("monsters")):
@@ -96,9 +98,16 @@ def main() -> int:
                     issues.append(f"areas.{area_id}.subareas.{sub_id}.events references missing event: {event_id}")
 
     for monster_id, monster in monsters.items():
-        for item_id in as_ids(monster.get("drops")):
+        drops = monster.get("drops") or {}
+        for item_id in as_ids(drops):
             if item_id not in item_ids:
                 issues.append(f"monsters.{monster_id}.drops references missing item: {item_id}")
+        if isinstance(drops, dict):
+            for item_id, rate in drops.items():
+                if not isinstance(rate, (int, float)) or isinstance(rate, bool) or rate < 0:
+                    issues.append(f"monsters.{monster_id}.drops.{item_id} has invalid rate/quantity: {rate!r}")
+                elif rate > 1 and not float(rate).is_integer():
+                    issues.append(f"monsters.{monster_id}.drops.{item_id} quantity must be an integer: {rate!r}")
 
     for obj in walk_dicts(shop):
         for key in ("item", "item_id", "id"):
@@ -109,6 +118,9 @@ def main() -> int:
                     issues.append(f"shop entry references missing item via {key}: {value}")
 
     for quest_id, quest in quests.items() if isinstance(quests, dict) else []:
+        for item_id in as_ids(quest.get("target_item")) + as_ids(quest.get("reward_items")):
+            if item_id not in item_ids:
+                issues.append(f"quests.{quest_id} references missing item: {item_id}")
         for obj in walk_dicts(quest):
             for key in ("item", "item_id", "required_item", "reward_item"):
                 value = obj.get(key)
@@ -118,6 +130,10 @@ def main() -> int:
                 value = obj.get(key)
                 if isinstance(value, str) and value not in monster_ids:
                     issues.append(f"quests.{quest_id} references missing monster via {key}: {value}")
+
+    for item_id, item in items.items():
+        if item.get("type") == "skill_scroll" and item.get("teaches") not in skill_ids:
+            issues.append(f"items.{item_id} teaches missing skill: {item.get('teaches')}")
 
     if issues:
         print(f"[JSON references] {len(issues)} issue(s) found:")

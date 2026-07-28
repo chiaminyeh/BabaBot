@@ -446,17 +446,6 @@
         "name_en": "Skill Scroll: Sunder Strike",
         "desc_en": "Study this to learn [Sunder Strike]."
     },
-    "scroll_battle_focus": {
-        "name": "技能卷軸：戰意昂揚",
-        "type": "skill_scroll",
-        "teaches": "battle_focus",
-        "price": 240,
-        "sell_price": 80,
-        "shop_weight": 18,
-        "desc": "研讀後可習得【戰意昂揚】",
-        "name_en": "Skill Scroll: Battle Focus",
-        "desc_en": "Study this to learn [Battle Focus]."
-    },
     "scroll_heal_light": {
         "name": "技能卷軸：初級治療",
         "type": "skill_scroll",

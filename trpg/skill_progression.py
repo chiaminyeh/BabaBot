@@ -83,8 +83,12 @@ def record_successful_skill_use(player, skill_id: str, skill_name: str, lang: st
     except (ValueError, TypeError):
         usage = 0
 
-    usage += 1
     threshold = get_proficiency_requirement(current_lv)
+    if usage >= threshold:
+        player.skill_usage[skill_id] = threshold
+        return ""
+
+    usage += 1
 
     if usage >= threshold:
         player.skill_usage[skill_id] = threshold
@@ -95,7 +99,7 @@ def record_successful_skill_use(player, skill_id: str, skill_name: str, lang: st
     player.skill_usage[skill_id] = usage
     return ""
 
-def validate_paid_upgrade(player, skill_data, skill_id: str) -> tuple[bool, str, int]:
+def validate_paid_upgrade(player, skill_data, skill_id: str, available_money: int | None = None) -> tuple[bool, str, int]:
     """
     驗證並計算升級。回傳 (是否允許, 錯誤訊息/空字串, 需要的金幣)。
     """
@@ -124,7 +128,7 @@ def validate_paid_upgrade(player, skill_data, skill_id: str) -> tuple[bool, str,
 
     cost = get_base_upgrade_cost(lv)
 
-    money = getattr(player, "money", 0) or 0
+    money = (getattr(player, "money", 0) or 0) if available_money is None else max(0, int(available_money))
     if money < cost:
         name = skill_data.get("name", {}).get(lang, skill_id) if isinstance(skill_data.get("name"), dict) else skill_data.get("name", skill_id)
         return False, t(lang, "upgrade.not_enough_gold",
@@ -133,11 +137,12 @@ def validate_paid_upgrade(player, skill_data, skill_id: str) -> tuple[bool, str,
 
     return True, "", cost
 
-def apply_paid_upgrade(player, skill_id: str, cost: int):
+def apply_paid_upgrade(player, skill_id: str, cost: int, *, charge_player_money: bool = True, record_spending: bool = True):
     """套用金幣升級，扣錢並升級。"""
-    if not hasattr(player, "money"):
-        player.money = 0
-    player.money -= cost
+    if charge_player_money:
+        if not hasattr(player, "money"):
+            player.money = 0
+        player.money -= cost
 
     if getattr(player, "skill_levels", None) is None or not isinstance(player.skill_levels, dict):
         player.skill_levels = {}
@@ -149,7 +154,7 @@ def apply_paid_upgrade(player, skill_id: str, cost: int):
     player.skill_usage[skill_id] = 0
 
     stats = getattr(player, "stats", None)
-    if isinstance(stats, dict):
+    if record_spending and isinstance(stats, dict):
         stats["money_spent"] = stats.get("money_spent", 0) + cost
 
 

@@ -5,6 +5,7 @@ from discord.ext import commands
 from discord import app_commands
 import json
 import os
+import asyncio
 
 from trpg.i18n import t
 from trpg.monster_pool import load_monster_pool
@@ -52,6 +53,7 @@ class TRPGCog(commands.Cog):
         # 舊面板——不然兩份面板的 active_battle 快照會共用同一個 monster_slots list
         # 物件，玩家能兩邊面板輪流點按鈕，等於一回合打兩次（見 start_trpg）。
         self.active_views = {}
+        self._player_mutation_locks = {}
         self.active_slots = {}
         self._dirty_player_keys = set()
         self._deleted_player_keys = set()
@@ -65,6 +67,15 @@ class TRPGCog(commands.Cog):
         if isinstance(val, (list, tuple)):
             return val[0]
         return 0
+
+    def player_mutation_lock(self, user_id):
+        """One lock per Discord user, shared by every View/Modal generation."""
+        uid = str(user_id)
+        lock = self._player_mutation_locks.get(uid)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._player_mutation_locks[uid] = lock
+        return lock
 
     def adjust_bank(self, user_id, amount: int):
         uid = int(user_id)
@@ -348,27 +359,28 @@ class TRPGCog(commands.Cog):
         await interaction.response.defer()
         uid = str(interaction.user.id)
 
-        # 停用這名玩家還開著的舊面板（如果有）：兩份面板同時活著會共用同一個
-        # active_battle 快照，讓玩家能兩邊輪流點按鈕變相多打一回合。
-        old_view = self.active_views.get(uid)
-        if old_view is not None and not old_view.is_finished():
-            old_view.stop()
-            if old_view.message is not None:
-                try:
-                    for child in old_view.children:
-                        if hasattr(child, "disabled"):
-                            child.disabled = True
-                    lang = getattr(old_view.player, "language", "zh")
-                    notice = t(lang, "menu.superseded_notice", "⚠️ 你在別處開啟了新的冒險面板，這份面板已停用。")
-                    embed = old_view.generate_embed()
-                    embed.description = f"```\n{notice}\n```"
-                    await old_view.message.edit(embed=embed, view=old_view)
-                except Exception:
-                    pass
+        # Replace a panel while holding the same user-level lock as every
+        # callback. Running callbacks finish first; queued stale callbacks fail
+        # their generation check after this block.
+        async with self.player_mutation_lock(uid):
+            old_view = self.active_views.get(uid)
+            if old_view is not None and not old_view.is_finished():
+                old_view.stop()
+                if old_view.message is not None:
+                    try:
+                        for child in old_view.children:
+                            if hasattr(child, "disabled"):
+                                child.disabled = True
+                        lang = getattr(old_view.player, "language", "zh")
+                        notice = t(lang, "menu.superseded_notice", "⚠️ 你在別處開啟了新的冒險面板，這份面板已停用。")
+                        embed = old_view.generate_embed()
+                        embed.description = f"```\n{notice}\n```"
+                        await old_view.message.edit(embed=embed, view=old_view)
+                    except Exception:
+                        pass
 
-        # 初始化專屬此使用者的按鈕控制視圖
-        view = TRPGGameView(self, interaction.user.id)
-        self.active_views[uid] = view
+            view = TRPGGameView(self, interaction.user.id)
+            self.active_views[uid] = view
         embed = view.generate_embed()
         await interaction.edit_original_response(embed=embed, view=view)
         try:

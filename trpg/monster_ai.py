@@ -410,7 +410,10 @@ def ai_thief(combat, slot, log):
 
     if random.random() < 0.3:
         amount = min(combat.cog.get_bank_balance(combat.view.user_id), 15 + monster.get("level", combat.player.level) * 3)
-        if amount > 0 and combat.cog.try_spend(combat.view.user_id, combat.player, amount):
+        if amount > 0:
+            # Robbery is not a purchase: do not advance money-spent quests or
+            # achievements when the monster takes the player's gold.
+            combat.cog.adjust_bank(combat.view.user_id, -amount)
             slot["stolen_gold"] = slot.get("stolen_gold", 0) + amount
             monster["money_min"] = monster.get("money_min", 0) + amount
             monster["money_max"] = monster.get("money_max", 0) + amount
@@ -825,7 +828,7 @@ def _apply_monster_stat_mod(slot: dict, stat: str, mult: float, turns: int):
     mods = slot.setdefault("stat_mods", {})
     base = mods[stat]["base"] if stat in mods else monster.get(stat, 0)
     monster[stat] = max(1, int(base * mult)) if stat != "def" else max(0, int(base * mult))
-    mods[stat] = {"base": base, "turns_left": turns}
+    mods[stat] = {"base": base, "mult": mult, "turns_left": turns}
 
 
 def _tick_stat_mods(slot: dict):
@@ -844,12 +847,17 @@ def _tick_stat_mods(slot: dict):
 # BOSS 二階段
 # ---------------------------------------------------------------------------
 
-def _maybe_transform_phase2(combat, slot: dict, log: str) -> str:
+def _maybe_transform_phase2(combat, slot: dict, log: str, allow_lethal: bool = False) -> str:
     lang = combat.player.language
     monster = slot["monster"]
     phase2 = monster.get("phase2")
-    if not phase2 or slot.get("phase2_triggered") or slot["hp"] <= 0:
+    if not phase2 or slot.get("phase2_triggered") or (slot["hp"] <= 0 and not allow_lethal):
         return log
+
+    if slot["hp"] <= 0:
+        # A phase boss cannot be burst from phase one directly to victory.
+        # Preserve one HP before applying the phase's configured healing.
+        slot["hp"] = 1
 
     hp_pct = slot["hp"] / monster["max_hp"] if monster.get("max_hp") else 1
     if hp_pct > phase2.get("hp_below", 0.5):
@@ -857,7 +865,20 @@ def _maybe_transform_phase2(combat, slot: dict, log: str) -> str:
 
     slot["phase2_triggered"] = True
     if phase2.get("atk_mult"):
-        monster["atk"] = max(1, int(monster.get("atk", 1) * float(phase2["atk_mult"])))
+        phase_mult = float(phase2["atk_mult"])
+        atk_mod = slot.get("stat_mods", {}).get("atk")
+        if atk_mod:
+            # Phase changes are permanent. Update the unmodified base while
+            # preserving the currently active temporary multiplier.
+            atk_mod["base"] = max(1, int(atk_mod["base"] * phase_mult))
+            active_mult = atk_mod.get("mult")
+            if active_mult is None:
+                old_phase_base = max(1, atk_mod["base"] / phase_mult)
+                active_mult = monster.get("atk", 1) / old_phase_base
+                atk_mod["mult"] = active_mult
+            monster["atk"] = max(1, int(atk_mod["base"] * active_mult))
+        else:
+            monster["atk"] = max(1, int(monster.get("atk", 1) * phase_mult))
     if phase2.get("ai"):
         monster["ai"] = phase2["ai"]
     if "active_skills" in phase2:
@@ -977,6 +998,7 @@ def _execute_summon_minion(combat, slot: dict, skill: dict, log: str) -> str:
 
     dead_slot = next((s for s in slots if s["hp"] <= 0 and not s.get("fled") and not s["monster"].get("revive_once")), None)
     if dead_slot:
+        combat.removed_dead_monsters.append(dead_slot["monster"])
         # Instead of replacing in place, remove the dead slot and insert at front
         slots.remove(dead_slot)
         slots.insert(0, {"monster": minion, "hp": minion["max_hp"], "av": 0, "status": {}})
@@ -1003,8 +1025,7 @@ def _execute_cast_skill(combat, slot: dict, effect: dict, log: str) -> str:
     caster = MonsterCombatant(slot, combat.cog.status_effects, combat.player.language)
     target = PlayerCombatant(combat.player, combat.cog.items, combat.cog.status_effects)
     before_hp = combat.player.current_hp
-    skill_log, _ = execute_skill(caster, [target], spell, combat.cog.status_effects)
-    raw_damage = max(0, before_hp - combat.player.current_hp)
+    skill_log, raw_damage = execute_skill(caster, [target], spell, combat.cog.status_effects)
     if raw_damage:
         combat.player.current_hp = before_hp
         combat.apply_player_damage(raw_damage)
@@ -1146,7 +1167,10 @@ def run_monster_ai(combat, slot: dict, log: str, round_start: bool = True) -> st
         slot["telegraph"] = None
         return _execute_active_skill(combat, slot, pending, log)
 
-    skill = _pick_active_skill(slot)
+    # Active-skill triggers are measured in complete monster rounds, not AP
+    # actions.  Fast monsters may still make multiple normal attacks, but an
+    # interval/chance/hp trigger is evaluated only on their first AP.
+    skill = _pick_active_skill(slot) if round_start else None
     if skill:
         slot["telegraph"] = skill
         return log + t(lang, "monster_ai.skill_telegraph", "\n⚠️ {name} 開始蓄力，準備發動【{skill}】！下回合請做好準備！", name=tf(slot["monster"], "name", lang), skill=tf(skill, "name", lang))

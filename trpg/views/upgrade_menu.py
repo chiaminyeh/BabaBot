@@ -37,14 +37,14 @@ def _skill_usage(player, skill_id: str) -> int:
         return 0
 
 
-def _format_upgrade_panel(player, skills_data: dict, lang: str) -> str:
+def _format_upgrade_panel(player, skills_data: dict, lang: str, available_money: int | None = None) -> str:
     """組出目前所有已裝備技能的升級摘要文字。"""
     equipped = getattr(player, "equipped_skills", []) or []
     if not equipped:
         return t(lang, "upgrade.no_skills_equipped", "你尚未裝備任何技能。請先到【技能配置】設定戰鬥技能組合。")
 
     lines = [t(lang, "upgrade.panel_header", "⬆️ **【強化技能】**\n在這裡花費金幣直接強化已裝備的技能，或查看熟練度進度。\n")]
-    money = getattr(player, "money", 0) or 0
+    money = (getattr(player, "money", 0) or 0) if available_money is None else available_money
     lines.append(t(lang, "upgrade.money_display", "💰 Bababucks：{money}", money=money))
     lines.append("")
 
@@ -69,7 +69,8 @@ def build_upgrade_menu(view):
     skills_data = view.cog.skills
     equipped = getattr(player, "equipped_skills", []) or []
 
-    view.log_message = _format_upgrade_panel(player, skills_data, lang)
+    bank_balance = view.cog.get_bank_balance(view.user_id)
+    view.log_message = _format_upgrade_panel(player, skills_data, lang, bank_balance)
 
     # 為每個「可升級且資料存在」的技能添加一顆強化按鈕
     manual_count = (getattr(player, "inventory", None) or {}).get("skill_manual", 0)
@@ -91,7 +92,7 @@ def build_upgrade_menu(view):
             style = discord.ButtonStyle.primary
         else:
             cost = get_base_upgrade_cost(lv)
-            money = getattr(player, "money", 0) or 0
+            money = bank_balance
             ready = is_proficiency_ready(player, sid, lv)
             can_act = ready and money >= cost
             label = f"⬆️ {name} ({cost} Bababucks)" if ready else f"🔒 {name} ({usage}/{get_proficiency_requirement(lv)})"
@@ -140,13 +141,31 @@ async def handle_upgrade_skill(view, interaction: discord.Interaction, skill_id:
         return
 
     # 否則走金幣路線
-    ok, msg, cost = validate_paid_upgrade(player, skill, skill_id)
+    ok, msg, cost = validate_paid_upgrade(
+        player,
+        skill,
+        skill_id,
+        available_money=view.cog.get_bank_balance(view.user_id),
+    )
     if not ok:
         await interaction.followup.send(msg, ephemeral=True)
         return
 
-    # 扣除金幣、提升等級、清零熟練度次數
-    apply_paid_upgrade(player, skill_id, cost)
+    # The production Bababucks wallet belongs to the Cog. Spend there exactly
+    # once, then apply only the skill-state mutation; try_spend records stats.
+    if not view.cog.try_spend(view.user_id, player, cost):
+        await interaction.followup.send(
+            t(lang, "upgrade.not_enough_gold", "❌ Bababucks 不足！"),
+            ephemeral=True,
+        )
+        return
+    apply_paid_upgrade(
+        player,
+        skill_id,
+        cost,
+        charge_player_money=False,
+        record_spending=False,
+    )
 
     view.cog.save_players(player=getattr(player, "real_player", player))
 

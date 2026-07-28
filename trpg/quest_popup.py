@@ -100,7 +100,7 @@ def _quest_on_cooldown(player, quest_id, quest_info) -> bool:
 
 def can_accept_quest(view, quest_id, quest_info) -> bool:
     player = _real_player(view)
-    if quest_info.get("hidden"):
+    if quest_info.get("hidden") or quest_info.get("retired"):
         return False
     if player.level < quest_info.get("req_level", 1):
         return False

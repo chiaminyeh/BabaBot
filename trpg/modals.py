@@ -33,6 +33,18 @@ async def refresh_game_view_message(modal, interaction: discord.Interaction) -> 
     modal.game_view.message = message
 
 
+async def reject_stale_modal(modal, interaction: discord.Interaction) -> bool:
+    """Reject a Modal opened by a superseded TRPG View generation."""
+    if modal.game_view.is_current_session():
+        return False
+    lang = getattr(modal.game_view.player, "language", "zh")
+    await interaction.followup.send(
+        t(lang, "menu.superseded_notice", "⚠️ 這份冒險面板已被新面板取代。"),
+        ephemeral=True,
+    )
+    return True
+
+
 class ElderChiefModal(discord.ui.Modal):
     def __init__(self, game_view):
         lang = getattr(game_view.player, "language", "zh")
@@ -115,6 +127,8 @@ class StatPointModal(discord.ui.Modal):
 
         await interaction.response.defer()
         async with self.game_view.mutation_lock:
+            if await reject_stale_modal(self, interaction):
+                return
             await self.game_view.handle_stat_add(self.stat_key, amount=amount)
             try:
                 await refresh_game_view_message(self, interaction)
@@ -177,6 +191,17 @@ class BulkStatAllocModal(discord.ui.Modal):
 
         await interaction.response.defer()
         async with self.game_view.mutation_lock:
+            if await reject_stale_modal(self, interaction):
+                return
+            # Revalidate under the shared user lock; another callback may have
+            # allocated points after the Modal was opened.
+            current_unspent = get_unspent_points(self.game_view.player)
+            if total > current_unspent:
+                await interaction.followup.send(
+                    t(lang, "modal.bulk_stat_over", "❌ 你只剩 {unspent} 點，這次輸入了 {total} 點。", unspent=current_unspent, total=total),
+                    ephemeral=True,
+                )
+                return
             if not getattr(self.game_view.player, "stat_alloc", None):
                 self.game_view.player.stat_alloc = default_stat_alloc()
             # Enforce 99 cap check
@@ -228,6 +253,8 @@ class BuyItemModal(discord.ui.Modal):
 
         await interaction.response.defer()
         async with self.game_view.mutation_lock:
+            if await reject_stale_modal(self, interaction):
+                return
             await self.game_view.execute_buy(self.item_id, amount)
             try:
                 await refresh_game_view_message(self, interaction)
@@ -260,6 +287,8 @@ class SellItemModal(discord.ui.Modal):
 
         await interaction.response.defer()
         async with self.game_view.mutation_lock:
+            if await reject_stale_modal(self, interaction):
+                return
             await self.game_view.execute_sell(self.item_id, amount)
             try:
                 await refresh_game_view_message(self, interaction)

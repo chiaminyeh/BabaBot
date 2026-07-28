@@ -347,7 +347,7 @@ def build_monster(cog, floor: int, kind: str = "monster") -> dict:
 # --- 房間 / 戰利品 / 遺物 ----------------------------------------------------
 
 def forced_boss_kind(floor: int) -> str:
-    """樓層 5/10/15 強制打王，不再擲房間類型；回傳 "miniboss"/"final_boss"，其他樓層回傳空字串。"""
+    """樓層 4/8/12/15 強制打王；回傳 "miniboss"/"final_boss"，其他樓層回傳空字串。"""
     if floor >= DUNGEON_BOSS_FLOOR:
         return "final_boss"
     if floor in DUNGEON_MINIBOSS_FLOORS:

@@ -430,6 +430,7 @@ class TRPGCombat:
         self.blood_shield = 0
         self.demon_skill_level = 1
         self._demon_last_round = -1
+        self.removed_dead_monsters = []
 
 
 
@@ -445,8 +446,22 @@ class TRPGCombat:
         self.blood_shield = 0
         self.demon_skill_level = 1
         self._demon_last_round = -1
+        self.removed_dead_monsters = []
         self.player.combat_debuffs = {}
         self.player.combat_buffs = {}
+
+    def _finish_battle_state(self):
+        """Clear runtime and durable battle state before terminal persistence."""
+        self._clear_battle_state()
+        self.view.in_battle = False
+        self.view.monster_slots = []
+        real_player = getattr(self.player, "real_player", self.player)
+        real_player.active_battle = None
+
+    def _complete_tutorial_durably(self):
+        if getattr(self.view, "in_tutorial_battle", False):
+            real_player = getattr(self.player, "real_player", self.player)
+            real_player.onboarding_done = True
 
     def _all_monsters_dead(self) -> bool:
         for slot in self.view.monster_slots:
@@ -458,6 +473,24 @@ class TRPGCombat:
             if revive_cfg and not slot.get("revived"):
                 return False
         return True
+
+    def _trigger_pending_boss_phases(self, log: str) -> str:
+        """Apply phase transitions immediately after threshold-crossing damage."""
+        from trpg.monster_ai import _maybe_transform_phase2
+        for slot in self.view.monster_slots:
+            monster = slot.get("monster", {})
+            phase2 = monster.get("phase2")
+            if not phase2 or slot.get("phase2_triggered") or not monster.get("max_hp"):
+                continue
+            threshold = float(phase2.get("hp_below", 0.5))
+            if slot.get("hp", 0) / monster["max_hp"] <= threshold:
+                log = _maybe_transform_phase2(
+                    self,
+                    slot,
+                    log,
+                    allow_lethal=slot.get("hp", 0) <= 0,
+                )
+        return log
 
     @property
     def demon_active(self) -> bool:
@@ -677,8 +710,9 @@ class TRPGCombat:
                 buff_log = f"{buff_log}\n{mp_regen_line}" if buff_log else mp_regen_line
 
         before_status_hp = self.player.current_hp
-        log, can_act = process_turn_start(self.player, self.cog.status_effects)
-        raw_status_damage = max(0, before_status_hp - self.player.current_hp)
+        status_damage_ledger = []
+        log, can_act = process_turn_start(self.player, self.cog.status_effects, status_damage_ledger)
+        raw_status_damage = sum(status_damage_ledger)
         if raw_status_damage:
             self.player.current_hp = before_status_hp
             self.apply_player_damage(raw_status_damage)
@@ -769,7 +803,8 @@ class TRPGCombat:
             info = self.cog.status_effects.get("paralysis", {})
             skip_chance = info.get("skip_chance", 0.5)
             if random.random() < skip_chance:
-                return False, t(lang, "status.paralysis_skip", "⚡ 你的身體一陣麻痺，無法順利行動！")
+                target = "Your body" if lang == "en" else "你的身體"
+                return False, t(lang, "status.paralysis_skip", "⚡ 你的身體一陣麻痺，無法順利行動！", target=target)
 
         return True, ""
 
@@ -800,6 +835,7 @@ class TRPGCombat:
 
         self.player_ap = 0
         log = self._demon_round_action(log)
+        log = self._trigger_pending_boss_phases(log)
         if self._all_monsters_dead():
             return log + self._process_victory()
         skipped_rounds = 0
@@ -830,11 +866,13 @@ class TRPGCombat:
                         break
                     if not warned_before and self._has_ultimate_warning(slot):
                         break  # Telegraphing a large move ends this monster's phase.
+                    log = self._trigger_pending_boss_phases(log)
                     if self._all_monsters_dead():
                         return log + self._process_victory()
 
             if self.player.current_hp <= 0:
                 return log
+            log = self._trigger_pending_boss_phases(log)
             if self._all_monsters_dead():
                 return log + self._process_victory()
 
@@ -944,6 +982,7 @@ class TRPGCombat:
         # 之後的吸血/腐蝕/喚醒/武器附加狀態就會全部誤套用到「被打死那隻的下一隻」身上。
         target_slot = self.view._front_slot()
         target_status = target_slot["status"] if target_slot else {}
+        target_hp_before = target_slot.get("hp", 0) if target_slot else 0
 
         # 傳遞屬性與速度倍率給攻擊計算（地下城遺物/裝備可加暴擊率）
         base_dmg, is_crit = self._do_physical_hit(multiplier=multiplier, crit_bonus=eff.get("crit_bonus", 0.0), ele_mult=ele_mult)
@@ -957,13 +996,14 @@ class TRPGCombat:
         if ele_msg:
             log += f"\n   ↳ {ele_msg}"
         self.monster_hp -= p_dmg
+        actual_damage = max(0, target_hp_before - (target_slot.get("hp", 0) if target_slot else 0))
         absorb_note = absorb_note_text(target_slot.pop("last_absorb", "") if target_slot else "", lang)
         if absorb_note:
             log += f"\n   ↳ {absorb_note}"
 
         # 地下城：吸血
-        if eff.get("lifesteal", 0) > 0 and p_dmg > 0:
-            heal = max(1, int(p_dmg * eff["lifesteal"]))
+        if eff.get("lifesteal", 0) > 0 and actual_damage > 0:
+            heal = max(1, int(actual_damage * eff["lifesteal"]))
             before = self.player.current_hp
             self.player.current_hp = min(self.player.max_hp, self.player.current_hp + heal)
             if self.player.current_hp - before > 0:
@@ -990,10 +1030,11 @@ class TRPGCombat:
             )
             if coating_log:
                 log += f"\n{coating_log}"
-        combo_log = self._gain_combo() if p_dmg > 0 else ""
+        combo_log = self._gain_combo() if actual_damage > 0 else ""
         if combo_log:
             log += f"\n{combo_log}"
 
+        log = self._trigger_pending_boss_phases(log)
         if self._all_monsters_dead():
             return log + self._process_victory()
 
@@ -1006,6 +1047,11 @@ class TRPGCombat:
 
         if not can_act:
             return self.advance_time(log + "\n" + t(self.player.language, "combat.flee_paralyzed", "💨 你試圖逃跑，但身體不聽使喚！"))
+
+        action_can, action_log = self._check_action_status()
+        if not action_can:
+            log += f"\n{action_log}" if log else action_log
+            return self.advance_time(log, ap_cost=1)
 
         # 前排目前沒有活著的目標（例如 BOSS 即將復活的空檔）：跟 player_attack 一樣先讓時間流逝，
         # 不能直接讀 self.monster.get(...)——那時 self.monster 是 None，會直接炸掉整個互動。
@@ -1038,9 +1084,8 @@ class TRPGCombat:
             self.player.dungeon_state["floor"] = 1
             self.player.current_area = "area_00village"
             self.player.current_subarea = None
-        self._clear_battle_state()
-        self.view.in_battle = False
-        self.view.monster_slots = []
+        self._complete_tutorial_durably()
+        self._finish_battle_state()
         self.cog.save_players(player=self.player)
         self.view.build_main_menu()
         return is_dungeon_run
@@ -1138,8 +1183,11 @@ class TRPGCombat:
         skill_name = tf(skill, "name", lang)
 
         target_type = skill.get("target_type", "front")
+        skill_type = skill.get("type", "physical")
         if target_slot is not None and target_type != "all" and target_slot not in self.legal_target_slots(target_type):
             return t(lang, "combat.skill_stale_target", "❌ The selected target is no longer valid. Choose again.")
+        if skill_type not in ("support", "flee") and not self.legal_target_slots(target_type):
+            return t(lang, "combat.skill_no_target", "❌ 沒有可以攻擊的目標。")
 
         req_lv = skill.get("req_level", 1)
         if self.player.level < req_lv:
@@ -1194,8 +1242,6 @@ class TRPGCombat:
             return self.advance_time(log, ap_cost=ap_cost)
 
         if skill.get("cd", 0) > 0: self.skill_cds[skill_id] = skill["cd"]
-
-        skill_type = skill.get("type", "physical")
 
         if mp_cost > 0: self.player.current_mp -= mp_cost
         if actual_hp_cost > 0:
@@ -1272,6 +1318,7 @@ class TRPGCombat:
                 target_hps_before = [slot.get("hp", 0) for slot in target_slots]
                 skill_log, total_damage = execute_skill(caster, targets, skill_for_cast, self.cog.status_effects, hp_cost=actual_hp_cost)
                 log += skill_log
+                actual_total_damage = sum(max(0, before - slot.get("hp", 0)) for slot, before in zip(target_slots, target_hps_before))
                 if pact_to_consume:
                     self.player.combat_buffs["blood_pact_stacks"] = max(0, int(self.player.combat_buffs.get("blood_pact_stacks", 0)) - pact_to_consume)
                 if skill.get("apply_blood_mark") and target_slots:
@@ -1287,7 +1334,7 @@ class TRPGCombat:
                         current_pact = int(self.player.combat_buffs.get("blood_pact_stacks", 0))
                         self.player.combat_buffs["blood_pact_stacks"] = min(3, current_pact + marked_pact_gain)
                 lifesteal += float(self.player.combat_buffs.get("lifesteal_bonus", 0.0) or 0.0)
-                if total_damage > 0 and lifesteal > 0:
+                if actual_total_damage > 0 and lifesteal > 0:
                     drain_cap = int(self.player.max_hp * float(skill.get("drain_cap_max_hp", 1.0)))
                     remaining = max(0, drain_cap)
                     gained = gained_mp = shield = 0
@@ -1306,7 +1353,7 @@ class TRPGCombat:
                     if gained or gained_mp or shield:
                         log += "\n" + t(lang, "combat.skill_drain", "🩸 【{skill}】汲取 HP {heal}、MP {mp}、血盾 {shield}！", skill=skill_name, heal=gained, mp=gained_mp, shield=shield)
                         log = self._apply_blood_feast_bonus(target_slots[0], gained + gained_mp + shield, log)
-                if total_damage > 0 and skill.get("grants_combo"):
+                if actual_total_damage > 0 and skill.get("grants_combo"):
                     combo_log = self._gain_combo()
                     if combo_log:
                         log += f"\n{combo_log}"
@@ -1314,6 +1361,7 @@ class TRPGCombat:
         # 累積技能施放次數，並處理熟練度自動升級
         log += self._record_skill_usage(skill_id, skill_name, lang)
 
+        log = self._trigger_pending_boss_phases(log)
         if self._all_monsters_dead():
             self.player_ap = max(0, self.player_ap - ap_cost)
             return log + self._process_victory()
@@ -1414,6 +1462,8 @@ class TRPGCombat:
         dot_log, can_act = self._player_turn_start()
         if self.player.current_hp <= 0: return dot_log
         log = f"{dot_log}\n" if dot_log else ""
+        if not can_act:
+            return self.advance_time(log, ap_cost=1)
 
         action_can, action_log = self._check_action_status()
         if not action_can:
@@ -1444,6 +1494,8 @@ class TRPGCombat:
         dot_log, can_act = self._player_turn_start()
         if self.player.current_hp <= 0: return dot_log
         log = f"{dot_log}\n" if dot_log else ""
+        if not can_act:
+            return self.advance_time(log, ap_cost=1)
 
         action_can, action_log = self._check_action_status()
         if not action_can:
@@ -1470,6 +1522,8 @@ class TRPGCombat:
         if self.player.current_hp <= 0:
             return dot_log
         log = f"{dot_log}\n" if dot_log else ""
+        if not can_act:
+            return self.advance_time(log, ap_cost=1)
 
         action_can, action_log = self._check_action_status()
         if not action_can:
@@ -1485,6 +1539,7 @@ class TRPGCombat:
         self.view.monster_hp -= damage
         log += "\n" + t(lang, "combat.damage_item_used", "✝️ 你釋放【{item_name}】，造成 {damage} 點神聖真實傷害！", item_name=item_name, damage=damage)
 
+        log = self._trigger_pending_boss_phases(log)
         if self._all_monsters_dead():
             self.player_ap = max(0, self.player_ap - 1)
             return log + self._process_victory()
@@ -1505,6 +1560,8 @@ class TRPGCombat:
         dot_log, can_act = self._player_turn_start()
         if self.player.current_hp <= 0: return dot_log
         log = f"{dot_log}\n" if dot_log else ""
+        if not can_act:
+            return self.advance_time(log, ap_cost=1)
 
         action_can, action_log = self._check_action_status()
         if not action_can:
@@ -1543,11 +1600,13 @@ class TRPGCombat:
         drop_log = ""
         luck_mult = luck_drop_rate_mult(getattr(self.player, "fortune", 0))
         for item_id, rate in monster.get("drops", {}).items():
-            effective_rate = min(1.0, rate * luck_mult)
+            qty = int(rate) if rate > 1 else 1
+            effective_rate = 1.0 if rate > 1 else min(1.0, rate * luck_mult)
             if random.random() < effective_rate:
-                self.player.inventory[item_id] = self.player.inventory.get(item_id, 0) + 1
+                self.player.inventory[item_id] = self.player.inventory.get(item_id, 0) + qty
                 item_name = tf(self.cog.items.get(item_id, {}), "name", lang) or item_id
-                drop_log += t(lang, "combat.drop_obtained", "🎁 幸運獲得掉落物：{item}\n", item=item_name)
+                qty_text = f" x{qty}" if qty > 1 else ""
+                drop_log += t(lang, "combat.drop_obtained", "🎁 幸運獲得掉落物：{item}{qty}\n", item=item_name, qty=qty_text)
         return drop_log
 
     def _handle_boss_kill_rewards(self, monster: dict) -> str:
@@ -1648,9 +1707,7 @@ class TRPGCombat:
             if self.player.current_hp - before > 0:
                 kill_log = "\n" + t(lang, "combat.on_kill_heal", "💚 擊殺回復了 {heal} HP！", heal=self.player.current_hp - before)
 
-        self._clear_battle_state()
-        self.view.in_battle = False
-        self.view.monster_slots = []
+        self._finish_battle_state()
         is_boss = any(m.get("is_boss") for m in killed_monsters)
         is_elite = any(m.get("is_elite") for m in killed_monsters)
         base_log = t(lang, "combat.dungeon_victory", "🏆 戰鬥勝利！") + kill_log
@@ -1664,7 +1721,8 @@ class TRPGCombat:
         if not all_monsters:
             return ""
 
-        killed_monsters = [slot["monster"] for slot in self.view.monster_slots if not slot.get("fled")]
+        killed_monsters = list(self.removed_dead_monsters)
+        killed_monsters.extend(slot["monster"] for slot in self.view.monster_slots if not slot.get("fled"))
         fled_monsters = [slot["monster"] for slot in self.view.monster_slots if slot.get("fled")]
 
         # 👇 情境旗標（地下城/魔塔/鬥技場）要掃「全部」怪物，不能只看第一格：
@@ -1765,10 +1823,9 @@ class TRPGCombat:
             log += achv_text
 
         self.view.record_combat_history(log)
+        self._complete_tutorial_durably()
+        self._finish_battle_state()
         self.cog.save_players(player=self.player)
-        self._clear_battle_state()
-        self.view.in_battle = False
-        self.view.monster_slots = []
         self.view.build_main_menu()
         return log
 

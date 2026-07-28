@@ -1,6 +1,5 @@
 """TRPGGameView — the button-driven adventure panel and all menu/combat handlers."""
 
-import asyncio
 import discord
 import logging
 import random
@@ -63,7 +62,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.cog = cog
         self.user_id = str(user_id)
         self.player = RoguePlayerWrapper(cog.get_player(user_id))
-        self.mutation_lock = asyncio.Lock()
+        self.mutation_lock = cog.player_mutation_lock(self.user_id)
         if self._refresh_daily_state():
             self.cog.save_players(player=self.player)
         self.message = None
@@ -112,6 +111,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.combat.skill_cds = pending_battle.get("skill_cds", {})
             self.combat.is_defending = pending_battle.get("is_defending", False)
             self.combat.is_dodging = pending_battle.get("is_dodging", False)
+            self.combat.removed_dead_monsters = list(pending_battle.get("removed_dead_monsters", []))
+            self.in_tutorial_battle = bool(pending_battle.get("in_tutorial_battle", False))
+            self.tutorial_step = max(0, int(pending_battle.get("tutorial_step", 0) or 0))
             self.combat.load_blood_runtime_state(pending_battle.get("blood_runtime"))
         else:
             self.in_battle = False
@@ -191,7 +193,14 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             lang = getattr(self.player, "language", "zh")
             await interaction.response.send_message(t(lang, "menu.not_your_panel", "這不是你的冒險面板，請自己輸入 `/trpg` 開一盤！"), ephemeral=True)
             return False
+        if not self.is_current_session():
+            lang = getattr(self.player, "language", "zh")
+            await interaction.response.send_message(t(lang, "menu.superseded_notice", "⚠️ 這份冒險面板已被新面板取代。"), ephemeral=True)
+            return False
         return True
+
+    def is_current_session(self) -> bool:
+        return self.cog.active_views.get(self.user_id) is self and not self.is_finished()
 
     async def on_timeout(self):
         # 儲存玩家狀態
@@ -429,6 +438,11 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
 
         await interaction.response.defer()
         async with self.mutation_lock:
+            # A callback may have passed interaction_check before another
+            # /trpg generation replaced this View. Re-check under the shared
+            # user lock before performing any mutation.
+            if not self.is_current_session():
+                return
             await self._global_callback_after_defer(interaction, custom_id)
 
     async def _global_callback_after_defer(self, interaction: discord.Interaction, custom_id: str):
@@ -488,6 +502,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 "skill_cds": self.combat.skill_cds,
                 "is_defending": self.combat.is_defending,
                 "is_dodging": self.combat.is_dodging,
+                "removed_dead_monsters": self.combat.removed_dead_monsters,
+                "in_tutorial_battle": bool(self.in_tutorial_battle),
+                "tutorial_step": int(self.tutorial_step),
                 "blood_runtime": self.combat.blood_runtime_state(),
             }
         else:
@@ -726,12 +743,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
 
         self.record_combat_history(final_log)
 
-        self.cog.save_players(player=self.player)
-
-        # 清除戰鬥狀態
-        self.in_battle = False
-        self.monster_slots = []
-        self.combat._clear_battle_state()
+        # Clear the durable snapshot before the first terminal save. Further
+        # dungeon/cave/colosseum reset mutations are included in that same save.
+        self.combat._finish_battle_state()
 
         if getattr(self.player, "dungeon_state", {}).get("in_run"):
             self.player.dungeon_state["in_run"] = False
@@ -747,6 +761,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         # 鬥技場死亡：連戰進度歸零，下次要從第一輪重新打
         if self.cog.areas.get(self.player.current_area, {}).get("is_colosseum"):
             self._colosseum_state()["round"] = 0
+
+        self.cog.save_players(player=self.player)
 
         # 強制導回主選單
         self.build_main_menu()
@@ -1037,7 +1053,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         if not isinstance(getattr(real, "daily_boss_kills", None), dict):
             real.daily_boss_kills = {}
         if real.daily_boss_kills.get(self.player.current_area) == today_str:
-            self.log_message = t(lang, "menu.boss_already_defeated_today", "✅ 今天已經討伐過這個區域的 BOSS 了，請明天再來挑戰。")
+            self.log_message = t(lang, "menu.boss_already_defeated_today", "✅ 今天已經討伐過這個區域的 BOSS 了，請明天再來挑戰。", boss_name=tf(boss_data, "name", lang))
             self.build_main_menu()
             return
        # 遭遇 BOSS，複製數值進入戰鬥
@@ -1873,6 +1889,13 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         self.player.core_ability = None
         real = getattr(self.player, "real_player", self.player)
         real.archetype_balance_version = ARCHETYPE_BALANCE_VERSION
+        unequipped = []
+        for slot_name in ("weapon", "armor"):
+            item_id = getattr(self.player, slot_name, None)
+            item_data = self.cog.items.get(item_id, {}) if item_id else {}
+            if item_id and not meets_item_stat_requirements(self.player, item_data)[0]:
+                unequipped.append(tf(item_data, "name", lang) or item_id)
+                setattr(self.player, slot_name, None)
         recalc_player_stats(self.player, self.cog.items, heal_full=False)
         removed = prune_unqualified_skills(self.player, self.cog.skills)
         self.cog.save_players(player=self.player)
@@ -1881,6 +1904,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             joiner = ", " if lang == "en" else "、"
             removed_names = joiner.join(tf(self.cog.skills.get(skill_id, {}), "name", lang) or skill_id for skill_id in removed[:8])
             removed_text = "\n" + t(lang, "char.stats_reset_skills_removed", "⚠️ 因點數歸零，你失去了這些專屬技能：{skills}", skills=removed_names)
+        if unequipped:
+            joiner = ", " if lang == "en" else "、"
+            removed_text += "\n" + t(lang, "char.stats_reset_items_unequipped", "🎒 因不再符合需求，已卸下：{items}", items=joiner.join(unequipped))
         if used_balance_respec:
             await self.handle_stat_alloc_menu(t(lang, "char.stats_balance_respec_notice", "🎁 已使用本次技能重整提供的免費流派重置，請重新分配點數。") + removed_text)
         elif cost > 0:

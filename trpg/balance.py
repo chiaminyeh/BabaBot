@@ -203,7 +203,7 @@ DUNGEON_MAX_FLOOR = 15
 DUNGEON_BOSS_FLOOR = 15
 # Mini-boss checkpoints: forced UNIQUE boss fights (defined in dungeon.DUNGEON_MINIBOSSES,
 # each with its own signature mechanic) that grant a relic choice, not a run-ending fight.
-DUNGEON_MINIBOSS_FLOORS = (5,10)
+DUNGEON_MINIBOSS_FLOORS = (4, 8, 12)
 # Sealed level-1 starting character for a dungeon run.
 DUNGEON_START_STATS = {
     "max_hp": 60, "base_atk": 12, "base_def": 5, "base_mdef": 3,

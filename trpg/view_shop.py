@@ -6,7 +6,7 @@ from trpg.combat import get_sell_price
 from trpg.i18n import t, tf
 from trpg.player import _item_shop_level_ok
 from trpg.recipes import CRAFTING_RECIPES, MAX_UPGRADE_LEVEL, UPGRADE_COSTS
-from trpg.stats import format_item_stat_requirements, recalc_player_stats
+from trpg.stats import format_item_stat_requirements, meets_item_stat_requirements, recalc_player_stats
 from trpg.view_shared import item_emoji
 
 
@@ -168,18 +168,38 @@ class ShopMixin:
         self.add_action_button(label=t(lang, "char.btn_back", "返回"), style=discord.ButtonStyle.secondary, custom_id="btn_back_main", emoji="🔙")
 
     async def _refresh_buy_menu(self, notice: str):
-        if getattr(self, "current_menu_state", None) == "tower_merchant":
+        state = getattr(self, "current_menu_state", None)
+        if state == "tower_merchant":
             await self.handle_tower_merchant(notice)
-        elif getattr(self, "current_menu_state", None) == "mystery_merchant":
+        elif state == "mystery_merchant":
             await self.handle_mystery_merchant(notice)
-        else:
+        elif state == "shop":
             await self.handle_shop_menu(notice)
+        else:
+            self.build_main_menu()
+            self.log_message = notice
+
+    def _current_buy_stock(self) -> set[str]:
+        """Return the server-authoritative stock for the menu being submitted."""
+        state = getattr(self, "current_menu_state", None)
+        if state == "shop":
+            return set(self._shop_state().get("items", []))
+        if state == "mystery_merchant":
+            shop = self._shop_state()
+            return set(shop.get("mystery_items", [])) if shop.get("mystery_active") else set()
+        if state == "tower_merchant":
+            tower = getattr(self.player, "tower_state", {}) or {}
+            return set(tower.get("merchant_items", [])) if tower.get("merchant_spawned") else set()
+        return set()
 
     async def execute_buy(self, item_id: str, amount: int):
         item = self.cog.items.get(item_id)
         lang = self.player.language
         if not item:
             await self._refresh_buy_menu(t(lang, "shop.item_no_longer_available", "❌ 這個商品已經不在貨架上了。"))
+            return
+        if item_id not in self._current_buy_stock():
+            await self._refresh_buy_menu(t(lang, "shop.offer_expired", "❌ 這筆商店報價已失效，請重新開啟商店。"))
             return
 
         if amount <= 0:
@@ -189,7 +209,7 @@ class ShopMixin:
         item_name = tf(item, "name", lang) or item_id
         total_cost = item.get("price", 0) * amount
         if not self.cog.try_spend(self.user_id, self.player, total_cost):
-            await self._refresh_buy_menu(t(lang, "shop.buy_insufficient_gold", "❌ 金幣不足！購買 {amount} 個【{name}】需要 {total_cost}$。", amount=amount, name=item_name, total_cost=total_cost))
+            await self._refresh_buy_menu(t(lang, "shop.buy_insufficient_gold", "❌ 金幣不足！購買 {amount} 個【{name}】需要 {total_cost}$。", amount=amount, name=item_name, total_cost=total_cost, user_bal=self.cog.get_bank_balance(self.user_id)))
             return
 
         self.player.inventory[item_id] = self.player.inventory.get(item_id, 0) + amount
@@ -325,12 +345,17 @@ class ShopMixin:
         self.player.inventory[item_id] = self.player.inventory.get(item_id, 0) + 1
         item_data = self.cog.items.get(item_id, {})
         equip_msg = ""
-        if item_data.get("type") == "weapon":
+        level_ok = self.player.level >= int(item_data.get("req_level", 1) or 1)
+        stats_ok = meets_item_stat_requirements(self.player, item_data)[0]
+        can_auto_equip = level_ok and stats_ok
+        if item_data.get("type") == "weapon" and can_auto_equip:
             self.player.weapon = item_id
             equip_msg = t(lang, "craft.auto_equip_weapon", "，已為你自動裝備")
-        elif item_data.get("type") == "armor":
+        elif item_data.get("type") == "armor" and can_auto_equip:
             self.player.armor = item_id
             equip_msg = t(lang, "craft.auto_equip_armor", "，已為你自動穿戴")
+        elif item_data.get("type") in ("weapon", "armor"):
+            equip_msg = t(lang, "craft.kept_unequipped", "，但你尚未符合裝備需求，已先放入背包")
 
         recalc_player_stats(self.player, self.cog.items, heal_full=False)
         self.cog.save_players(player=self.player)
@@ -471,7 +496,7 @@ class ShopMixin:
         item_name = tf(self.cog.items.get(item_id, {}), "name", lang) or item_id
         notice_text = t(lang, "blacksmith.stone_upgrade_success",
                         "🔥 鍛造石強化成功！消耗 {need} 顆鍛造石，你的【{name}】已提升至 +{lvl}！（必定成功）",
-                        need=need, name=item_name, lvl=next_lvl)
+                        need=need, name=item_name, lvl=next_lvl, next_lvl=next_lvl)
 
         self.cog.save_players(player=self.player)
         notice_text += self.check_achievements()

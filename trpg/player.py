@@ -189,7 +189,9 @@ def _item_shop_level_ok(player, item_id: str, item_data: dict, skills: dict) -> 
     if req > player.level:
         return False
     if item_data.get("type") == "skill_scroll":
-        skill = skills.get(item_data.get("teaches", ""), {})
+        skill = skills.get(item_data.get("teaches", ""))
+        if not skill:
+            return False
         if not meets_skill_requirements(player, skill)[0]:
             return False
     return True

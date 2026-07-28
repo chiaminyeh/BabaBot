@@ -308,7 +308,7 @@
         "reward_exp": 900,
         "reward_money": 500,
         "reward_items": {
-            "scroll_iron_skin": 1
+            "skill_manual": 1
         },
         "quest_line": "side",
         "board": true,
@@ -523,7 +523,7 @@
         "reward_exp": 700,
         "reward_money": 350,
         "reward_items": {
-            "scroll_battle_cry": 1
+            "skill_manual": 1
         },
         "quest_line": "main",
         "board": true,
@@ -533,6 +533,27 @@
         "turn_in_prompt": "你是駐守米酥村的民兵隊長萊恩。玩家完成了委託。請用一句話、不超過 30 個字，開心地道謝並把獎勵交給他。",
         "accept_prompt_en": "You are Militia Captain Ryan of the village. In one sentence, no more than 30 words, reveal the Goblin Chief was behind it all and send the player to defeat it. Respond in English, staying in character.",
         "turn_in_prompt_en": "You are Militia Captain Ryan of the village. The player completed the quest. In one sentence, no more than 30 words, thank them warmly and hand over the reward. Respond in English, staying in character."
+    },
+    "quest_010": {
+        "title": "屢敗屢戰的勇氣",
+        "req_level": 1,
+        "quest_type": "stat",
+        "npc_name": "墓園守門人",
+        "target_stat": "total_deaths",
+        "target_monster": null,
+        "target_count": 5,
+        "reward_exp": 500,
+        "reward_money": 500,
+        "quest_line": "side",
+        "board": false,
+        "npc_offer": false,
+        "retired": true,
+        "accept_prompt": "你是看盡生死的墓園守門人，講話充滿哲理。請用一句話、不超過 30 個字，感嘆生命的脆弱，並告訴玩家如果能經歷 {count} 次死亡還不放棄，就來找你拿獎勵。",
+        "turn_in_prompt": "你是墓園守門人。玩家已經陣亡了 {count} 次並站在你面前。請用一句話、不超過 30 個字，讚賞他不屈的靈魂，給予他慰問金。",
+        "title_en": "Courage Through Repeated Defeat",
+        "npc_name_en": "Graveyard Gatekeeper",
+        "accept_prompt_en": "You are the Graveyard Gatekeeper, who has seen life and death pass by countless times. In one sentence, tell the player to return after enduring {count} defeats without giving up.",
+        "turn_in_prompt_en": "You are the Graveyard Gatekeeper. In one sentence, praise the player for enduring {count} defeats and give them condolence money."
     },
     "quest_find_cat": {
         "title": "尋找走失的貓",

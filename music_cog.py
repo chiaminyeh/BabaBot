@@ -704,6 +704,28 @@ class music_cog(commands.Cog):
             else:
                 await ctx.send("```No songs in the queue to remove.```")
 
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member, before, after):
+        if before.channel is not None and (after.channel != before.channel):
+            channel = before.channel
+            guild = channel.guild
+            vc = guild.voice_client
+            if vc and vc.channel == channel:
+                humans = [m for m in channel.members if not m.bot]
+                if not humans:
+                    state = self._get_or_create_state(guild.id)
+                    state.music_queue.clear()
+                    state.song_history.clear()
+                    state.is_playing = False
+                    state.is_paused = False
+                    state.current = None
+                    try:
+                        await vc.disconnect()
+                    except Exception:
+                        pass
+                    if guild.id in self.guild_states:
+                        del self.guild_states[guild.id]
+
 async def setup(bot):
     await bot.add_cog(music_cog(bot))
     print('Music loaded!')

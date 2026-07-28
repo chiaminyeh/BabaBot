@@ -43,6 +43,7 @@ class MainMenuLayout:
             view.build_battle_menu()
             return
         view.clear_items()
+        view.current_menu_state = "main"
         view.in_battle = False
         view.monster_slots = []
         view.viewing_leaderboard = False

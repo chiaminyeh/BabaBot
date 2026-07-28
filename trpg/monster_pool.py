@@ -112,6 +112,8 @@ def instantiate_monster(monster_def: dict, floor: int, is_boss: bool = False, fl
         "ai": monster_def.get("ai", "none"),
         "weakness": monster_def.get("weakness", []),
         "resistance": monster_def.get("resistance", []),
+        "vitality_type": monster_def.get("vitality_type", "blood"),
+        "level": floor,
         "is_boss": is_boss,
     }
     # 行為相關欄位原樣帶過，交給 trpg_monster_ai 在戰鬥中讀取（不需要依樓層縮放）。

@@ -168,7 +168,7 @@ def try_monster_apply_status(player, monster: dict, status_defs: dict) -> str:
     )
 
 
-def _tick_status(combatant, status_defs: dict, is_player: bool, lang: str = "zh") -> tuple[str, bool]:
+def _tick_status(combatant, status_defs: dict, is_player: bool, lang: str = "zh", damage_ledger: list[int] | None = None) -> tuple[str, bool]:
     """每回合開頭結算 DOT 傷害與行動限制，玩家、怪物共用同一套規則。"""
     status_effects = combatant.status_effects
     if not status_effects:
@@ -185,6 +185,8 @@ def _tick_status(combatant, status_defs: dict, is_player: bool, lang: str = "zh"
 
         if sid == "poison":
             dmg = max(1, int(combatant.max_hp * info.get("dot_ratio", 0.05)))
+            if damage_ledger is not None:
+                damage_ledger.append(dmg)
             combatant.hp -= dmg
             log_parts.append(t(lang, "status.poison_tick", "☠️ {target}中毒發作，損失 {dmg} HP", target=target_label, dmg=dmg))
 
@@ -194,6 +196,8 @@ def _tick_status(combatant, status_defs: dict, is_player: bool, lang: str = "zh"
             tick = min(max_stacks, data.get("tick", 1))
             ratio = info.get("tick_ratio", 0.04) * tick
             dmg = max(1, int(combatant.max_hp * ratio))
+            if damage_ledger is not None:
+                damage_ledger.append(dmg)
             combatant.hp -= dmg
             log_parts.append(t(lang, "status.burn_tick", "🔥 {target}身上的灼燒加劇！(第{tick}層) 損失 {dmg} HP", target=target_label, tick=tick, dmg=dmg))
             status_effects[sid]["tick"] = min(max_stacks, tick + 1)
@@ -219,6 +223,8 @@ def _tick_status(combatant, status_defs: dict, is_player: bool, lang: str = "zh"
             stacks = data.get("stacks", 1)
             per = data.get("dmg_per_stack", 4)
             dmg = max(1, stacks * per)
+            if damage_ledger is not None:
+                damage_ledger.append(dmg)
             combatant.hp -= dmg
             log_parts.append(t(lang, "status.corrosion_tick", "🧪 {target}被腐蝕侵蝕，{stacks} 層造成 {dmg} 點傷害！", target=target_label, stacks=stacks, dmg=dmg))
 
@@ -233,9 +239,9 @@ def _tick_status(combatant, status_defs: dict, is_player: bool, lang: str = "zh"
     return "\n".join(log_parts), can_act
 
 
-def process_turn_start(player, status_defs: dict) -> tuple[str, bool]:
+def process_turn_start(player, status_defs: dict, damage_ledger: list[int] | None = None) -> tuple[str, bool]:
     lang = getattr(player, "language", "zh")
-    return _tick_status(PlayerCombatant(player, {}, status_defs), status_defs, is_player=True, lang=lang)
+    return _tick_status(PlayerCombatant(player, {}, status_defs), status_defs, is_player=True, lang=lang, damage_ledger=damage_ledger)
 
 
 def process_monster_status(slot: dict, status_defs: dict, lang: str = "zh") -> tuple[str, bool]:

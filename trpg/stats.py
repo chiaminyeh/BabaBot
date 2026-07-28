@@ -32,6 +32,9 @@ LEGACY_STAT_TO_ARCHETYPE = {
 }
 POINTS_PER_LEVEL = STAT_POINTS_PER_LEVEL
 DEPRECATED_PROGRESSION_SKILLS = frozenset(("combo_attack", "battle_focus"))
+DEPRECATED_ITEM_REPLACEMENTS = {
+    "scroll_battle_focus": "skill_manual",
+}
 
 
 def prestige_required_level(prestige_count: int) -> int:
@@ -146,7 +149,10 @@ def prune_unqualified_skills(player, skills_data: dict) -> list[str]:
     removed = []
     kept_skills = []
     for skill_id in learned:
-        skill = skills_data.get(skill_id, {})
+        skill = skills_data.get(skill_id)
+        if not skill:
+            removed.append(skill_id)
+            continue
         ok, _, _ = meets_skill_requirements(player, skill)
         if ok:
             kept_skills.append(skill_id)
@@ -324,12 +330,14 @@ def migrate_player_stats(player, items: dict, skills_data: dict | None = None):
     normalize_core_selection(player)
     player.skills = [skill_id for skill_id in (getattr(player, "skills", None) or []) if skill_id not in DEPRECATED_PROGRESSION_SKILLS]
     player.equipped_skills = [skill_id for skill_id in (getattr(player, "equipped_skills", None) or []) if skill_id not in DEPRECATED_PROGRESSION_SKILLS]
-    # Removed class-skill scrolls must not linger as unusable inventory entries in
-    # SQLite/legacy saves.  The item catalog is authoritative for valid inventory.
-    player.inventory = {
-        item_id: count for item_id, count in (getattr(player, "inventory", None) or {}).items()
-        if item_id in items and count > 0
-    }
+    # Replace retired items before catalog pruning so existing owners keep an
+    # equivalent usable reward instead of losing inventory during migration.
+    migrated_inventory = {}
+    for item_id, count in (getattr(player, "inventory", None) or {}).items():
+        replacement = DEPRECATED_ITEM_REPLACEMENTS.get(item_id, item_id)
+        if replacement in items and count > 0:
+            migrated_inventory[replacement] = migrated_inventory.get(replacement, 0) + count
+    player.inventory = migrated_inventory
     # Cached regional shop rolls also persist item IDs; remove retired scrolls
     # there so a later refresh cannot re-display an invalid offer.
     for shop in (getattr(player, "shop_state", None) or {}).values():
@@ -337,10 +345,12 @@ def migrate_player_stats(player, items: dict, skills_data: dict | None = None):
             continue
         for key in ("items", "mystery_items"):
             if isinstance(shop.get(key), list):
-                shop[key] = [item_id for item_id in shop[key] if item_id in items]
+                migrated = [DEPRECATED_ITEM_REPLACEMENTS.get(item_id, item_id) for item_id in shop[key]]
+                shop[key] = list(dict.fromkeys(item_id for item_id in migrated if item_id in items))
     for key in ("shop_items", "mystery_shop_items"):
         if isinstance(getattr(player, key, None), list):
-            setattr(player, key, [item_id for item_id in getattr(player, key) if item_id in items])
+            migrated = [DEPRECATED_ITEM_REPLACEMENTS.get(item_id, item_id) for item_id in getattr(player, key)]
+            setattr(player, key, list(dict.fromkeys(item_id for item_id in migrated if item_id in items)))
 
     if not hasattr(player, "base_int"):
         player.base_int = getattr(player, "base_magic", 0)
