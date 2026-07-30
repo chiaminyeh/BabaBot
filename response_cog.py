@@ -3,7 +3,9 @@ from discord.ext import commands
 import random
 import asyncio
 import aiohttp
+import logging
 import os
+from dm_logging import format_dm_log, format_outgoing_dm
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types  # 新版 Google GenAI SDK 的設定型態
@@ -65,6 +67,7 @@ async def lm_studio_chat(username: str, user_message: str) -> str:
 class response_cog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.dm_logger = logging.getLogger("bababot.dm")
         self.user_memory = {}  # ✨ 修正：改名避免與下面的 memory 指令衝突
         
         # 初始化 Gemini Client（重複使用同一個 client 效能較佳）
@@ -85,11 +88,19 @@ class response_cog(commands.Cog):
         
         try:
             if is_private:
+                self.dm_logger.info(format_outgoing_dm(message.author, response))
                 await message.author.send(response)
             else:
+                if isinstance(message.channel, discord.DMChannel):
+                    self.dm_logger.info(format_outgoing_dm(message.author, response))
                 await message.channel.send(response)
         except Exception as e:
             print(f"[Error] Failed to send message: {e}")
+
+    async def send_channel_reply(self, message, response):
+        if isinstance(message.channel, discord.DMChannel):
+            self.dm_logger.info(format_outgoing_dm(message.author, response))
+        await message.channel.send(response)
 
     async def generate_ai_response(self, prompt: str) -> str:
         """提供給其他 Cog 呼叫的共用 AI 接口"""
@@ -115,9 +126,9 @@ class response_cog(commands.Cog):
         stripped_message = user_message.strip()
         lowered_message = stripped_message.lower()
         
-        # 判斷 DM（私訊）
+        # Log complete DM content and attachment metadata to the rotating Baba log.
         if is_dm:
-            print(f"DM received from user_id={message.author.id}; content is not forwarded for privacy.")
+            self.dm_logger.info(format_dm_log("IN", message))
         else:
             print(f"{username} said: '{user_message}' (#{message.channel})")
 
@@ -136,15 +147,15 @@ class response_cog(commands.Cog):
                 if not await is_lm_studio_running():
                     # 沒開本地模型，直接用 Gemini 多模型輪詢
                     reply = await self._call_gemini_with_fallback(prompt, system_instruction=sys_prompt)
-                    await message.channel.send(reply)
+                    await self.send_channel_reply(message, reply)
                 else:
                     try:
                         reply = await lm_studio_chat(username, user_message)
-                        await message.channel.send(reply)
+                        await self.send_channel_reply(message, reply)
                     except Exception as e:
                         print(f"LM Studio 執行中突發錯誤: {e}，自動切換至 Gemini 備用")
                         reply = await self._call_gemini_with_fallback(prompt, system_instruction=sys_prompt)
-                        await message.channel.send(reply)
+                        await self.send_channel_reply(message, reply)
             return
 
         # ==========================================

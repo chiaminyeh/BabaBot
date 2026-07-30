@@ -160,6 +160,50 @@ def wait_for_exit(pid: int, timeout_seconds: int = 20) -> bool:
     return False
 
 
+def _powershell_literal(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
+
+
+def build_watcher_command(log_path: Path, pid: int) -> list[str]:
+    literal_path = _powershell_literal(str(log_path))
+    script = (
+        "$Host.UI.RawUI.WindowTitle = 'Bababot Live Log'; "
+        f"$log = {literal_path}; $botPid = {pid}; "
+        "Write-Host ('Watching Bababot PID ' + $botPid + ': ' + $log) -ForegroundColor Cyan; "
+        "Write-Host 'Close this window to stop watching; Baba will keep running.'; "
+        "Get-Content -LiteralPath $log -Tail 50; "
+        "$stream = [System.IO.File]::Open($log, [System.IO.FileMode]::Open, "
+        "[System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite); "
+        "$null = $stream.Seek(0, [System.IO.SeekOrigin]::End); "
+        "$reader = [System.IO.StreamReader]::new($stream); "
+        "try { while (Get-Process -Id $botPid -ErrorAction SilentlyContinue) { "
+        "while (($line = $reader.ReadLine()) -ne $null) { Write-Host $line }; "
+        "Start-Sleep -Milliseconds 250 } } "
+        "finally { $reader.Dispose(); $stream.Dispose() }"
+    )
+    return [
+        "powershell.exe",
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        script,
+    ]
+
+
+def start_log_watcher(log_path: Path, pid: int) -> subprocess.Popen[bytes] | None:
+    if os.name != "nt":
+        return None
+    command = build_watcher_command(log_path, pid)
+    return subprocess.Popen(
+        command,
+        cwd=str(REPO_ROOT),
+        close_fds=True,
+        creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NEW_PROCESS_GROUP,
+    )
+
+
 def start_bababot(python_executable: str) -> tuple[subprocess.Popen[bytes], Path]:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     log_path = LOG_DIR / f"bababot_restart_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
@@ -191,6 +235,7 @@ def start_bababot(python_executable: str) -> tuple[subprocess.Popen[bytes], Path
 
     PID_FILE.write_text(str(process.pid), encoding="utf-8")
     log_handle.close()
+    start_log_watcher(log_path, process.pid)
     return process, log_path
 
 
