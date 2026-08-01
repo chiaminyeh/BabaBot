@@ -127,7 +127,7 @@ def format_blocked_alert(incident: dict[str, Any]) -> str:
     )[:1900]
 
 
-def main() -> int:
+def run_monitor() -> tuple[int, list[str]]:
     watch.load_environment()
     state = watch.load_state()
     incidents = load_incidents()
@@ -136,7 +136,7 @@ def main() -> int:
 
     if not new_events and not pending_incidents:
         watch.save_state(state)
-        return 0
+        return 0, []
 
     if new_events:
         incidents.extend(new_events)
@@ -170,9 +170,14 @@ def main() -> int:
             messages.append(format_blocked_alert(refreshed))
 
     watch.save_state(state)
+    return 0, messages
+
+
+def main() -> int:
+    code, messages = run_monitor()
     if messages:
         print("\n\n".join(messages))
-    return 0
+    return code
 
 
 if __name__ == "__main__":

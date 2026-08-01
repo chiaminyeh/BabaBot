@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import aiohttp
-import contextlib
-import io
 import logging
 import os
 import datetime
@@ -81,10 +79,8 @@ class MonitorCog(commands.Cog):
 
     @staticmethod
     def _run_monitor_once() -> tuple[int, str]:
-        buffer = io.StringIO()
-        with contextlib.redirect_stdout(buffer):
-            code = monitor_bababot.main()
-        return code, buffer.getvalue().strip()
+        code, messages = monitor_bababot.run_monitor()
+        return code, "\n\n".join(messages).strip()
 
     @tasks.loop(minutes=MONITOR_INTERVAL_MINUTES)
     async def monitor_checker(self):

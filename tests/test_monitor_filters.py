@@ -97,6 +97,24 @@ aiohttp.client_exceptions.ServerDisconnectedError: Server disconnected
         self.assertEqual(len(watch.detect_error_events(first, source, seen)), 1)
         self.assertEqual(watch.detect_error_events(second, source, seen), [])
 
+    def test_run_monitor_once_does_not_redirect_global_stdout(self):
+        import io
+        import sys
+        from monitor_cog import MonitorCog
+
+        output_buffer = io.StringIO()
+        old_stdout = sys.stdout
+        sys.stdout = output_buffer
+        try:
+            print("豐川翔子 said: 'google突然行了' (#彩虹頻道)")
+            code, monitor_output = MonitorCog._run_monitor_once()
+        finally:
+            sys.stdout = old_stdout
+
+        captured = output_buffer.getvalue()
+        self.assertIn("豐川翔子 said: 'google突然行了' (#彩虹頻道)", captured)
+        self.assertNotIn("豐川翔子 said: 'google突然行了' (#彩虹頻道)", monitor_output)
+
 
 if __name__ == "__main__":
     unittest.main()
