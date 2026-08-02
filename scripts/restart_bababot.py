@@ -15,7 +15,7 @@ LOG_DIR = REPO_ROOT / "logs"
 PID_FILE = LOG_DIR / "bababot.pid"
 PROJECT_VENV_PYTHON = REPO_ROOT / ".venv" / "Scripts" / "python.exe"
 STARTUP_WAIT_SECONDS = 6
-SMOKE_TIMEOUT_SECONDS = 25
+SMOKE_TIMEOUT_SECONDS = 45
 SUCCESS_MARKERS = (
     "has connected to gateway",
     "extensions loaded:",
