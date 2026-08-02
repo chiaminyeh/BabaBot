@@ -5,6 +5,8 @@ import asyncio
 import aiohttp
 import logging
 import os
+import sys
+import time
 from dm_logging import format_dm_log, format_outgoing_dm
 from dotenv import load_dotenv
 from google import genai
@@ -69,6 +71,9 @@ class response_cog(commands.Cog):
         self.bot = bot
         self.dm_logger = logging.getLogger("bababot.dm")
         self.user_memory = {}  # ✨ 修正：改名避免與下面的 memory 指令衝突
+        self.owner_id = int(os.getenv("BABABOT_OWNER_ID", "295288056276189185"))
+        self.last_shawshaw_sound_time = 0.0
+        self.shawshaw_sound_cooldown = 5.0
         
         # 初始化 Gemini Client（重複使用同一個 client 效能較佳）
         self.ai_client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
@@ -80,6 +85,53 @@ class response_cog(commands.Cog):
             "gemini-2.5-flash",
             "gemini-2.5-flash-lite"
         ]
+
+    def is_shawshaw_mention(self, message) -> bool:
+        """Check if message mentions shawshaw or owner user ID and is not sent by owner or bot."""
+        author = getattr(message, "author", None)
+        if not author or getattr(author, "bot", False):
+            return False
+        if getattr(author, "id", None) == self.owner_id:
+            return False
+
+        mentions = getattr(message, "mentions", [])
+        if any(getattr(m, "id", None) == self.owner_id for m in mentions):
+            return True
+
+        content = str(getattr(message, "content", "")).lower()
+        if "shawshaw" in content:
+            return True
+
+        return False
+
+    def play_mention_sound(self):
+        """Play Windows system notification sound safely with error fallback."""
+        if sys.platform == "win32":
+            try:
+                import winsound
+                winsound.PlaySound("SystemNotification", winsound.SND_ALIAS | winsound.SND_ASYNC)
+            except Exception as e:
+                print(f"[SHAWSHAW ALERT] Failed to play notification sound: {e}")
+
+    def handle_shawshaw_mention(self, message):
+        """Handle log print and sound alert for shawshaw mentions with 5s cooldown."""
+        if not self.is_shawshaw_mention(message):
+            return False
+
+        author = getattr(message, "author", None)
+        username = str(getattr(author, "display_name", author))
+        channel = getattr(message, "channel", None)
+        is_dm = isinstance(channel, discord.DMChannel)
+        channel_str = "DM" if is_dm else f"#{channel}"
+        user_message = str(getattr(message, "content", ""))
+
+        print(f"[SHAWSHAW ALERT] {username} in {channel_str}: '{user_message}'")
+
+        now = time.time()
+        if now - self.last_shawshaw_sound_time >= self.shawshaw_sound_cooldown:
+            self.last_shawshaw_sound_time = now
+            self.play_mention_sound()
+        return True
 
     async def send_message(self, message, user_message, is_private):
         response = self.get_response(user_message)
@@ -118,6 +170,8 @@ class response_cog(commands.Cog):
         # 避免 Bot 讀自己/其他 bot 訊息造成回音或無限迴圈
         if message.author.bot:
             return
+
+        self.handle_shawshaw_mention(message)
 
         username = str(message.author.display_name)
         user_message = str(message.content)
