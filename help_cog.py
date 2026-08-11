@@ -49,6 +49,7 @@ CATEGORY_FIELDS = {
             "`baba skip` — Skip the current song\n"
             "`baba skipto <position>` — Jump to a queued song\n"
             "`baba volume [0-200]` — View or set volume\n"
+            "`baba silence [on|off]` — Silence routine music notices for this server\n"
             "`baba stop` — Stop and disconnect Baba",
         ),
         (

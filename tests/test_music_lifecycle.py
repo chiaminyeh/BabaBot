@@ -175,6 +175,9 @@ class MusicLifecycleTests(unittest.IsolatedAsyncioTestCase):
         self.bot.voice_clients.append(self.voice)
         self.state = self.cog._get_or_create_state(self.guild.id)
         self.state.vc = self.voice
+        # Legacy lifecycle tests assert their explicit command responses.  The
+        # default-silent contract is covered by fresh-state tests below.
+        self.state.silent = False
         self.audio_patches = [
             patch.object(
                 music_module.discord,
@@ -203,6 +206,86 @@ class MusicLifecycleTests(unittest.IsolatedAsyncioTestCase):
     async def start_tracks(self, *names):
         self.state.music_queue.extend(self.make_track(name) for name in names)
         await self.cog.play_music(self.ctx)
+
+    async def test_music_silence_is_default_per_server_and_can_be_toggled(self):
+        default_guild = SimpleNamespace(id=202)
+        default_state = self.cog._get_or_create_state(default_guild.id)
+        self.assertTrue(default_state.silent)
+
+        await music_module.music_cog.silence.callback(self.cog, self.ctx, mode="off")
+        self.assertFalse(self.state.silent)
+        self.assertFalse(self.cog.guild_silence[self.guild.id])
+        await music_module.music_cog.volume.callback(self.cog, self.ctx, vol=40)
+        self.assertEqual(self.ctx.sent[-1][0], "✅ 🔊 Volume set to **40%**")
+
+        del self.cog.guild_states[self.guild.id]
+        recreated_state = self.cog._get_or_create_state(self.guild.id)
+        self.assertFalse(recreated_state.silent)
+
+        await music_module.music_cog.silence.callback(self.cog, self.ctx, mode="on")
+        self.assertTrue(recreated_state.silent)
+        self.assertTrue(self.cog.guild_silence[self.guild.id])
+
+    async def test_silent_default_suppresses_volume_confirmation(self):
+        self.state.silent = True
+        await music_module.music_cog.volume.callback(self.cog, self.ctx, vol=40)
+
+        self.assertEqual(self.state.volume, 0.4)
+        self.assertEqual(self.ctx.sent, [])
+
+    async def test_silent_default_suppresses_plain_queue_prompt(self):
+        self.state.silent = True
+        self.state.music_queue.append(self.make_track("shuffle-me.mp3"))
+
+        await music_module.music_cog.shuffle.callback(self.cog, self.ctx)
+
+        self.assertEqual(self.ctx.sent, [])
+
+    async def test_silent_mode_keeps_actionable_queue_errors(self):
+        self.state.silent = True
+
+        await music_module.music_cog.shuffle.callback(self.cog, self.ctx)
+
+        self.assertEqual(self.ctx.sent[0][0], "❌ Queue is empty, nothing to shuffle.")
+
+    async def test_visible_music_success_and_failure_use_status_emojis(self):
+        self.state.music_queue.append(self.make_track("emoji-success.mp3"))
+        await music_module.music_cog.shuffle.callback(self.cog, self.ctx)
+        self.assertTrue(self.ctx.sent[-1][0].startswith("✅ "))
+
+        self.state.music_queue.clear()
+        await music_module.music_cog.shuffle.callback(self.cog, self.ctx)
+        self.assertTrue(self.ctx.sent[-1][0].startswith("❌ "))
+
+    async def test_play_voice_error_uses_red_x(self):
+        self.ctx.author.voice = None
+
+        await music_module.music_cog.play.callback(self.cog, self.ctx, query="new song")
+
+        self.assertTrue(self.ctx.sent[-1][0].startswith("❌ "))
+
+    async def test_now_playing_success_embed_uses_checkmark(self):
+        await self.start_tracks("emoji-now-playing.mp3")
+
+        embed_messages = [
+            kwargs["embed"]
+            for _content, kwargs, _message in self.ctx.sent
+            if "embed" in kwargs and getattr(kwargs["embed"], "title", "")
+        ]
+        self.assertTrue(embed_messages)
+        self.assertTrue(embed_messages[-1].title.startswith("✅ "))
+
+    async def test_idle_disconnect_is_silent_by_default(self):
+        self.state.silent = True
+        async def immediate_sleep(_delay):
+            return None
+
+        with patch.object(music_module.asyncio, "sleep", new=immediate_sleep):
+            self.cog._start_idle_timer(self.ctx)
+            await self.state.idle_task
+
+        self.assertEqual(self.ctx.sent, [])
+        self.assertEqual(self.voice.disconnect_calls, 1)
 
     async def test_idle_timeout_does_not_cancel_itself_and_finishes_disconnect(self):
         async def immediate_sleep(_delay):

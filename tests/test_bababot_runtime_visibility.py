@@ -90,6 +90,16 @@ class AbandonedListenVisibilityTests(unittest.TestCase):
         self.assertIn("discord.py[voice]", requirements)
 
 
+class RemovedBombCogVisibilityTests(unittest.TestCase):
+    def test_bomb_cog_is_absent_and_cannot_be_loaded_or_referenced(self):
+        root = Path(__file__).resolve().parents[1]
+        self.assertFalse((root / "bomb_cog.py").exists())
+
+        source_paths = [root / "main.py", root / "scripts" / "check_bababot_health.py"]
+        for path in source_paths:
+            self.assertNotIn("bomb_cog", path.read_text(encoding="utf-8"))
+
+
 class ExtensionHealthContractTests(unittest.TestCase):
     def test_runtime_and_health_checker_expect_the_same_extensions(self):
         root = Path(__file__).resolve().parents[1]

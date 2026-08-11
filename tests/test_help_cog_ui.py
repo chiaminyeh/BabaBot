@@ -37,6 +37,7 @@ class HelpUiContractTests(unittest.TestCase):
                 "`baba skip`",
                 "`baba skipto <position>`",
                 "`baba volume [0-200]`",
+                "`baba silence [on|off]`",
                 "`baba shuffle`",
                 "`baba loop [off|single|queue]`",
                 "`baba move <from> <to>`",

@@ -62,6 +62,7 @@ class GuildState:
         self.now_playing_message = None # To store the message with the embed and buttons
         self.pending_search_message = None
         self.volume = 0.25  # Default volume 25%
+        self.silent = True  # Suppress routine volume/lifecycle notices by default.
         self.loop_mode = "off"  # "off", "single", "queue"
         self.idle_task = None  # Auto-disconnect timer
         self.play_lock = asyncio.Lock()
@@ -118,7 +119,7 @@ class MusicControls(View):
             return True
         self.stop()
         await interaction.response.send_message(
-            "These music controls have expired. Use the current Now Playing panel.",
+            "❌ These music controls have expired. Use the current Now Playing panel.",
             ephemeral=True,
         )
         return False
@@ -147,12 +148,12 @@ class MusicControls(View):
         if not await self._require_live(interaction):
             return False
         if not interaction.user.voice:
-            await interaction.response.send_message("You must be in a voice channel to use music controls <:baba:1422080743886291025>", ephemeral=True)
+            await interaction.response.send_message("❌ You must be in a voice channel to use music controls <:baba:1422080743886291025>", ephemeral=True)
             return False
 
         if self.state.vc and interaction.user.voice.channel == self.state.vc.channel:
             return True
-        await interaction.response.send_message("You must be in the same voice channel as baba <:baba:1422080743886291025>", ephemeral=True)
+        await interaction.response.send_message("❌ You must be in the same voice channel as baba <:baba:1422080743886291025>", ephemeral=True)
         return False
 
     async def pause_callback(self, interaction: discord.Interaction):
@@ -167,7 +168,7 @@ class MusicControls(View):
         if result is False:
             self.stop()
             await interaction.response.send_message(
-                "These music controls have expired. Use the current Now Playing panel.",
+                "❌ These music controls have expired. Use the current Now Playing panel.",
                 ephemeral=True,
             )
             return
@@ -175,7 +176,7 @@ class MusicControls(View):
             if not self._is_live():
                 self.stop()
                 await interaction.response.send_message(
-                    "These music controls have expired. Use the current Now Playing panel.",
+                    "❌ These music controls have expired. Use the current Now Playing panel.",
                     ephemeral=True,
                 )
                 return
@@ -195,7 +196,7 @@ class MusicControls(View):
         if result is False:
             self.stop()
             await interaction.followup.send(
-                "These music controls have expired. Use the current Now Playing panel.",
+                "❌ These music controls have expired. Use the current Now Playing panel.",
                 ephemeral=True,
             )
 
@@ -206,7 +207,7 @@ class MusicControls(View):
             if not self._is_live():
                 self.stop()
                 await interaction.response.send_message(
-                    "These music controls have expired. Use the current Now Playing panel.",
+                    "❌ These music controls have expired. Use the current Now Playing panel.",
                     ephemeral=True,
                 )
                 return
@@ -227,12 +228,12 @@ class MusicControls(View):
             if not self._is_live():
                 self.stop()
                 await interaction.followup.send(
-                    "These music controls have expired. Use the current Now Playing panel.",
+                    "❌ These music controls have expired. Use the current Now Playing panel.",
                     ephemeral=True,
                 )
                 return
             if not self.state.music_queue:
-                await interaction.followup.send("No music in queue <:baba:1422080743886291025>", ephemeral=True)
+                await interaction.followup.send("❌ No music in queue <:baba:1422080743886291025>", ephemeral=True)
             else:
                 embed = self.music_cog._build_queue_embed(self.state)
                 await interaction.followup.send(embed=embed, ephemeral=True)
@@ -250,7 +251,7 @@ class MusicControls(View):
         if result is False:
             self.stop()
             await interaction.followup.send(
-                "These music controls have expired. Use the current Now Playing panel.",
+                "❌ These music controls have expired. Use the current Now Playing panel.",
                 ephemeral=True,
             )
 
@@ -269,11 +270,11 @@ class MusicControls(View):
             if result is False:
                 self.stop()
                 await interaction.followup.send(
-                    "These music controls have expired. Use the current Now Playing panel.",
+                    "❌ These music controls have expired. Use the current Now Playing panel.",
                     ephemeral=True,
                 )
         else:
-            await interaction.response.send_message("No song is currently playing to remove.", ephemeral=True)
+            await interaction.response.send_message("❌ No song is currently playing to remove.", ephemeral=True)
 
 
 class YouTubeSearchView(View):
@@ -319,13 +320,13 @@ class YouTubeSearchView(View):
     def _make_callback(self, index: int):
         async def callback(interaction: discord.Interaction):
             if interaction.user != self.ctx.author:
-                await interaction.response.send_message("Only the person who searched can pick a song.", ephemeral=True)
+                await interaction.response.send_message("❌ Only the person who searched can pick a song.", ephemeral=True)
                 return
             if self.expired or not self._is_live():
                 self.expired = True
                 self.stop()
                 await interaction.response.edit_message(
-                    embed=Embed(description="This search has expired.", color=discord.Color.red()),
+                    embed=Embed(description="❌ This search has expired.", color=discord.Color.red()),
                     view=None,
                 )
                 return
@@ -334,7 +335,7 @@ class YouTubeSearchView(View):
                     self.expired = True
                     self.stop()
                     await interaction.response.edit_message(
-                        embed=Embed(description="This search has expired.", color=discord.Color.red()),
+                        embed=Embed(description="❌ This search has expired.", color=discord.Color.red()),
                         view=None,
                     )
                     return
@@ -345,7 +346,7 @@ class YouTubeSearchView(View):
                 song = self.results[index]
                 self._enqueue(song)
                 embed = Embed(
-                    description=f"**#{len(self.state.music_queue)} - '{song['title']}'** added to the queue.",
+                    description=f"✅ **#{len(self.state.music_queue)} - '{song['title']}'** added to the queue.",
                     color=discord.Color.green()
                 )
                 await interaction.response.edit_message(embed=embed, view=None)
@@ -356,13 +357,13 @@ class YouTubeSearchView(View):
 
     async def cancel_callback(self, interaction: discord.Interaction):
         if interaction.user != self.ctx.author:
-            await interaction.response.send_message("Only the person who searched can cancel.", ephemeral=True)
+            await interaction.response.send_message("❌ Only the person who searched can cancel.", ephemeral=True)
             return
         if not self._is_live():
             self.expired = True
             self.stop()
             await interaction.response.edit_message(
-                embed=Embed(description="This search has expired.", color=discord.Color.red()), view=None
+                embed=Embed(description="❌ This search has expired.", color=discord.Color.red()), view=None
             )
             return
         async with self.state.transition_lock:
@@ -370,7 +371,7 @@ class YouTubeSearchView(View):
                 self.expired = True
                 self.stop()
                 await interaction.response.edit_message(
-                    embed=Embed(description="This search has expired.", color=discord.Color.red()), view=None
+                    embed=Embed(description="❌ This search has expired.", color=discord.Color.red()), view=None
                 )
                 return
             self.chosen = True
@@ -378,7 +379,7 @@ class YouTubeSearchView(View):
             self.stop()
             self.music_cog._advance_search_generation(self.state)
             await interaction.response.edit_message(
-                embed=Embed(description="Search cancelled.", color=discord.Color.red()), view=None
+                embed=Embed(description="✅ Search cancelled.", color=discord.Color.red()), view=None
             )
 
     async def on_timeout(self):
@@ -396,7 +397,11 @@ class YouTubeSearchView(View):
             self.music_cog._advance_search_generation(self.state)
             song = self.results[0]
             self._enqueue(song)
-            await self.ctx.send(f"⏱️ No selection — auto-adding **'{song['title']}'**")
+            await self.music_cog._send_if_unsilenced(
+                self.ctx,
+                self.state,
+                f"⏱️ No selection — auto-adding **'{song['title']}'**",
+            )
             should_start = not self.state.is_playing
         if should_start:
             await self.music_cog.play_music(self.ctx, state=self.state)
@@ -407,6 +412,7 @@ class music_cog(commands.Cog):
         self.bot = bot
         self.music_folder = "C:/Users/manza/Music"
         self.guild_states = {} # Dictionary to hold the state for each guild
+        self.guild_silence = {}  # Per-guild override; missing guilds stay silent.
         self._unloading = False
         self.YDL_OPTIONS = {
             "format": "bestaudio/best",
@@ -424,8 +430,20 @@ class music_cog(commands.Cog):
 
     def _get_or_create_state(self, guild_id: int) -> GuildState:
         if guild_id not in self.guild_states:
-            self.guild_states[guild_id] = GuildState()
+            state = GuildState()
+            state.silent = self.guild_silence.get(guild_id, True)
+            self.guild_states[guild_id] = state
         return self.guild_states[guild_id]
+
+    async def _send_if_unsilenced(self, ctx, state: GuildState, content=None, **kwargs):
+        if state.silent:
+            return None
+        if content is not None:
+            content = f"✅ {content}"
+        return await ctx.send(content, **kwargs)
+
+    async def _send_error(self, ctx, content, **kwargs):
+        return await ctx.send(f"❌ {content}", **kwargs)
 
     def _state_is_live(self, guild_id: int, state: GuildState) -> bool:
         return not self._unloading and self.guild_states.get(guild_id) is state
@@ -531,7 +549,11 @@ class music_cog(commands.Cog):
                     return
                 if not state.is_playing and not state.is_paused and not state.starting and state.vc and state.vc.is_connected():
                     with contextlib.suppress(Exception):
-                        await ctx.send("💤 Left voice channel due to inactivity <:baba:1422080743886291025>")
+                        await self._send_if_unsilenced(
+                            ctx,
+                            state,
+                            "💤 Left voice channel due to inactivity <:baba:1422080743886291025>",
+                        )
                     await self._leave_guild(ctx)
             except asyncio.CancelledError:
                 return
@@ -666,7 +688,7 @@ class music_cog(commands.Cog):
             duration_str = f" `[{song.get('duration_str', '?')}]`" if song.get('duration_str') else ""
             retval += f"#{i + 1} - {song['title']}{duration_str}\n"
         loop_str = f" | Loop: {state.loop_mode.capitalize()}" if state.loop_mode != "off" else ""
-        return Embed(title="Music Queue <:baba:1422080743886291025>", description=f"```\n{retval}\nTotal songs: {len(state.music_queue)}{loop_str}\n```", color=discord.Color.gold())
+        return Embed(title="✅ Music Queue <:baba:1422080743886291025>", description=f"```\n{retval}\nTotal songs: {len(state.music_queue)}{loop_str}\n```", color=discord.Color.gold())
 
     async def send_music_embed(
         self,
@@ -683,7 +705,7 @@ class music_cog(commands.Cog):
         
         link_url = song.get("webpage_url") or song.get("source", "") if isinstance(song, dict) else ""
         description = f"**[{song_title}]({link_url})**" if link_url.startswith(("http://", "https://")) else f"**{song_title}**"
-        embed = Embed(title=f"{message_type} Now Playing 🎶", description=description, color=discord.Color.blue())
+        embed = Embed(title=f"✅ {message_type} Now Playing 🎶", description=description, color=discord.Color.blue())
         
         if isinstance(song, dict):
             if song.get("uploader"):
@@ -744,7 +766,7 @@ class music_cog(commands.Cog):
             if error is not None:
                 state.current = None
                 with contextlib.suppress(Exception):
-                    await ctx.send("Playback error; skipping this song.")
+                    await self._send_error(ctx, "Playback error; skipping this song.")
             await self._play_music_locked(ctx, state, allow_loop=error is None)
 
     async def play_music(self, ctx, *, state=None):
@@ -889,7 +911,10 @@ class music_cog(commands.Cog):
                 state.current = None
                 state.starting = False
                 with contextlib.suppress(Exception):
-                    await ctx.send(f"Error playing **{song.get('title', 'unknown')}**; skipping this song.")
+                    await self._send_error(
+                        ctx,
+                        f"Error playing **{song.get('title', 'unknown')}**; skipping this song.",
+                    )
                 previous = None
                 allow_loop = False
             finally:
@@ -903,7 +928,10 @@ class music_cog(commands.Cog):
         state = self._get_or_create_state(guild_id)
 
         if not ctx.author.voice:
-            await ctx.send("You need to be in a voice channel first <:baba:1422080743886291025>")
+            await self._send_error(
+                ctx,
+                "You need to be in a voice channel first <:baba:1422080743886291025>",
+            )
             return
         request_generation, stale_search_message = self._advance_search_generation(state)
         await self._expire_search_message(stale_search_message)
@@ -932,8 +960,9 @@ class music_cog(commands.Cog):
                                 connected_here = True
                         except Exception:
                             logger.exception("Could not connect to voice guild_id=%s", guild_id)
-                            await ctx.send(
-                                "❌ Couldn't connect to your voice channel. Leave and rejoin the voice channel, then try again."
+                            await self._send_error(
+                                ctx,
+                                "Couldn't connect to your voice channel. Leave and rejoin the voice channel, then try again."
                             )
                             return
 
@@ -991,7 +1020,7 @@ class music_cog(commands.Cog):
                     state.music_queue[0:0] = songs
                 else:
                     state.music_queue.extend(songs)
-                await ctx.send(f"**{num_songs} random songs** added to the queue.")
+                await self._send_if_unsilenced(ctx, state, f"**{num_songs} random songs** added to the queue.")
                 should_start = not state.is_playing
             if should_start:
                 await self.play_music(ctx, state=state)
@@ -1012,9 +1041,9 @@ class music_cog(commands.Cog):
                         state.music_queue.insert(0, song)
                     else:
                         state.music_queue.append(song)
-                    await ctx.send(f"**'{title}'** added to the queue.")
+                    await self._send_if_unsilenced(ctx, state, f"**'{title}'** added to the queue.")
                 else:
-                    await ctx.send("No songs found in the music folder.")
+                    await self._send_error(ctx, "No songs found in the music folder.")
         elif 'playlist?list=' in query:
             msg = await ctx.send("```Loading playlist...```")
             try:
@@ -1037,7 +1066,7 @@ class music_cog(commands.Cog):
                         ):
                             await self._expire_search_message(msg)
                             return
-                        await msg.edit(content="```Couldn't read that playlist (no entries found).```")
+                        await msg.edit(content="❌ ```Couldn't read that playlist (no entries found).```")
                     return
 
                 songs = [
@@ -1069,7 +1098,7 @@ class music_cog(commands.Cog):
                     self._state_is_live(guild_id, state)
                     and state.search_generation == request_generation
                 ):
-                    await msg.edit(content="```Error loading playlist.```")
+                    await msg.edit(content="❌ ```Error loading playlist.```")
                 else:
                     await self._expire_search_message(msg)
         elif query.startswith(("http://", "https://")) or "youtube.com" in query or "youtu.be" in query:
@@ -1086,13 +1115,13 @@ class music_cog(commands.Cog):
                     ):
                         return
                     if not song_info:
-                        await ctx.send("```Couldn't find that YouTube video.```")
+                        await self._send_error(ctx, "```Couldn't find that YouTube video.```")
                         return
                     if play_first:
                         state.music_queue.insert(0, song_info)
                     else:
                         state.music_queue.append(song_info)
-                    await ctx.send(f"**'{song_info['title']}'** added to the queue.")
+                    await self._send_if_unsilenced(ctx, state, f"**'{song_info['title']}'** added to the queue.")
             except asyncio.CancelledError:
                 raise
             except Exception:
@@ -1100,7 +1129,7 @@ class music_cog(commands.Cog):
                     self._state_is_live(guild_id, state)
                     and state.search_generation == request_generation
                 ):
-                    await ctx.send("```Error processing YouTube link.```")
+                    await self._send_error(ctx, "```Error processing YouTube link.```")
         else:
             query_for_search, all_flag = parse_local_query(query)
             query_words = query_for_search.split()
@@ -1129,7 +1158,11 @@ class music_cog(commands.Cog):
                         state.music_queue[0:0] = songs
                     else:
                         state.music_queue.extend(songs)
-                    await ctx.send(f"**'{files_to_add[0] if len(files_to_add) == 1 else f'{len(files_to_add)} songs'}'** added to the queue.")
+                    await self._send_if_unsilenced(
+                        ctx,
+                        state,
+                        f"**'{files_to_add[0] if len(files_to_add) == 1 else f'{len(files_to_add)} songs'}'** added to the queue.",
+                    )
             else:
                 msg = await ctx.send("```Searching YouTube...```")
                 try:
@@ -1150,10 +1183,10 @@ class music_cog(commands.Cog):
                         with contextlib.suppress(Exception):
                             await msg.delete()
                         if not results:
-                            await ctx.send("Could not find any results on YouTube.")
+                            await self._send_error(ctx, "Could not find any results on YouTube.")
                         else:
                             embed = Embed(
-                                title="🔎 YouTube Search Results",
+                                title="✅ 🔎 YouTube Search Results",
                                 description="\n".join(
                                     f"**{i+1}.** {r['title']} `[{r['duration_str']}]`"
                                     for i, r in enumerate(results)
@@ -1186,7 +1219,7 @@ class music_cog(commands.Cog):
                         self._state_is_live(guild_id, state)
                         and state.search_generation == request_generation
                     ):
-                        await ctx.send("Could not complete the YouTube search.")
+                        await self._send_error(ctx, "Could not complete the YouTube search.")
                     else:
                         await self._expire_search_message(msg)
 
@@ -1195,11 +1228,31 @@ class music_cog(commands.Cog):
             await self.play_music(ctx, state=state)
 
 
+    @commands.command(name="silence", aliases=["quiet"], help="Silences or restores routine music notices for this server.")
+    async def silence(self, ctx, mode: Optional[str] = None):
+        state = self._get_or_create_state(ctx.guild.id)
+        if mode is None:
+            silent = not state.silent
+        else:
+            mode_clean = mode.casefold()
+            if mode_clean in {"on", "true", "yes", "silent", "quiet"}:
+                silent = True
+            elif mode_clean in {"off", "false", "no", "loud", "verbose"}:
+                silent = False
+            else:
+                await self._send_error(ctx, "Usage: `baba silence on|off`.")
+                return
+
+        self.guild_silence[ctx.guild.id] = silent
+        state.silent = silent
+        status = "silenced" if silent else "enabled"
+        await ctx.send(f"✅ Routine music notices are now **{status}** for this server.")
+
     @commands.command(name="volume", aliases=["v", "vol"], help="Sets or views music volume (0-200%).")
     async def volume(self, ctx, vol: Optional[int] = None):
         state = self._get_or_create_state(ctx.guild.id)
         if vol is None:
-            await ctx.send(f"🔊 Current volume: **{int(state.volume * 100)}%**")
+            await self._send_if_unsilenced(ctx, state, f"🔊 Current volume: **{int(state.volume * 100)}%**")
             return
 
         vol = min(max(vol, 0), 200)
@@ -1208,17 +1261,17 @@ class music_cog(commands.Cog):
         if state.vc and state.vc.source and hasattr(state.vc.source, "volume"):
             state.vc.source.volume = state.volume
 
-        await ctx.send(f"🔊 Volume set to **{vol}%**")
+        await self._send_if_unsilenced(ctx, state, f"🔊 Volume set to **{vol}%**")
 
 
     @commands.command(name="shuffle", aliases=["sh"], help="Shuffles the current music queue.")
     async def shuffle(self, ctx):
         state = self._get_or_create_state(ctx.guild.id)
         if not state.music_queue:
-            await ctx.send("Queue is empty, nothing to shuffle.")
+            await self._send_error(ctx, "Queue is empty, nothing to shuffle.")
             return
         random.shuffle(state.music_queue)
-        await ctx.send(f"🔀 Shuffled **{len(state.music_queue)}** songs in the queue!")
+        await self._send_if_unsilenced(ctx, state, f"🔀 Shuffled **{len(state.music_queue)}** songs in the queue!")
 
 
     @commands.command(name="loop", aliases=["repeat"], help="Toggles loop mode: off, single, queue.")
@@ -1241,22 +1294,22 @@ class music_cog(commands.Cog):
                 state.loop_mode = "off"
 
         mode_icons = {"off": "➡️ Off", "single": "🔂 Single Song", "queue": "🔁 Entire Queue"}
-        await ctx.send(f"🔁 Loop mode set to: **{mode_icons[state.loop_mode]}**")
+        await self._send_if_unsilenced(ctx, state, f"🔁 Loop mode set to: **{mode_icons[state.loop_mode]}**")
 
 
     @commands.command(name="move", aliases=["mv"], help="Moves a song from one position to another in queue.")
     async def move(self, ctx, from_pos: int, to_pos: int):
         state = self._get_or_create_state(ctx.guild.id)
         if not state.music_queue:
-            await ctx.send("Queue is empty.")
+            await self._send_error(ctx, "Queue is empty.")
             return
 
         if 1 <= from_pos <= len(state.music_queue) and 1 <= to_pos <= len(state.music_queue):
             song = state.music_queue.pop(from_pos - 1)
             state.music_queue.insert(to_pos - 1, song)
-            await ctx.send(f"🚚 Moved **'{song['title']}'** to position **#{to_pos}**.")
+            await self._send_if_unsilenced(ctx, state, f"🚚 Moved **'{song['title']}'** to position **#{to_pos}**.")
         else:
-            await ctx.send(f"Invalid positions. Queue size is **{len(state.music_queue)}**.")
+            await self._send_error(ctx, f"Invalid positions. Queue size is **{len(state.music_queue)}**.")
 
 
     @commands.command(name="skipto", aliases=["st"], help="Skips directly to a specific song number in queue.")
@@ -1267,10 +1320,10 @@ class music_cog(commands.Cog):
         async with state.play_lock, state.transition_lock:
             queue_size = len(state.music_queue)
             if not queue_size:
-                await ctx.send("Queue is empty.")
+                await self._send_error(ctx, "Queue is empty.")
                 return
             if not 1 <= pos <= queue_size:
-                await ctx.send(f"Invalid song position. Queue size is **{queue_size}**.")
+                await self._send_error(ctx, f"Invalid song position. Queue size is **{queue_size}**.")
                 return
 
             state.music_queue = state.music_queue[pos - 1:]
@@ -1284,12 +1337,13 @@ class music_cog(commands.Cog):
             if self._voice_owns_source(state):
                 state.vc.stop()
             await self._play_music_locked(ctx, state, allow_loop=False)
-        await ctx.send(f"⏭️ Skipped directly to song **#{pos}**.")
+        await self._send_if_unsilenced(ctx, state, f"⏭️ Skipped directly to song **#{pos}**.")
 
 
     @commands.command(name="pause", help="Pauses the current song.")
     async def pause(self, ctx, *, expected_state=None, expected_message=None):
         state = expected_state or self._get_or_create_state(ctx.guild.id)
+        status = None
         async with state.play_lock:
             if (
                 expected_state is not None
@@ -1299,17 +1353,22 @@ class music_cog(commands.Cog):
             if state.vc and state.vc.is_playing():
                 state.is_playing, state.is_paused = False, True
                 state.vc.pause()
+                status = "Paused the current song."
             elif state.vc and state.vc.is_paused():
                 state.is_paused, state.is_playing = False, True
                 state.vc.resume()
+                status = "Resumed the current song."
             else:
-                await ctx.send("No song is currently playing to pause.")
+                await self._send_error(ctx, "No song is currently playing to pause.")
+        if status:
+            await self._send_if_unsilenced(ctx, state, status)
         return True
 
 
     @commands.command(name="resume", help="Resumes the current song.")
     async def resume(self, ctx, *, expected_state=None, expected_message=None):
         state = expected_state or self._get_or_create_state(ctx.guild.id)
+        status = None
         async with state.play_lock:
             if (
                 expected_state is not None
@@ -1319,8 +1378,11 @@ class music_cog(commands.Cog):
             if state.vc and state.vc.is_paused():
                 state.is_paused, state.is_playing = False, True
                 state.vc.resume()
+                status = "Resumed the current song."
             else:
-                await ctx.send("No song is currently paused to resume.")
+                await self._send_error(ctx, "No song is currently paused to resume.")
+        if status:
+            await self._send_if_unsilenced(ctx, state, status)
         return True
 
 
@@ -1344,9 +1406,10 @@ class music_cog(commands.Cog):
                 if self._voice_owns_source(state):
                     state.vc.stop()
                 await self._play_music_locked(ctx, state, allow_loop=False)
+                await self._send_if_unsilenced(ctx, state, "Skipped the current song.")
                 return True
             if not state.current or not self._voice_owns_source(state):
-                await ctx.send("No song is currently playing or paused to skip.")
+                await self._send_error(ctx, "No song is currently playing or paused to skip.")
                 return True
             interrupted = state.current
             state.current = None
@@ -1357,6 +1420,7 @@ class music_cog(commands.Cog):
             state.is_paused = False
             state.vc.stop()
             await self._play_music_locked(ctx, state, allow_loop=False)
+        await self._send_if_unsilenced(ctx, state, "Skipped the current song.")
         return True
 
 
@@ -1372,7 +1436,7 @@ class music_cog(commands.Cog):
             ):
                 return False
             if not state.song_history:
-                await ctx.send("There is no song history to play from.")
+                await self._send_error(ctx, "There is no song history to play from.")
                 return True
 
             interrupted_song = state.current
@@ -1390,6 +1454,7 @@ class music_cog(commands.Cog):
                 songs_to_front.append(interrupted_song)
             state.music_queue[0:0] = songs_to_front
             await self._play_music_locked(ctx, state, allow_loop=False)
+        await self._send_if_unsilenced(ctx, state, "Played the previous song.")
         return True
 
 
@@ -1406,14 +1471,14 @@ class music_cog(commands.Cog):
                     state=state,
                 )
                 return
-        await ctx.send(f"Nothing is playing <:baba:1422080743886291025>")
+        await self._send_error(ctx, "Nothing is playing <:baba:1422080743886291025>")
 
 
     @commands.command(name="queue", aliases=["q","ls"], help="Displays the current songs in queue")
     async def queue(self, ctx):
         state = self._get_or_create_state(ctx.guild.id)
         if not state.music_queue:
-            await ctx.send("No music in queue <:baba:1422080743886291025>")
+            await self._send_error(ctx, "No music in queue <:baba:1422080743886291025>")
             return
         await ctx.send(embed=self._build_queue_embed(state))
 
@@ -1442,7 +1507,7 @@ class music_cog(commands.Cog):
             with contextlib.suppress(Exception):
                 await now_playing_message.delete()
         await self._expire_search_message(pending_search_message)
-        await ctx.send("Queue cleared <:baba:1422080743886291025>")
+        await self._send_if_unsilenced(ctx, state, "Queue cleared <:baba:1422080743886291025>")
 
 
     async def _leave_guild(self, ctx):
@@ -1482,7 +1547,12 @@ class music_cog(commands.Cog):
 
     @commands.command(name="leave", aliases=["disconnect", "l", "d","stop","bye"], help="Disconnects the bot and clears the queue.")
     async def leave(self, ctx):
+        state = self.guild_states.get(ctx.guild.id)
+        if state is None:
+            await self._send_error(ctx, "Baba is not connected to a voice channel.")
+            return
         await self._leave_guild(ctx)
+        await self._send_if_unsilenced(ctx, state, "Left the voice channel.")
 
 
     def _resolve_library_file(self, source):
@@ -1525,7 +1595,7 @@ class music_cog(commands.Cog):
                 ):
                     return False
                 if not state.current:
-                    await ctx.send("```There's no song playing to remove.```")
+                    await self._send_error(ctx, "```There's no song playing to remove.```")
                     return True
 
                 removed_song = state.current
@@ -1542,11 +1612,15 @@ class music_cog(commands.Cog):
 
                 deletion_error = await self._delete_library_file(library_path) if library_path else None
                 if deletion_error is not None:
-                    await ctx.send(f"```Failed to remove '{current_title}': {deletion_error}```")
+                    await self._send_error(ctx, f"```Failed to remove '{current_title}': {deletion_error}```")
                 elif library_path:
-                    await ctx.send(f"```'{current_title}' removed```")
+                    await self._send_if_unsilenced(ctx, state, f"```'{current_title}' removed```")
                 else:
-                    await ctx.send(f"```'{current_title}' removed from playback (no local library file)```")
+                    await self._send_if_unsilenced(
+                        ctx,
+                        state,
+                        f"```'{current_title}' removed from playback (no local library file)```",
+                    )
 
                 now_playing_message = state.now_playing_message
                 state.now_playing_message = None
@@ -1567,9 +1641,9 @@ class music_cog(commands.Cog):
                     return False
                 if state.music_queue:
                     removed_song = state.music_queue.pop()
-                    await ctx.send(f"```'{removed_song['title']}' removed```")
+                    await self._send_if_unsilenced(ctx, state, f"```'{removed_song['title']}' removed```")
                 else:
-                    await ctx.send("```No songs in the queue to remove.```")
+                    await self._send_error(ctx, "```No songs in the queue to remove.```")
             return True
 
     async def _disconnect_cleanup(self, voice_client, now_playing_message=None):
