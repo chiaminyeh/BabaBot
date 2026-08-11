@@ -911,6 +911,24 @@ class MusicLifecycleTests(unittest.IsolatedAsyncioTestCase):
 
 
 class MusicQueueParsingTests(unittest.IsolatedAsyncioTestCase):
+    def test_local_song_title_strips_all_trailing_bracketed_labels(self):
+        self.assertEqual(
+            music_module.local_song_title(
+                r"C:\\Users\\manza\\Music\\Queen - Song [abc123].m4a"
+            ),
+            "Queen - Song",
+        )
+        self.assertEqual(
+            music_module.local_song_title(
+                r"C:\\Users\\manza\\Music\\Song [Official Video] [abc123].m4a"
+            ),
+            "Song",
+        )
+        self.assertEqual(
+            music_module.local_song_title(r"C:\\Users\\manza\\Music\\Song.m4a"),
+            "Song",
+        )
+
     def test_all_is_only_recognized_as_an_exact_token(self):
         self.assertEqual(music_module.parse_local_query("small"), ("small", False))
         self.assertEqual(music_module.parse_local_query("fallout"), ("fallout", False))
@@ -1169,7 +1187,7 @@ class MusicViewLifecycleTests(unittest.IsolatedAsyncioTestCase):
         controls = music_module.MusicControls(self.cog, self.ctx, state=self.state)
         live_interaction = FakeMusicInteraction(self.guild, self.ctx.author)
         self.assertTrue(await controls.interaction_check(live_interaction))
-        self.assertEqual(controls.remove_button.label, "Delete Current Local File")
+        self.assertEqual(controls.remove_button.label, "Remove Current")
 
         del self.cog.guild_states[self.guild.id]
         stale_interaction = FakeMusicInteraction(self.guild, self.ctx.author)

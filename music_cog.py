@@ -31,10 +31,13 @@ def format_duration(duration):
 
 
 def local_song_title(path):
-    """Builds a display title from a local music file path."""
-    base = os.path.basename(path).rsplit('.', 1)[0]
-    if len(base.split()) > 1 and base.split()[-1].lower() in ['[', ']']:
-        return ' '.join(base.split()[:-1])
+    """Build a display title, dropping all trailing bracketed labels."""
+    base = os.path.splitext(os.path.basename(path))[0].strip()
+    while base.endswith("]"):
+        opening = base.rfind("[")
+        if opening <= 0:
+            break
+        base = base[:opening].rstrip()
     return base
 
 
@@ -73,7 +76,7 @@ class MusicControls(View):
         self.loop_button = Button(label="Loop: Off", style=ButtonStyle.secondary, custom_id="loop_button")
         self.queue_button = Button(label="Queue", style=ButtonStyle.secondary, custom_id="queue_button")
         self.remove_button = Button(
-            label="Delete Current Local File",
+            label="Remove Current",
             style=ButtonStyle.danger,
             custom_id="remove_current_button",
         )
