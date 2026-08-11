@@ -1,6 +1,6 @@
 import ast
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from pathlib import Path
 from response_cog import response_cog
 

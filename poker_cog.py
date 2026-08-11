@@ -137,6 +137,13 @@ class PokerCog(commands.Cog):
         await poker.play_game()
 
     # --- Slash: End Poker ---
+    def _refund_bets(self, inst):
+        if inst and inst.pot > 0:
+            for p in inst.players:
+                if p.bet > 0:
+                    bal, claimed = self.bank[p.id]
+                    self.bank[p.id] = (bal + p.bet, claimed)
+
     @app_commands.command(name='end_poker')
     @commands.has_permissions(administrator=True)
     async def end_poker(self, interaction: discord.Interaction):
@@ -146,12 +153,7 @@ class PokerCog(commands.Cog):
         if not game or not game['active']:
             return await interaction.response.send_message("No active game.")
         # refund
-        inst = game['instance']
-        if inst and inst.pot > 0:
-            for p in inst.players:
-                if p.bet > 0:
-                    bal, claimed = self.bank[p.id]
-                    self.bank[p.id] = (bal + p.bet, claimed)
+        self._refund_bets(game['instance'])
         game['active'] = False
         await interaction.response.send_message("Game force-ended. Bets returned.")
     
@@ -249,12 +251,7 @@ class PokerCog(commands.Cog):
                 chan = self.bot.get_channel(game['channel_id'])
                 await chan.send("Game ended due to inactivity.")
                 # refund
-                inst = game['instance']
-                if inst and inst.pot > 0:
-                    for p in inst.players:
-                        if p.bet > 0:
-                            bal, claimed = self.bank[p.id]
-                            self.bank[p.id] = (bal + p.bet, claimed)
+                self._refund_bets(game['instance'])
                 game['active'] = False
 
 # --- Deck Class ---
@@ -289,9 +286,6 @@ class PokerGame:
         self.highest: int = cog.minimum_bet
         self.round = 0
         self.acted_players: set[int] = set()
-        active_ids = {p.id for p in self.players if not p.folded}
-        pending_ids = active_ids - self.acted_players
-        pending_names = [p.name for p in self.players if p.id in pending_ids]
 
 
     async def play_game(self):
@@ -363,22 +357,7 @@ class PokerGame:
         await ctx.send(f"{player.name} bets {amount}. (Total: {player.bet}) Pot: {self.pot}")
         # continue if all matched or folded
         self.acted_players.add(ctx.author.id)
-        # recompute pending:
-        
-        active_ids = {p.id for p in self.players if not p.folded}
-        pending_ids = active_ids - self.acted_players
-
-        if pending_ids:
-            # someone still hasn’t moved
-            await self.channel.send(
-                "⏳ Waiting on: " + ", ".join(
-                    p.name for p in self.players if p.id in pending_ids
-                )
-            )
-        else:
-            # all have acted and bets are matched
-            if all(p.bet == self.highest or p.folded for p in self.players):
-                await self.next_round()
+        await self._maybe_advance_round()
 
 
     async def call(self, ctx: commands.Context):
@@ -397,21 +376,7 @@ class PokerGame:
         await ctx.send(f"{player.name} calls {diff}. Pot: {self.pot}")
         self.acted_players.add(ctx.author.id)
 
-        # recompute pending:
-        active_ids = {p.id for p in self.players if not p.folded}
-        pending_ids = active_ids - self.acted_players
-
-        if pending_ids:
-            # someone still hasn’t moved
-            await self.channel.send(
-                "⏳ Waiting on: " + ", ".join(
-                    p.name for p in self.players if p.id in pending_ids
-                )
-            )
-        else:
-            # all have acted and bets are matched
-            if all(p.bet == self.highest or p.folded for p in self.players):
-                await self.next_round()
+        await self._maybe_advance_round()
 
 
     async def check(self, ctx: commands.Context):
@@ -424,21 +389,7 @@ class PokerGame:
         # now only advance once _all_ active players have either folded or their bet == highest
         self.acted_players.add(ctx.author.id)
 
-        # recompute pending:
-        active_ids = {p.id for p in self.players if not p.folded}
-        pending_ids = active_ids - self.acted_players
-
-        if pending_ids:
-            # someone still hasn’t moved
-            await self.channel.send(
-                "⏳ Waiting on: " + ", ".join(
-                    p.name for p in self.players if p.id in pending_ids
-                )
-            )
-        else:
-            # all have acted and bets are matched
-            if all(p.bet == self.highest or p.folded for p in self.players):
-                await self.next_round()
+        await self._maybe_advance_round()
 
 
 
@@ -460,21 +411,7 @@ class PokerGame:
             return
         self.acted_players.add(ctx.author.id)
 
-        # recompute pending:
-        active_ids = {p.id for p in self.players if not p.folded}
-        pending_ids = active_ids - self.acted_players
-
-        if pending_ids:
-            # someone still hasn’t moved
-            await self.channel.send(
-                "⏳ Waiting on: " + ", ".join(
-                    p.name for p in self.players if p.id in pending_ids
-                )
-            )
-        else:
-            # all have acted and bets are matched
-            if all(p.bet == self.highest or p.folded for p in self.players):
-                await self.next_round()
+        await self._maybe_advance_round()
 
 
     async def allin(self, ctx: commands.Context):
@@ -489,7 +426,11 @@ class PokerGame:
             self.highest = player.bet
         await ctx.send(f"{player.name} goes ALL IN {diff}! Pot: {self.pot}")
         self.acted_players.add(ctx.author.id)
-        # recompute pending:
+        await self._maybe_advance_round()
+
+
+
+    async def _maybe_advance_round(self):
         active_ids = {p.id for p in self.players if not p.folded}
         pending_ids = active_ids - self.acted_players
 
@@ -504,16 +445,6 @@ class PokerGame:
             # all have acted and bets are matched
             if all(p.bet == self.highest or p.folded for p in self.players):
                 await self.next_round()
-
-
-    def _ready_for_next(self) -> bool:
-        active_ids = {p.id for p in self.players if not p.folded}
-        # 1) Everyone still in the hand has acted at least once
-        if not active_ids.issubset(self.acted_players):
-            return False
-        # 2) All bets are matched
-        return all(p.folded or p.bet == self.highest for p in self.players)
-    
 
 
     async def next_round(self):
@@ -669,21 +600,6 @@ class PokerGame:
 
 
         
-    def is_straight(self, values: list[int]) -> bool:
-        """
-        只要判断 values 列表里有没有顺子（不关花色），返回 True/False。
-        """
-        unique = sorted(set(values))
-        if 14 in unique:
-            unique = [1] + unique
-        run = 1
-        for i in range(1, len(unique)):
-            run = run + 1 if unique[i] == unique[i-1] + 1 else 1
-            if run >= 5:
-                return True
-        return False
-
-
     def compare(self, a: tuple[int, list[int]], b: tuple[int, list[int]]) -> int:
         """
         比较两个 rank_hand 的输出：

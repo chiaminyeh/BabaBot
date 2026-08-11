@@ -27,10 +27,6 @@ def _load():
 _load()
 
 
-def reload_catalog():
-    _load()
-
-
 def t(lang: str, key: str, fallback_zh: str, **kwargs) -> str:
     template = fallback_zh
     if lang == "en":

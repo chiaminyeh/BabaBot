@@ -1,11 +1,8 @@
-import datetime
 import time
 import discord
 import random
-from discord import DMChannel
 from discord import app_commands
-from discord.ext import commands, tasks
-import asyncio
+from discord.ext import commands
 
 WORDLE_GUESS = 6
 WORDLE_LETTER = 5

@@ -91,8 +91,3 @@ def fortune_tier(value: int, lang: str = "zh") -> str:
     if value <= 5:
         return t(lang, "fortune.tier_favored", "似乎受到眷顧")
     return t(lang, "fortune.tier_blessed", "命運正對你微笑")
-
-
-def fortune_multiplier(player, per_point: float, minimum: float = 0.75, maximum: float = 1.25) -> float:
-    value = clamp_fortune(getattr(player, "fortune", 0) or 0)
-    return max(minimum, min(maximum, 1.0 + value * per_point))

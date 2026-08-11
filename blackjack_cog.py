@@ -1,12 +1,8 @@
 import discord
-import os
-import logging
 from discord import app_commands
-from discord.ext import commands, tasks
-from typing import List, Dict, Tuple, Optional
-import random
+from discord.ext import commands
+from typing import List, Dict, Optional
 import asyncio
-from datetime import datetime, timedelta
 
 # filepath: c:\Users\manza\Downloads\Bababot\Bot\blackjack.py
 from poker_cog import Deck  # Assuming this exists as per your previous file

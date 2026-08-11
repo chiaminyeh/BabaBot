@@ -2,8 +2,6 @@ import unittest
 
 from trpg.balance import BOSS_SPECIFIC_REWARDS, TOWER_MILESTONES
 from trpg.stats import migrate_player_stats
-import json
-import os
 
 class MockPlayer:
     def __init__(self):

@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from trpg.archetypes import core_active, set_core_ability
+from trpg.archetypes import set_core_ability
 from trpg.combat import (
     _status_synergy_multiplier_from_skills,
     get_player_def,

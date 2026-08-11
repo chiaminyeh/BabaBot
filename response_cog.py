@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 import random
-import asyncio
 import aiohttp
 import logging
 import os

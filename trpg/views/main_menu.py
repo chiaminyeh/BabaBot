@@ -23,6 +23,116 @@ def select_main_menu_quests(active_quests: dict, quest_catalog: dict) -> tuple[l
     return selected, max(0, len(quest_ids) - len(selected))
 
 
+def should_show_adventure_compass(current_menu_state: str, *, in_battle: bool) -> bool:
+    """The compass belongs only on the non-battle source-of-truth panel."""
+    return current_menu_state == "main" and not in_battle
+
+
+def _compact_compass_field(name: str, value: str) -> tuple[str, str]:
+    name = name[:256]
+    if len(value) > 1024:
+        value = value[:1021].rstrip() + "..."
+    return name, value
+
+
+def _priority_active_quest(active_quests: dict, quest_catalog: dict):
+    quest_ids = [quest_id for quest_id in active_quests if quest_id in quest_catalog]
+    main_id = next(
+        (quest_id for quest_id in quest_ids if quest_catalog[quest_id].get("quest_line") == "main"),
+        None,
+    )
+    if main_id:
+        return main_id
+    daily_id = next(
+        (quest_id for quest_id in quest_ids if quest_catalog[quest_id].get("repeatable")),
+        None,
+    )
+    return daily_id or next(iter(quest_ids), None)
+
+
+def build_adventure_compass(view, unspent_points: int, *, today: str | None = None) -> tuple[str, str]:
+    """Build one read-only, actionable next-step field from live player state."""
+    from trpg.quest_popup import available_board_quests, describe_quest_goal, quest_progress_text
+
+    player = getattr(view.player, "real_player", view.player)
+    lang = getattr(player, "language", "zh")
+    field_name = t(lang, "compass.field_name", "🧭 冒險指南")
+    area_data = view.cog.areas.get(player.current_area, {})
+
+    if unspent_points > 0:
+        if area_data.get("is_village"):
+            value = t(
+                lang,
+                "compass.unspent_village",
+                "📊 尚有 {count} 點未分配。下一步：點選「屬性」立即配置。",
+                count=unspent_points,
+            )
+        else:
+            value = t(
+                lang,
+                "compass.unspent_travel",
+                "📊 尚有 {count} 點未分配。下一步：「移動」回村莊 →「屬性」。",
+                count=unspent_points,
+            )
+        return _compact_compass_field(field_name, value)
+
+    quest_id = _priority_active_quest(player.active_quests, view.cog.quests)
+    if quest_id:
+        quest_info = view.cog.quests[quest_id]
+        marker = "📖" if quest_info.get("quest_line") == "main" else "📅" if quest_info.get("repeatable") else "📌"
+        progress_line = quest_progress_text(view, quest_id, quest_info, lang)
+        goal = describe_quest_goal(view, quest_info, lang) or t(
+            lang,
+            "compass.active_default",
+            "🎯 下一步：前往「公會 → 任務大廳」查看任務詳情。",
+        )
+        return _compact_compass_field(field_name, f"{marker} {progress_line}\n{goal}")
+
+    available_count = len(available_board_quests(view))
+    if available_count:
+        value = t(
+            lang,
+            "compass.available_quests",
+            "📜 有 {count} 個任務可接取。下一步：公會 → 任務大廳。",
+            count=available_count,
+        )
+        return _compact_compass_field(field_name, value)
+
+    area_name = tf(area_data, "area_name", lang) or t(lang, "explore.unknown_area", "未知區域")
+    if area_data.get("is_village"):
+        value = t(
+            lang,
+            "compass.fallback_village",
+            "🗺️ 下一步：點選「移動」，前往可探索區域。",
+        )
+    else:
+        today = today or datetime.today().strftime("%Y-%m-%d")
+        boss_done = (getattr(player, "daily_boss_kills", {}) or {}).get(player.current_area) == today
+        if area_data.get("boss") and not boss_done:
+            value = t(
+                lang,
+                "compass.fallback_explore_boss",
+                "⚔️ 下一步：在【{area}】點選「探索」，或挑戰「BOSS」。",
+                area=area_name,
+            )
+        else:
+            value = t(
+                lang,
+                "compass.fallback_explore",
+                "⚔️ 下一步：在【{area}】點選「探索」繼續冒險。",
+                area=area_name,
+            )
+    return _compact_compass_field(field_name, value)
+
+
+def adventure_compass_for_main_panel(view, unspent_points: int) -> tuple[str, str]:
+    """Refresh live quest counters with the canonical rules, then render the pure field."""
+    from trpg.quest_popup import recompute_live_progress
+
+    recompute_live_progress(view)
+    return build_adventure_compass(view, unspent_points)
+
+
 def npc_progress_state(npc: dict, completed_quests: set[str]) -> tuple[str | None, bool]:
     """Return a data-driven NPC dialogue stage and crafting unlock state."""
     requirements = npc.get("craft_unlock_requires") or []

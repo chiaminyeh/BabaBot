@@ -22,7 +22,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt || \
-          python -m pip install 'discord.py[voice]>=2.4.0' python-dotenv google-genai psutil numpy matplotlib scipy python-chess pygame PyNaCl
+          python -m pip install 'discord.py[voice]>=2.4.0' python-dotenv google-genai yt-dlp psutil numpy matplotlib scipy PyNaCl
 
       - name: Compile Python files
         run: python -m compileall -q .

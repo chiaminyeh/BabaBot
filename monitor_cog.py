@@ -7,7 +7,6 @@ import os
 import datetime
 from pathlib import Path
 
-import discord
 from discord.ext import commands, tasks
 
 from scripts import monitor_bababot

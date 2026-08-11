@@ -10,7 +10,7 @@
      combat 既有的 get_player_* 會自動套用。
 
 對外主要函式：start_run / recompute_loadout / build_monster / roll_doors /
-roll_loot / roll_relic / grant_relic / equip_item / end_run。
+roll_loot / grant_relic / equip_item / end_run。
 """
 
 import random
@@ -397,15 +397,6 @@ def roll_loot(cog, floor: int, count: int = 3, guarantee_rare: bool = False) -> 
         chosen.append(pick)
         pool.remove(pick)
     return chosen
-
-
-def roll_relic(cog, d_state: dict, floor: int = 1):
-    """抽一個尚未持有的遺物 id；全持有了則回傳 None。"""
-    owned = set(d_state.get("relics", []))
-    pool = [r for r in cog.dungeon_relics.keys() if r not in owned]
-    if not pool:
-        return None
-    return random.choices(pool, weights=[_rarity_weight(cog.dungeon_relics[r].get("rarity", "common"), floor) for r in pool], k=1)[0]
 
 
 def roll_relics(cog, d_state: dict, floor: int = 1, count: int = 3) -> list:

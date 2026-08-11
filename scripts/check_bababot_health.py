@@ -6,7 +6,6 @@ import os
 import re
 import sqlite3
 import subprocess
-import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,6 +19,7 @@ WATCHDOG_STATE_PATH = LOG_DIR / "watchdog_state.json"
 MAIN_PATH = (REPO_ROOT / "main.py").resolve()
 EXPECTED_EXTENSIONS = [
     "music_cog",
+    "chess_cog",
     "schedule_cog",
     "blackjack_cog",
     "poker_cog",

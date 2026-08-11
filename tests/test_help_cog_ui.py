@@ -1,5 +1,4 @@
 import unittest
-from types import SimpleNamespace
 
 import discord
 
@@ -32,8 +31,17 @@ class HelpUiContractTests(unittest.TestCase):
     def test_categories_cover_adventure_music_games_and_utility(self):
         expected = {
             "adventure": ("`/trpg`", "`/language`"),
-            "music": ("`baba play <song>`", "`baba skip`"),
-            "games": ("`/blackjack <bet>`", "`/wordle_start`", "`baba lottery`"),
+            "music": (
+                "`baba play <song>`",
+                "`baba playfirst <song>`",
+                "`baba skip`",
+                "`baba skipto <position>`",
+                "`baba volume [0-200]`",
+                "`baba shuffle`",
+                "`baba loop [off|single|queue]`",
+                "`baba move <from> <to>`",
+            ),
+            "games": ("`/chess`", "`/blackjack <bet>`", "`/wordle_start`", "`baba lottery`"),
             "utility": ("`/record_schedule`", "`/list_schedules`"),
         }
         for category, commands in expected.items():
@@ -42,6 +50,15 @@ class HelpUiContractTests(unittest.TestCase):
                 rendered = "\n".join(str(field.value) for field in embed.fields)
                 for command in commands:
                     self.assertIn(command, rendered)
+
+    def test_music_help_warns_that_remove_current_deletes_the_local_file(self):
+        embed = help_cog.build_help_embed("music")
+        rendered = "\n".join(str(field.value) for field in embed.fields)
+        self.assertIn("`baba remove`", rendered)
+        self.assertIn("`baba remove current`", rendered)
+        self.assertIn("deletes", rendered.lower())
+        self.assertIn("local", rendered.lower())
+        self.assertTrue(all(len(str(field.value)) <= 1024 for field in embed.fields))
 
     def test_view_is_persistent_with_stable_category_and_home_ids(self):
         view = help_cog.HelpView()

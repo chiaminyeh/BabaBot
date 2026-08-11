@@ -11,17 +11,22 @@ from trpg.combat import TRPGCombat, exp_to_next_level, format_blood_demon_status
 from trpg.status import format_status_list, clear_all_status, get_daily_jester_immunity
 from trpg.monster_pool import pick_random_monster
 from trpg.quest_popup import process_quest_popups, accept_quest
-from trpg.stats import default_stat_alloc, grant_qualified_skills, recalc_player_stats, get_unspent_points, format_stat_alloc_summary, get_potion_heal_target, prestige_required_level, format_item_stat_requirements, format_stat_requirement_map, item_stat_requirements, meets_item_stat_requirements, meets_skill_requirements, format_skill_point_requirements, prune_unqualified_skills, stat_display_name
+from trpg.stats import default_stat_alloc, grant_qualified_skills, recalc_player_stats, get_unspent_points, get_potion_heal_target, prestige_required_level, format_item_stat_requirements, format_stat_requirement_map, item_stat_requirements, meets_item_stat_requirements, meets_skill_requirements, format_skill_point_requirements, prune_unqualified_skills, stat_display_name
 from trpg.player import RoguePlayerWrapper
 from trpg.entity import absorb_monster_damage
 from trpg import dungeon as dg
-from trpg.balance import PRESTIGE_LEVEL_STEP, ARCHETYPE_BALANCE_VERSION
+from trpg.balance import ARCHETYPE_BALANCE_VERSION
 from trpg.modals import ElderChiefModal, BuyItemModal, SellItemModal, StatPointModal
-from trpg.view_shared import ITEM_TYPE_EMOJI, item_emoji, EQUIP_STAT_DISPLAY, ELEMENT_DISPLAY
+from trpg.view_shared import item_emoji, EQUIP_STAT_DISPLAY, ELEMENT_DISPLAY
 from trpg.view_shop import ShopMixin
 from trpg.view_dungeon import DungeonMixin
 from trpg.view_tutorial import TutorialMixin
-from trpg.views.main_menu import MainMenuLayout, select_main_menu_quests
+from trpg.views.main_menu import (
+    MainMenuLayout,
+    adventure_compass_for_main_panel,
+    select_main_menu_quests,
+    should_show_adventure_compass,
+)
 from trpg.balance import MYSTERY_MERCHANT_CHANCE
 from trpg.views.battle import BattleLayout
 from trpg.views.char import CharLayout, prestige_hall_accessible
@@ -1509,6 +1514,16 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                     )
         embed.add_field(name=t(lang, "battle.adventurer_info_field", "👤 冒險者資訊"), value=player_desc, inline=False)
 
+        if should_show_adventure_compass(
+            self.current_menu_state,
+            in_battle=self.in_battle,
+        ):
+            compass_name, compass_value = adventure_compass_for_main_panel(
+                self,
+                unspent_points=unspent,
+            )
+            embed.add_field(name=compass_name, value=compass_value, inline=False)
+
         # 戰鬥時顯示敵方狀態區塊（最多 3 格，前排優先顯示在最上面）
         if self.in_battle and self.monster_slots:
             front_seen = False
@@ -2369,21 +2384,6 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             embed.add_field(name=field_name, value=f"```\n{snippet[:1000]}\n```", inline=False)
 
         await interaction.followup.send(embed=embed, ephemeral=True)
-
-    async def re_render_current_menu(self):
-        state = getattr(self, "current_menu_state", "main")
-        if state == "equip":
-            await self.handle_equip_menu(paging=True)
-        elif state == "sell":
-            await self.handle_sell_menu(paging=True)
-        elif state == "item":
-            await self.handle_item_menu(paging=True)
-        elif state == "skill_equip":
-            await self.handle_skill_equip_menu(paging=True)
-        elif state == "craft":
-            await self.handle_craft_menu(paging=True)
-        else:
-            self.build_main_menu()
 
     def _begin_area_encounter(self, area_data: dict, monster_ids: list[str], area_name: str | None = None):
         lang = self.player.language

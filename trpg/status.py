@@ -5,7 +5,7 @@ apply_status_to_monster...），但內部已統一為同一套邏輯，分別透
 MonsterCombatant 操作，避免「玩家版」「怪物版」各寫一份。新增狀態只要在這裡的
 _tick_status() 加一個 elif 分支，玩家與怪物會同時套用。
 
-語言：玩家相關函式 (try_apply_status / cure_status / cure_by_item / try_monster_apply_status)
+語言：玩家相關函式 (try_apply_status / cure_by_item / try_monster_apply_status)
 直接從傳入的 player.language 取得語言；只操作 raw dict（沒有 player 物件可取）的函式
 (format_status_list / break_sleep_on_damage / apply_status_to_monster / process_monster_status)
 則額外帶一個 lang 參數，由呼叫端傳入 self.player.language。
@@ -257,16 +257,6 @@ def break_sleep_on_damage(status_dict: dict, lang: str = "zh") -> str:
         del status_dict["sleep"]
         return t(lang, "status.wake_on_damage", "💤➡️ 受到傷害，瞬間清醒了過來！")
     return ""
-
-
-def cure_status(player, status_id: str, status_defs: dict) -> str:
-    lang = getattr(player, "language", "zh")
-    if status_id not in player.status_effects:
-        name = tf(status_defs.get(status_id, {}), "name", lang) or status_id
-        return t(lang, "status.cure_not_found", "❌ 你並沒有【{name}】狀態。", name=name)
-    name = tf(status_defs[status_id], "name", lang) or status_id
-    del player.status_effects[status_id]
-    return t(lang, "status.cure_success", "✨ 【{name}】已解除！", name=name)
 
 
 def cure_by_item(player, item_id: str, items: dict, status_defs: dict) -> str:

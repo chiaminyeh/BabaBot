@@ -11,7 +11,7 @@ from discord.ext import commands,tasks
 from discord import DMChannel
 from datetime import datetime, timedelta
 import logging
-import os, asyncio, json, tempfile, threading
+import os, json, tempfile, threading
 from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
 from interaction_errors import is_transient_interaction_error
@@ -201,6 +201,7 @@ bot.baba = baba
 
 EXTENSIONS = [
     'music_cog',
+    'chess_cog',
     'schedule_cog',
     'blackjack_cog',
     'poker_cog',
@@ -441,7 +442,6 @@ async def answers(ctx):
     ('yeah sure', 10), ('touch grass', 10), ('I sleep', 10), ('bro wot', 10)
 ]
 
-    pick_weighted_random(answers)
     await ctx.send(pick_weighted_random(answers))
     # r = random.randint(0,len(answers)-1)
     # await ctx.send(answers[r])
@@ -561,6 +561,7 @@ async def reload(ctx):
         baba.load_bank()
         # Reloads the file, thus updating the Cog class.
         await bot.reload_extension("music_cog")
+        await bot.reload_extension("chess_cog")
         await bot.reload_extension("response_cog")
         # await bot.reload_extension("time_cog")
         await bot.reload_extension("wordle_cog")
@@ -572,7 +573,6 @@ async def reload(ctx):
         await bot.reload_extension("trpg_cog")
         await bot.reload_extension("help_cog")
 
-        # await bot.reload_extension("listen_cog")
         await ctx.send("reloaded")
     else:
         await ctx.reply("You do not have permission to use this command.")

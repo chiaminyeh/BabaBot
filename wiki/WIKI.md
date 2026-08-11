@@ -53,6 +53,7 @@
 ### F. Interactive Discord UI Views & Layouts
 - **[TRPGGameView](../trpg/view.py#L125)**: Main UI view container hosting interactive Discord buttons, drop-down menus, and modals.
   - **[build_main_menu](../trpg/view.py#L546)**: Renders central hub menu (Village, Subarea Exploration, Quest Hall, Guild, Church).
+  - **Adventure Compass**: The non-battle main panel shows one prioritized objective, live progress, and a concrete next action without changing the player save schema.
   - **[handle_battle_attack](../trpg/view.py#L1600)**: UI callback for combat attack action.
   - **[handle_use_skill](../trpg/view.py#L1617)**: UI callback for skill selection and targeting.
   - **[handle_stat_alloc_menu](../trpg/view.py#L1810)**: UI panel for distributing stat points across classes.
@@ -60,7 +61,8 @@
 - **[TutorialMixin](../trpg/view_tutorial.py#L17)**: Guided onboarding flow for new players.
 
 ### G. Other BabaBot Feature Cogs
-- **[music_cog.py](../music_cog.py#L1)**: Voice channel music playback and queue management.
+- **[chess_cog.py](../chess_cog.py#L1)**: `/chess` launches Discord's hosted Chess in the Park Activity; `mode:lichess` creates anonymous Lichess challenge links without a user token.
+- **[music_cog.py](../music_cog.py#L1)**: Voice playback with per-guild queue/lifecycle isolation. `remove current` intentionally deletes the current local library file after stopping it.
 - **[poker_cog.py](../poker_cog.py#L1)** & **[blackjack_cog.py](../blackjack_cog.py#L1)**: Casino mini-games.
 - **[wordle_cog.py](../wordle_cog.py#L1)** & **[lottery_cog.py](../lottery_cog.py#L1)**: Wordle puzzle & server lottery features.
 

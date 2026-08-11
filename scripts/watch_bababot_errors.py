@@ -6,12 +6,11 @@ import importlib.util
 import json
 import os
 import re
-import sqlite3
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-from urllib import error, parse, request
+from urllib import error, request
 
 try:
     from dotenv import load_dotenv
@@ -67,14 +66,6 @@ MONITOR_DELIVERY_SIGNATURES = (
     "connectionreseterror",
     "timeouterror",
 )
-REQUIRED_TRPG_CONTENT = {
-    "areas": "areas.json",
-    "monsters": "monsters.json",
-    "items": "items.json",
-    "skills": "skills.json",
-}
-TRPG_DATA_DIR = REPO_ROOT / "trpg_data"
-PLAYERS_DB_PATH = TRPG_DATA_DIR / "trpg_players.sqlite3"
 MAX_HASHES = 100
 MAX_TRACKED_FILES = 12
 
@@ -339,56 +330,6 @@ def build_event(source: Path, excerpt: str, seen_hashes: set[str], *, kind: str 
         "excerpt": excerpt,
         "status": "new",
     }
-
-
-def load_json_file(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8-sig"))
-
-
-def validate_trpg_required_content() -> list[str]:
-    issues: list[str] = []
-    for label, filename in REQUIRED_TRPG_CONTENT.items():
-        path = TRPG_DATA_DIR / filename
-        if not path.exists():
-            issues.append(f"{filename} missing")
-            continue
-        try:
-            data = load_json_file(path)
-        except Exception as exc:
-            issues.append(f"{filename} invalid JSON: {exc.__class__.__name__}: {exc}")
-            continue
-        if not isinstance(data, dict) or len(data) <= 0:
-            issues.append(f"{filename} loaded 0 {label}")
-    return issues
-
-
-def validate_sqlite_integrity() -> list[str]:
-    if not PLAYERS_DB_PATH.exists():
-        return [f"{PLAYERS_DB_PATH.name} missing"]
-    try:
-        with sqlite3.connect(PLAYERS_DB_PATH) as conn:
-            rows = [row[0] for row in conn.execute("PRAGMA integrity_check")]
-    except Exception as exc:
-        return [f"SQLite integrity_check failed to run: {exc.__class__.__name__}: {exc}"]
-    if rows != ["ok"]:
-        return ["SQLite integrity_check failed: " + "; ".join(map(str, rows[:5]))]
-    return []
-
-
-def validate_gateway_status(running: bool) -> list[str]:
-    if not running:
-        return ["Discord gateway status failed: bababot process is not running"]
-    logs = candidate_logs()
-    if not logs:
-        return ["Discord gateway status unknown: no startup logs found"]
-    latest = logs[0]
-    try:
-        text = latest.read_text(encoding="utf-8", errors="replace")[-12000:].lower()
-    except Exception as exc:
-        return [f"Discord gateway status unknown: cannot read {latest.name}: {exc}"]
-    if "has connected to gateway" not in text:
-        return [f"Discord gateway status unknown: {latest.name} lacks connected marker"]
-    return []
 
 
 def collect_health_events(running: bool, seen_hashes: set[str]) -> list[dict[str, Any]]:

@@ -1,25 +1,5 @@
-import datetime
-import discord
-import random
-import time
-import math
-from discord import DMChannel
-from discord import app_commands
-from discord.ext import commands, tasks
 import asyncio
-
-utc = datetime.timezone.utc
-
-# If no tzinfo is given then UTC is assumed.
-# time = datetime.time(hour=8, minute=30, tzinfo=utc)
-
-# If no tzinfo is given then UTC is assumed.
-times = [
-    datetime.time(hour=8,tzinfo=utc),
-    # datetime.time(hour=8,minute=0,tzinfo=utc),
-    # datetime.time(hour=9, minute=40,tzinfo=utc),
-    # datetime.time(hour=9, minute=0, second=30,tzinfo=utc)
-]
+from discord.ext import commands
 
 
 class time_cog(commands.Cog):
@@ -84,10 +64,6 @@ class time_cog(commands.Cog):
         except:
             await ctx.send(f"Alright, first you gotta let me know how I\'m gonna time **{timeInput}**....")
 
-
-    # @tasks.loop(time=times)
-    # async def my_task(self):
-    #     print("My task is running!")
 
 async def setup(bot):
     await bot.add_cog(time_cog(bot))

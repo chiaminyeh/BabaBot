@@ -9,7 +9,7 @@ CATEGORY_META = {
     "general": ("🏠 General", "Everyday Baba commands and public slash commands."),
     "adventure": ("⚔️ Adventure", "Open and configure Baba's persistent TRPG adventure."),
     "music": ("🎵 Music", "Play YouTube music and control the shared voice queue."),
-    "games": ("🎮 Games", "Casino, Wordle, and lottery games."),
+    "games": ("🎮 Games", "Hosted chess, casino, Wordle, and lottery games."),
     "utility": ("🛠️ Utility", "Schedules and reminders."),
 }
 
@@ -43,9 +43,12 @@ CATEGORY_FIELDS = {
         (
             "Playback",
             "`baba play <song>` — Search YouTube and play or queue a song\n"
+            "`baba playfirst <song>` — Put a song at the front of the queue\n"
             "`baba pause` — Pause playback\n"
             "`baba resume` — Resume playback\n"
             "`baba skip` — Skip the current song\n"
+            "`baba skipto <position>` — Jump to a queued song\n"
+            "`baba volume [0-200]` — View or set volume\n"
             "`baba stop` — Stop and disconnect Baba",
         ),
         (
@@ -53,11 +56,20 @@ CATEGORY_FIELDS = {
             "`baba queue` — Show the queue\n"
             "`baba current` — Show the current song\n"
             "`baba last` — Play the previous song\n"
-            "`baba remove [current]` — Remove a queued/current song\n"
+            "`baba shuffle` — Shuffle queued songs\n"
+            "`baba loop [off|single|queue]` — Set repeat mode\n"
+            "`baba move <from> <to>` — Reorder a queued song\n"
+            "`baba remove` — Remove the last queued song\n"
+            "`baba remove current` — **Deletes its local library file** after stopping playback\n"
             "`baba clear` — Clear the queue and history",
         ),
     ],
     "games": [
+        (
+            "Chess",
+            "`/chess` — Open Discord's hosted Chess in the Park Activity\n"
+            "`/chess mode:lichess` — Create anonymous third-party challenge links",
+        ),
         (
             "Casino",
             "`/blackjack <bet>` — Start solo Blackjack\n"
