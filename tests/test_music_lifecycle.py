@@ -230,6 +230,18 @@ class MusicLifecycleTests(unittest.IsolatedAsyncioTestCase):
             idle_task.cancel()
             await asyncio.gather(idle_task, return_exceptions=True)
 
+    async def test_play_resumes_paused_state_without_command_binding_error(self):
+        self.state.is_playing = False
+        self.state.is_paused = True
+        self.voice.playing = False
+        self.voice.paused = True
+
+        await music_module.music_cog.play.callback(self.cog, self.ctx, query="")
+
+        self.assertTrue(self.state.is_playing)
+        self.assertFalse(self.state.is_paused)
+        self.assertTrue(self.voice.is_playing())
+
     async def test_clear_restarts_idle_timer_after_stopping_paused_client(self):
         self.state.current = self.make_track("paused.mp3")
         self.state.is_paused = True
@@ -352,6 +364,38 @@ class MusicLifecycleTests(unittest.IsolatedAsyncioTestCase):
         await self.cog._handle_after(self.ctx, self.state, old_token, None)
         self.assertEqual(self.state.current["title"], "resume-me")
         self.assertEqual(len(new_voice.play_calls), 1)
+
+    async def test_reconnect_does_not_restore_track_cleared_while_connecting(self):
+        old_voice = self.voice
+        old_voice.connected = False
+        current = self.make_track("cleared-current.mp3")
+        queued = self.make_track("cleared-next.mp3")
+        self.state.current = current
+        self.state.music_queue.append(queued)
+        new_voice = FakeVoiceClient(self.guild)
+        connect_started = asyncio.Event()
+        release_connect = asyncio.Event()
+
+        async def connect():
+            connect_started.set()
+            await release_connect.wait()
+            return new_voice
+
+        self.ctx.author.voice.channel.connect = connect
+        play_task = asyncio.create_task(
+            music_module.music_cog.play.callback(self.cog, self.ctx, query="")
+        )
+        await connect_started.wait()
+        clear_task = asyncio.create_task(
+            music_module.music_cog.clear.callback(self.cog, self.ctx)
+        )
+        await asyncio.sleep(0.01)
+        release_connect.set()
+        await asyncio.gather(play_task, clear_task)
+        await asyncio.sleep(0.05)
+
+        self.assertIsNone(self.state.current)
+        self.assertEqual(self.state.music_queue, [])
 
     async def test_clear_stops_paused_source_and_stale_callback_cannot_advance(self):
         await self.start_tracks("current.mp3", "queued.mp3")
@@ -1123,6 +1167,31 @@ class MusicViewLifecycleTests(unittest.IsolatedAsyncioTestCase):
         interaction = FakeMusicInteraction(self.guild, self.ctx.author)
         self.assertFalse(await controls.interaction_check(interaction))
         self.assertIn("expired", interaction.response.messages[0][0].lower())
+
+    async def test_suspended_old_skip_control_cannot_recreate_state_after_leave(self):
+        old_message = FakeMessage()
+        controls = music_module.MusicControls(self.cog, self.ctx, state=self.state)
+        controls.message = old_message
+        self.state.now_playing_message = old_message
+        defer_started = asyncio.Event()
+        release_defer = asyncio.Event()
+
+        async def blocked_defer(**_kwargs):
+            defer_started.set()
+            await release_defer.wait()
+
+        interaction = FakeMusicInteraction(self.guild, self.ctx.author)
+        interaction.response.defer = blocked_defer
+        callback_task = asyncio.create_task(controls.skip_callback(interaction))
+        await defer_started.wait()
+
+        await music_module.music_cog.leave.callback(self.cog, self.ctx)
+        self.assertNotIn(self.guild.id, self.cog.guild_states)
+
+        release_defer.set()
+        await callback_task
+
+        self.assertNotIn(self.guild.id, self.cog.guild_states)
 
     async def test_clear_invalidates_pending_search_before_old_callback_can_enqueue(self):
         view = music_module.YouTubeSearchView(

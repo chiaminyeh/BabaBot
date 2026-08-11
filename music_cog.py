@@ -95,12 +95,10 @@ class MusicControls(View):
         self.update_button_states()
 
     def _is_live(self) -> bool:
-        return (
-            self.music_cog._state_is_live(self.ctx.guild.id, self.state)
-            and (
-                self.message is None
-                or self.state.now_playing_message is self.message
-            )
+        return self.music_cog._now_playing_is_live(
+            self.ctx.guild.id,
+            self.state,
+            self.message,
         )
 
     async def _require_live(self, interaction: discord.Interaction) -> bool:
@@ -148,53 +146,120 @@ class MusicControls(View):
     async def pause_callback(self, interaction: discord.Interaction):
         if not await self._require_live(interaction):
             return
-        if self.state.is_playing:
-            await self.music_cog.pause(self.ctx)
-        elif self.state.is_paused:
-            await self.music_cog.resume(self.ctx)
-        self.update_button_states()
-        await interaction.response.edit_message(view=self)
+        result = await self.music_cog.pause.callback(
+            self.music_cog,
+            self.ctx,
+            expected_state=self.state,
+            expected_message=self.message,
+        )
+        if result is False:
+            self.stop()
+            await interaction.response.send_message(
+                "These music controls have expired. Use the current Now Playing panel.",
+                ephemeral=True,
+            )
+            return
+        async with self.state.play_lock:
+            if not self._is_live():
+                self.stop()
+                await interaction.response.send_message(
+                    "These music controls have expired. Use the current Now Playing panel.",
+                    ephemeral=True,
+                )
+                return
+            self.update_button_states()
+            await interaction.response.edit_message(view=self)
 
     async def skip_callback(self, interaction: discord.Interaction):
         if not await self._require_live(interaction):
             return
         await interaction.response.defer()
-        await self.music_cog.skip(self.ctx)
+        result = await self.music_cog.skip.callback(
+            self.music_cog,
+            self.ctx,
+            expected_state=self.state,
+            expected_message=self.message,
+        )
+        if result is False:
+            self.stop()
+            await interaction.followup.send(
+                "These music controls have expired. Use the current Now Playing panel.",
+                ephemeral=True,
+            )
 
     async def loop_callback(self, interaction: discord.Interaction):
         if not await self._require_live(interaction):
             return
-        if self.state.loop_mode == "off":
-            self.state.loop_mode = "single"
-        elif self.state.loop_mode == "single":
-            self.state.loop_mode = "queue"
-        else:
-            self.state.loop_mode = "off"
-        self.update_button_states()
-        await interaction.response.edit_message(view=self)
+        async with self.state.play_lock, self.state.transition_lock:
+            if not self._is_live():
+                self.stop()
+                await interaction.response.send_message(
+                    "These music controls have expired. Use the current Now Playing panel.",
+                    ephemeral=True,
+                )
+                return
+            if self.state.loop_mode == "off":
+                self.state.loop_mode = "single"
+            elif self.state.loop_mode == "single":
+                self.state.loop_mode = "queue"
+            else:
+                self.state.loop_mode = "off"
+            self.update_button_states()
+            await interaction.response.edit_message(view=self)
 
     async def queue_callback(self, interaction: discord.Interaction):
         if not await self._require_live(interaction):
             return
         await interaction.response.defer(ephemeral=True)
-        if not self.state.music_queue:
-            await interaction.followup.send("No music in queue <:baba:1422080743886291025>", ephemeral=True)
-        else:
-            embed = self.music_cog._build_queue_embed(self.state)
-            await interaction.followup.send(embed=embed, ephemeral=True)
+        async with self.state.play_lock:
+            if not self._is_live():
+                self.stop()
+                await interaction.followup.send(
+                    "These music controls have expired. Use the current Now Playing panel.",
+                    ephemeral=True,
+                )
+                return
+            if not self.state.music_queue:
+                await interaction.followup.send("No music in queue <:baba:1422080743886291025>", ephemeral=True)
+            else:
+                embed = self.music_cog._build_queue_embed(self.state)
+                await interaction.followup.send(embed=embed, ephemeral=True)
 
     async def last_callback(self, interaction: discord.Interaction):
         if not await self._require_live(interaction):
             return
         await interaction.response.defer()
-        await self.music_cog.last(self.ctx)
+        result = await self.music_cog.last.callback(
+            self.music_cog,
+            self.ctx,
+            expected_state=self.state,
+            expected_message=self.message,
+        )
+        if result is False:
+            self.stop()
+            await interaction.followup.send(
+                "These music controls have expired. Use the current Now Playing panel.",
+                ephemeral=True,
+            )
 
     async def remove_current_callback(self, interaction: discord.Interaction):
         if not await self._require_live(interaction):
             return
         if self.state.current:
             await interaction.response.defer()
-            await self.music_cog.remove(self.ctx, "current")
+            result = await self.music_cog.remove.callback(
+                self.music_cog,
+                self.ctx,
+                "current",
+                expected_state=self.state,
+                expected_message=self.message,
+            )
+            if result is False:
+                self.stop()
+                await interaction.followup.send(
+                    "These music controls have expired. Use the current Now Playing panel.",
+                    ephemeral=True,
+                )
         else:
             await interaction.response.send_message("No song is currently playing to remove.", ephemeral=True)
 
@@ -352,6 +417,17 @@ class music_cog(commands.Cog):
 
     def _state_is_live(self, guild_id: int, state: GuildState) -> bool:
         return not self._unloading and self.guild_states.get(guild_id) is state
+
+    def _now_playing_is_live(
+        self,
+        guild_id: int,
+        state: GuildState,
+        message=None,
+    ) -> bool:
+        return (
+            self._state_is_live(guild_id, state)
+            and (message is None or state.now_playing_message is message)
+        )
 
     @staticmethod
     def _voice_owns_source(state: GuildState) -> bool:
@@ -823,47 +899,48 @@ class music_cog(commands.Cog):
         reconnected_with_pending = False
         if state.vc is None or not state.vc.is_connected():
             async with state.connect_lock:
-                if state.vc is None or not state.vc.is_connected():
-                    old_voice_client = state.vc
-                    pending_current = state.current
-                    had_pending = bool(pending_current or state.music_queue)
-                    new_voice_client = None
-                    connected_here = False
-                    try:
-                        existing_vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
-                        if existing_vc and existing_vc.is_connected():
-                            new_voice_client = existing_vc
-                        else:
-                            new_voice_client = await ctx.author.voice.channel.connect()
-                            connected_here = True
-                    except Exception:
-                        logger.exception("Could not connect to voice guild_id=%s", guild_id)
-                        await ctx.send(
-                            "❌ Couldn't connect to your voice channel. Leave and rejoin the voice channel, then try again."
-                        )
-                        return
+                async with state.play_lock, state.transition_lock:
+                    if state.vc is None or not state.vc.is_connected():
+                        old_voice_client = state.vc
+                        pending_current = state.current
+                        had_pending = bool(pending_current or state.music_queue)
+                        new_voice_client = None
+                        connected_here = False
+                        try:
+                            existing_vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
+                            if existing_vc and existing_vc.is_connected():
+                                new_voice_client = existing_vc
+                            else:
+                                new_voice_client = await ctx.author.voice.channel.connect()
+                                connected_here = True
+                        except Exception:
+                            logger.exception("Could not connect to voice guild_id=%s", guild_id)
+                            await ctx.send(
+                                "❌ Couldn't connect to your voice channel. Leave and rejoin the voice channel, then try again."
+                            )
+                            return
 
-                    if not self._state_is_live(guild_id, state):
-                        if connected_here and new_voice_client and new_voice_client.is_connected():
+                        if not self._state_is_live(guild_id, state):
+                            if connected_here and new_voice_client and new_voice_client.is_connected():
+                                with contextlib.suppress(Exception):
+                                    await new_voice_client.disconnect(force=True)
+                            return
+
+                        self._invalidate_playback(state)
+                        if (
+                            old_voice_client
+                            and old_voice_client is not new_voice_client
+                            and (old_voice_client.is_playing() or old_voice_client.is_paused())
+                        ):
                             with contextlib.suppress(Exception):
-                                await new_voice_client.disconnect(force=True)
-                        return
-
-                    self._invalidate_playback(state)
-                    if (
-                        old_voice_client
-                        and old_voice_client is not new_voice_client
-                        and (old_voice_client.is_playing() or old_voice_client.is_paused())
-                    ):
-                        with contextlib.suppress(Exception):
-                            old_voice_client.stop()
-                    state.is_playing = False
-                    state.is_paused = False
-                    if pending_current:
-                        state.music_queue.insert(0, pending_current)
-                    state.current = None
-                    state.vc = new_voice_client
-                    reconnected_with_pending = had_pending
+                                old_voice_client.stop()
+                        state.is_playing = False
+                        state.is_paused = False
+                        if pending_current:
+                            state.music_queue.insert(0, pending_current)
+                        state.current = None
+                        state.vc = new_voice_client
+                        reconnected_with_pending = had_pending
 
         if not self._state_is_live(guild_id, state):
             return
@@ -874,7 +951,7 @@ class music_cog(commands.Cog):
             return
 
         if state.is_paused and not query:
-            await self.resume(ctx)
+            await self.resume.callback(self, ctx)
             return
 
         play_first = getattr(ctx, "invoked_with", "").casefold() == "playfirst"
@@ -1194,33 +1271,53 @@ class music_cog(commands.Cog):
 
 
     @commands.command(name="pause", help="Pauses the current song.")
-    async def pause(self, ctx):
-        state = self._get_or_create_state(ctx.guild.id)
-        if state.vc and state.vc.is_playing():
-            state.is_playing, state.is_paused = False, True
-            state.vc.pause()
-        elif state.vc and state.vc.is_paused():
-             await self.resume(ctx)
-        else:
-            await ctx.send("No song is currently playing to pause.")
-    
+    async def pause(self, ctx, *, expected_state=None, expected_message=None):
+        state = expected_state or self._get_or_create_state(ctx.guild.id)
+        async with state.play_lock:
+            if (
+                expected_state is not None
+                and not self._now_playing_is_live(ctx.guild.id, state, expected_message)
+            ):
+                return False
+            if state.vc and state.vc.is_playing():
+                state.is_playing, state.is_paused = False, True
+                state.vc.pause()
+            elif state.vc and state.vc.is_paused():
+                state.is_paused, state.is_playing = False, True
+                state.vc.resume()
+            else:
+                await ctx.send("No song is currently playing to pause.")
+        return True
+
 
     @commands.command(name="resume", help="Resumes the current song.")
-    async def resume(self, ctx):
-        state = self._get_or_create_state(ctx.guild.id)
-        if state.vc and state.vc.is_paused():
-            state.is_paused, state.is_playing = False, True
-            state.vc.resume()
-        else:
-            await ctx.send("No song is currently paused to resume.")
+    async def resume(self, ctx, *, expected_state=None, expected_message=None):
+        state = expected_state or self._get_or_create_state(ctx.guild.id)
+        async with state.play_lock:
+            if (
+                expected_state is not None
+                and not self._now_playing_is_live(ctx.guild.id, state, expected_message)
+            ):
+                return False
+            if state.vc and state.vc.is_paused():
+                state.is_paused, state.is_playing = False, True
+                state.vc.resume()
+            else:
+                await ctx.send("No song is currently paused to resume.")
+        return True
 
 
     @commands.command(name="skip", aliases=["s"], help="Skips the current song.")
-    async def skip(self, ctx):
-        state = self._get_or_create_state(ctx.guild.id)
+    async def skip(self, ctx, *, expected_state=None, expected_message=None):
+        state = expected_state or self._get_or_create_state(ctx.guild.id)
         if state.starting:
             self._cancel_preparing_tasks(state)
         async with state.play_lock, state.transition_lock:
+            if (
+                expected_state is not None
+                and not self._now_playing_is_live(ctx.guild.id, state, expected_message)
+            ):
+                return False
             if state.starting and state.current:
                 state.current = None
                 self._advance_search_generation(state)
@@ -1230,10 +1327,10 @@ class music_cog(commands.Cog):
                 if self._voice_owns_source(state):
                     state.vc.stop()
                 await self._play_music_locked(ctx, state, allow_loop=False)
-                return
+                return True
             if not state.current or not self._voice_owns_source(state):
                 await ctx.send("No song is currently playing or paused to skip.")
-                return
+                return True
             interrupted = state.current
             state.current = None
             self._advance_search_generation(state)
@@ -1243,17 +1340,23 @@ class music_cog(commands.Cog):
             state.is_paused = False
             state.vc.stop()
             await self._play_music_locked(ctx, state, allow_loop=False)
+        return True
 
 
     @commands.command(name="last", aliases=["prev"], help="Plays the previous song.")
-    async def last(self, ctx):
-        state = self._get_or_create_state(ctx.guild.id)
+    async def last(self, ctx, *, expected_state=None, expected_message=None):
+        state = expected_state or self._get_or_create_state(ctx.guild.id)
         if state.starting:
             self._cancel_preparing_tasks(state)
         async with state.play_lock, state.transition_lock:
+            if (
+                expected_state is not None
+                and not self._now_playing_is_live(ctx.guild.id, state, expected_message)
+            ):
+                return False
             if not state.song_history:
                 await ctx.send("There is no song history to play from.")
-                return
+                return True
 
             interrupted_song = state.current
             last_song = state.song_history.pop(0)
@@ -1270,6 +1373,7 @@ class music_cog(commands.Cog):
                 songs_to_front.append(interrupted_song)
             state.music_queue[0:0] = songs_to_front
             await self._play_music_locked(ctx, state, allow_loop=False)
+        return True
 
 
     @commands.command(name="current", aliases=["song","now"], help="Displays the current playing song")
@@ -1392,15 +1496,20 @@ class music_cog(commands.Cog):
         return last_error
 
     @commands.command(name="remove", aliases=["rm"], help="Remove last song from queue or current song if 'current' is specified")
-    async def remove(self, ctx, *args):
-        state = self._get_or_create_state(ctx.guild.id)
+    async def remove(self, ctx, *args, expected_state=None, expected_message=None):
+        state = expected_state or self._get_or_create_state(ctx.guild.id)
         if args and args[0].lower() == "current":
             if state.starting:
                 self._cancel_preparing_tasks(state)
             async with state.play_lock, state.transition_lock:
+                if (
+                    expected_state is not None
+                    and not self._now_playing_is_live(ctx.guild.id, state, expected_message)
+                ):
+                    return False
                 if not state.current:
                     await ctx.send("```There's no song playing to remove.```")
-                    return
+                    return True
 
                 removed_song = state.current
                 current_title = removed_song["title"]
@@ -1431,13 +1540,20 @@ class music_cog(commands.Cog):
                 # Remove Current is also an intentional queue transition.  The
                 # invalidated stop callback cannot race this explicit advance.
                 await self._play_music_locked(ctx, state, allow_loop=False)
+            return True
         else:
             async with state.play_lock, state.transition_lock:
+                if (
+                    expected_state is not None
+                    and not self._now_playing_is_live(ctx.guild.id, state, expected_message)
+                ):
+                    return False
                 if state.music_queue:
                     removed_song = state.music_queue.pop()
                     await ctx.send(f"```'{removed_song['title']}' removed```")
                 else:
                     await ctx.send("```No songs in the queue to remove.```")
+            return True
 
     async def _disconnect_cleanup(self, voice_client, now_playing_message=None):
         if now_playing_message:
