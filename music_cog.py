@@ -34,8 +34,17 @@ def local_song_title(path):
     """Build a display title, dropping all trailing bracketed labels."""
     base = os.path.splitext(os.path.basename(path))[0].strip()
     while base.endswith("]"):
-        opening = base.rfind("[")
-        if opening <= 0:
+        depth = 0
+        opening = None
+        for index in range(len(base) - 1, -1, -1):
+            if base[index] == "]":
+                depth += 1
+            elif base[index] == "[":
+                depth -= 1
+                if depth == 0:
+                    opening = index
+                    break
+        if opening is None or opening <= 0:
             break
         base = base[:opening].rstrip()
     return base

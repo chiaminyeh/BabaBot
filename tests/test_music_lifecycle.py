@@ -920,9 +920,27 @@ class MusicQueueParsingTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(
             music_module.local_song_title(
+                r"C:\\Users\\manza\\Music\\Song [Official Video].m4a"
+            ),
+            "Song",
+        )
+        self.assertEqual(
+            music_module.local_song_title(
                 r"C:\\Users\\manza\\Music\\Song [Official Video] [abc123].m4a"
             ),
             "Song",
+        )
+        self.assertEqual(
+            music_module.local_song_title(
+                r"C:\\Users\\manza\\Music\\Song [Part [1]].m4a"
+            ),
+            "Song",
+        )
+        self.assertEqual(
+            music_module.local_song_title(
+                r"C:\\Users\\manza\\Music\\[Intro [Live]].m4a"
+            ),
+            "[Intro [Live]]",
         )
         self.assertEqual(
             music_module.local_song_title(r"C:\\Users\\manza\\Music\\Song.m4a"),
