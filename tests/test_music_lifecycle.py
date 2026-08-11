@@ -301,6 +301,25 @@ class MusicLifecycleTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.state.current["webpage_url"], original_url)
         self.assertEqual(self.voice.play_calls[0].original.path, str(downloaded))
 
+    async def test_local_file_playback_does_not_pass_network_reconnect_options_to_ffmpeg(self):
+        captured = {}
+
+        def capture_source(source, **kwargs):
+            captured["source"] = source
+            captured["kwargs"] = kwargs
+            return SimpleNamespace(path=source)
+
+        self.state.music_queue.append(self.make_track("local-options.mp3"))
+        with patch.object(
+            music_module.discord,
+            "FFmpegPCMAudio",
+            side_effect=capture_source,
+        ):
+            await self.cog.play_music(self.ctx)
+
+        self.assertNotIn("before_options", captured["kwargs"])
+        self.assertEqual(captured["kwargs"]["options"], "-vn")
+
     async def test_voice_connect_failure_replies_without_mutating_playback_or_idle_state(self):
         stale_voice = self.voice
         stale_voice.connected = False

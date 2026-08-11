@@ -834,8 +834,13 @@ class music_cog(commands.Cog):
 
                 if not source_to_play:
                     raise RuntimeError("No playable audio source returned")
+                ffmpeg_options = (
+                    self.FFMPEG_OPTIONS
+                    if source_to_play.startswith(("http://", "https://"))
+                    else {"options": "-vn"}
+                )
                 raw_audio = discord.FFmpegPCMAudio(
-                    source_to_play, executable="ffmpeg.exe", **self.FFMPEG_OPTIONS
+                    source_to_play, executable="ffmpeg.exe", **ffmpeg_options
                 )
                 audio_source = raw_audio
                 volume_audio = discord.PCMVolumeTransformer(raw_audio, volume=state.volume)
