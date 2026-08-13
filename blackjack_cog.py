@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 from typing import List, Dict, Optional
 import asyncio
+import uuid
 
 # filepath: c:\Users\manza\Downloads\Bababot\Bot\blackjack.py
 from poker_cog import Deck  # Assuming this exists as per your previous file
@@ -69,7 +70,14 @@ class BlackjackPlayer:
         return " ".join(self.hand)
 
 class BlackjackGame:
-    def __init__(self, cog, channel, players: List[BlackjackPlayer]):
+    def __init__(
+        self,
+        cog,
+        channel,
+        players: List[BlackjackPlayer],
+        *,
+        hand_id: str | None = None,
+    ):
         self.cog = cog
         self.channel = channel
         self.players = players
@@ -79,6 +87,28 @@ class BlackjackGame:
         self.view: Optional[BlackjackView] = None
         self.active = True
         self.turn_index = 0 # Not strictly used in simultaneous play, but good for tracking
+        self.hand_id = hand_id or uuid.uuid4().hex
+        self.escrow_id = (
+            f"blackjack:{self.channel.guild.id}:{self.hand_id}"
+        )
+        self.escrow = cog.baba.new_escrow(
+            escrow_id=self.escrow_id,
+            game_type="blackjack",
+        )
+        self.terminal_state = self.escrow.state
+        self.active = self.terminal_state == "open"
+        self._terminal_lock = asyncio.Lock()
+        self._action_lock = asyncio.Lock()
+
+    async def refund_game(self, reason: str = "unknown") -> bool:
+        async with self._terminal_lock:
+            if self.terminal_state != "open":
+                return False
+            if not self.escrow.refund():
+                return False
+            self.terminal_state = "refunded"
+            self.active = False
+            return True
 
     async def start(self):
         # Deal initial cards
@@ -107,6 +137,17 @@ class BlackjackGame:
         self.message = await self.channel.send(embed=embed, view=self.view)
 
     async def handle_action(self, interaction: discord.Interaction, action: str):
+        """Serialize player callbacks so duplicate submissions debit at most once."""
+        async with self._action_lock:
+            return await self._handle_action_locked(interaction, action)
+
+    async def _handle_action_locked(self, interaction: discord.Interaction, action: str):
+        if self.terminal_state != "open" or not self.active:
+            return await interaction.response.send_message(
+                "This game has already ended.",
+                ephemeral=True,
+                delete_after=5,
+            )
         # Find player
         player = next((p for p in self.players if p.id == interaction.user.id), None)
         
@@ -135,13 +176,18 @@ class BlackjackGame:
             await interaction.response.send_message(f"Stood at {player.get_hand_value()}.", ephemeral=True, delete_after=5)
 
         elif action == "double":
-            # Check funds
-            current_bal = self.cog.bank.get(player.id, (0,))[0]
-            if current_bal < player.bet:
+            if player.doubled:
+                return await interaction.response.send_message(
+                    "You have already doubled down.",
+                    ephemeral=True,
+                    delete_after=5,
+                )
+
+            # Debit the additional stake through the same durable escrow as the
+            # opening bet.  Do not read and mutate the legacy bank directly.
+            if not self.escrow.try_debit(player.id, player.bet):
                 return await interaction.response.send_message("Not enough funds to double down!", ephemeral=True, delete_after=5)
-            
-            # Deduct extra bet
-            self.cog.bank[player.id] = (current_bal - player.bet, self.cog.bank[player.id][1])
+
             player.bet *= 2
             player.doubled = True
             
@@ -186,61 +232,68 @@ class BlackjackGame:
         await self.end_round()
 
     async def end_round(self, dealer_blackjack=False):
-        self.active = False
-        dealer_val = self._calculate_hand(self.dealer_hand)
-        dealer_busted = dealer_val > 21
+        async with self._terminal_lock:
+            if self.terminal_state != "open":
+                return False
 
-        results_text = []
+            dealer_val = self._calculate_hand(self.dealer_hand)
+            dealer_busted = dealer_val > 21
+            results_text = []
+            payouts = {}
 
-        for player in self.players:
-            p_val = player.get_hand_value()
-            winnings = 0
-            
-            if dealer_blackjack:
-                if p_val == 21 and len(player.hand) == 2:
-                    # Push
-                    winnings = player.bet
-                    result = "Push (Both Blackjack)"
-                else:
-                    result = "Loss (Dealer Blackjack)"
-            elif player.busted:
-                result = "Busted"
-            elif dealer_busted:
-                winnings = player.bet * 2
-                result = "Win (Dealer Bust)"
-            elif p_val > dealer_val:
-                # Blackjack pays 3:2 usually, but simple 2:1 here unless natural
-                if p_val == 21 and len(player.hand) == 2:
-                    winnings = int(player.bet * 2.5)
-                    result = "Blackjack!"
-                else:
+            for player in self.players:
+                p_val = player.get_hand_value()
+                winnings = 0
+
+                if dealer_blackjack:
+                    if p_val == 21 and len(player.hand) == 2:
+                        winnings = player.bet
+                        result = "Push (Both Blackjack)"
+                    else:
+                        result = "Loss (Dealer Blackjack)"
+                elif player.busted:
+                    result = "Busted"
+                elif dealer_busted:
                     winnings = player.bet * 2
-                    result = "Win"
-            elif p_val == dealer_val:
-                winnings = player.bet
-                result = "Push"
-            else:
-                result = "Loss"
+                    result = "Win (Dealer Bust)"
+                elif p_val > dealer_val:
+                    if p_val == 21 and len(player.hand) == 2:
+                        winnings = int(player.bet * 2.5)
+                        result = "Blackjack!"
+                    else:
+                        winnings = player.bet * 2
+                        result = "Win"
+                elif p_val == dealer_val:
+                    winnings = player.bet
+                    result = "Push"
+                else:
+                    result = "Loss"
 
-            if winnings > 0:
-                current, claimed = self.cog.bank.get(player.id, (0, False))
-                self.cog.bank[player.id] = (current + winnings, claimed)
-            
-            results_text.append(f"**{player.name}**: {result} ({winnings} {self.cog.money_name})")
+                if winnings > 0:
+                    payouts[player.id] = payouts.get(player.id, 0) + winnings
+                results_text.append(
+                    f"**{player.name}**: {result} "
+                    f"({winnings} {self.cog.money_name})"
+                )
 
-        # Final Embed
+            # The escrow transition is the durable exactly-once settlement
+            # marker.  An empty payout is still persisted as a terminal loss.
+            if not self.escrow.settle(payouts):
+                return False
+            self.terminal_state = "settled"
+            self.active = False
+
         embed = self.build_embed(show_dealer=True)
-        embed.add_field(name="🏆 Results", value="\n".join(results_text), inline=False)
+        embed.add_field(
+            name="🏆 Results", value="\n".join(results_text), inline=False
+        )
         embed.color = discord.Color.gold()
-        
+
         if self.message:
-            await self.message.edit(embed=embed, view=None) # Remove buttons
-        
-        # Save bank
-        self.cog.baba.refresh_bank_file()
-        
-        # Cleanup from cog
+            await self.message.edit(embed=embed, view=None)
+
         self.cog.remove_game(self.channel.guild.id)
+        return True
 
     def build_embed(self, show_dealer=False):
         embed = discord.Embed(title="🎰 Blackjack", color=discord.Color.blue())
@@ -309,27 +362,34 @@ class BlackjackCog(commands.Cog):
         if guild_id in self.games:
             return await interaction.response.send_message("A game is already in progress in this server!", ephemeral=True, delete_after=5)
 
-        # 2. Money Check
-        user_bal = self.bank.get(interaction.user.id, (0,))[0]
+        # 2. Validate the requested stake without reading a stale raw-bank
+        # snapshot. The escrow performs the authoritative balance check.
         if bet < self.minimum_bet:
             return await interaction.response.send_message(f"Minimum bet is {self.minimum_bet}!", ephemeral=True, delete_after=5)
-        if user_bal < bet:
-            return await interaction.response.send_message("Insufficient funds!", ephemeral=True, delete_after=5)
 
-        # 3. Deduct Money (Escrow)
-        self.bank[interaction.user.id] = (user_bal - bet, self.bank[interaction.user.id][1])
-
-        # 4. Setup Game
+        # 3. Setup the durable escrow before any network await.
         # Note: This implementation starts a solo game immediately for smoother UX.
         # To make it multiplayer, you would add a "Join Phase" View here similar to the original code,
         # but for simplicity and speed, this is a direct start.
         
         player = BlackjackPlayer(interaction.user, bet)
-        game = BlackjackGame(self, interaction.channel, [player])
+        game = BlackjackGame(
+            self,
+            interaction.channel,
+            [player],
+            hand_id=f"solo-{interaction.user.id}:{uuid.uuid4().hex}",
+        )
+        if not game.escrow.try_debit(player.id, bet):
+            return await interaction.response.send_message("Insufficient funds!", ephemeral=True, delete_after=5)
         self.games[guild_id] = game
         
-        await interaction.response.send_message(f"Starting Blackjack with bet {bet} {self.money_name}...", ephemeral=True, delete_after=5)
-        await game.start()
+        try:
+            await interaction.response.send_message(f"Starting Blackjack with bet {bet} {self.money_name}...", ephemeral=True, delete_after=5)
+            await game.start()
+        except Exception:
+            await game.refund_game("start-failure")
+            self.remove_game(guild_id)
+            raise
 
     @app_commands.command(name='blackjack_multiplayer')
     @app_commands.describe(max_players="Max players (1-5)")
@@ -341,6 +401,18 @@ class BlackjackCog(commands.Cog):
 
         # Lobby State
         lobby_players: List[BlackjackPlayer] = []
+        lobby_id = f"lobby-{interaction.user.id}-{uuid.uuid4().hex}"
+        lobby_escrow = self.baba.new_escrow(
+            escrow_id=f"blackjack:{guild_id}:{lobby_id}",
+            game_type="blackjack",
+        )
+        lobby_state = {
+            "kind": "blackjack-lobby",
+            "hand_id": lobby_id,
+            "escrow": lobby_escrow,
+            "players": lobby_players,
+        }
+        self.games[guild_id] = lobby_state
         
         embed = discord.Embed(
             title="Blackjack Lobby", 
@@ -359,7 +431,17 @@ class BlackjackCog(commands.Cog):
             if any(p.id == btn_inter.user.id for p in lobby_players):
                 return await btn_inter.response.send_message("Already joined!", ephemeral=True, delete_after=5)
 
-            modal = BetModal(self, lobby_players, max_players, view, msg)
+            if view.is_finished():
+                return await btn_inter.response.send_message("This lobby is closed.", ephemeral=True, delete_after=5)
+
+            modal = BetModal(
+                self,
+                lobby_players,
+                max_players,
+                view,
+                msg,
+                lobby_escrow,
+            )
             await btn_inter.response.send_modal(modal)
 
         join_btn = discord.ui.Button(label="Join", style=discord.ButtonStyle.primary)
@@ -378,26 +460,45 @@ class BlackjackCog(commands.Cog):
         view.add_item(join_btn)
         view.add_item(start_btn)
 
-        await interaction.response.send_message(embed=embed, view=view)
-        msg = await interaction.original_response()
+        try:
+            await interaction.response.send_message(embed=embed, view=view)
+            msg = await interaction.original_response()
+        except Exception:
+            lobby_escrow.refund()
+            self.remove_game(guild_id)
+            raise
 
         async def start_game_logic():
+            if self.games.get(guild_id) is not lobby_state:
+                return
             if not lobby_players:
-                if guild_id in self.games: del self.games[guild_id] # Cleanup lock if failed
+                lobby_escrow.refund()
+                self.remove_game(guild_id)
                 await msg.edit(content="No players joined. Cancelled.", view=None, embed=None)
                 return
 
             # Create actual game
-            game = BlackjackGame(self, interaction.channel, lobby_players)
+            game = BlackjackGame(
+                self,
+                interaction.channel,
+                lobby_players,
+                hand_id=lobby_id,
+            )
             self.games[guild_id] = game
-            await msg.delete() # Clean up lobby
-            await game.start()
+            try:
+                await msg.delete() # Clean up lobby
+                await game.start()
+            except Exception:
+                await game.refund_game("lobby-start-failure")
+                self.remove_game(guild_id)
+                raise
 
         # Wait for view to timeout or stop
         timed_out = await view.wait()
         if timed_out and not lobby_players:
-            if guild_id in self.games:
-                del self.games[guild_id]
+            lobby_escrow.refund()
+            if self.games.get(guild_id) is lobby_state:
+                self.remove_game(guild_id)
             await msg.edit(content="Lobby timed out.", view=None, embed=None)
         else:
             await start_game_logic()
@@ -405,13 +506,14 @@ class BlackjackCog(commands.Cog):
 class BetModal(discord.ui.Modal, title="Place your Bet"):
     bet_amount = discord.ui.TextInput(label="Amount", placeholder="10", min_length=1, max_length=10)
 
-    def __init__(self, cog, lobby_list, max_p, view, message):
+    def __init__(self, cog, lobby_list, max_p, view, message, escrow):
         super().__init__()
         self.cog = cog
         self.lobby = lobby_list
         self.max_p = max_p
         self.view = view
         self.message = message
+        self.escrow = escrow
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
@@ -419,15 +521,11 @@ class BetModal(discord.ui.Modal, title="Place your Bet"):
         except ValueError:
             return await interaction.response.send_message("Invalid number.", ephemeral=True, delete_after=5)
 
-        bal = self.cog.bank.get(interaction.user.id, (0,))[0]
         if amount < self.cog.minimum_bet:
             return await interaction.response.send_message(f"Min bet is {self.cog.minimum_bet}.", ephemeral=True, delete_after=5)
-        if bal < amount:
+        if not self.escrow.try_debit(interaction.user.id, amount):
             return await interaction.response.send_message("Insufficient funds.", ephemeral=True, delete_after=5)
 
-        # Deduct
-        self.cog.bank[interaction.user.id] = (bal - amount, self.cog.bank[interaction.user.id][1])
-        
         # Add to lobby
         self.lobby.append(BlackjackPlayer(interaction.user, amount))
         

@@ -2,6 +2,8 @@ import discord
 from discord.ext import commands, tasks
 import random
 import os
+import threading
+import tempfile
 from datetime import datetime, timedelta
 
 class LotteryCog(commands.Cog):
@@ -10,6 +12,7 @@ class LotteryCog(commands.Cog):
         self.ticket_cost = 100
         self.prize_pool = 10000 + (50 * self.ticket_cost)  # Base prize + 50 tickets worth
         self.lottery_file = "lottery_tickets.txt"
+        self._ticket_lock = threading.RLock()
         self.announce_channel_id = [1306668111105228870,1444048712677724416,1269862833491935234]
         self.lottery_loop.start()
 
@@ -33,12 +36,56 @@ class LotteryCog(commands.Cog):
         return tickets
 
     def save_ticket(self, user_id, numbers):
-        with open(self.lottery_file, "a") as f:
-            nums_str = ",".join(map(str, numbers))
-            f.write(f"{user_id} {nums_str}\n")
+        self.save_tickets(user_id, [numbers])
+
+    def save_tickets(self, user_id, tickets):
+        """Append a ticket batch with one atomic file replacement."""
+        with self._ticket_lock:
+            try:
+                with open(self.lottery_file, "r", encoding="utf-8") as source:
+                    existing = source.read()
+            except FileNotFoundError:
+                existing = ""
+
+            directory = os.path.dirname(os.path.abspath(self.lottery_file)) or "."
+            fd, tmp_path = tempfile.mkstemp(
+                prefix="lottery.", suffix=".tmp", dir=directory, text=True
+            )
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as target:
+                    target.write(existing)
+                    for numbers in tickets:
+                        nums_str = ",".join(map(str, numbers))
+                        target.write(f"{user_id} {nums_str}\n")
+                    target.flush()
+                    os.fsync(target.fileno())
+                os.replace(tmp_path, self.lottery_file)
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
 
     def clear_tickets(self):
-        open(self.lottery_file, "w").close()
+        """Replace the ticket file atomically with an empty generation."""
+        with self._ticket_lock:
+            directory = os.path.dirname(os.path.abspath(self.lottery_file)) or "."
+            fd, tmp_path = tempfile.mkstemp(
+                prefix="lottery.", suffix=".tmp", dir=directory, text=True
+            )
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as target:
+                    target.flush()
+                    os.fsync(target.fileno())
+                os.replace(tmp_path, self.lottery_file)
+            finally:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+
+    def _ticket_sales_paused(self):
+        state = self.bot.baba.economy_state
+        return bool(
+            state.get("pending_lottery_draw_id")
+            or state.get("lottery_cleanup_draw_id")
+        )
 
     @commands.command(name="buy_ticket", aliases=["buy",])
     async def buy_ticket(self, ctx, *numbers: int):
@@ -61,30 +108,47 @@ class LotteryCog(commands.Cog):
 
         sorted_numbers = sorted(list(numbers))
 
-        # 2. Check funds
-        if user_id not in baba.bank:
-            baba.bank[user_id] = (0, False)
-        
-        current_money, claimed = baba.bank[user_id]
-        
-        if current_money < self.ticket_cost:
-            await ctx.send(f"You don't have enough bababucks! A ticket costs {self.ticket_cost}.")
-            return
+        response = None
+        with self._ticket_lock:
+            current_tickets = self.get_tickets()
+            if self._ticket_sales_paused():
+                response = (
+                    "Lottery ticket sales are temporarily paused while today's "
+                    "drawing is being settled."
+                )
+            elif any(
+                ticket["user_id"] == user_id
+                and ticket["numbers"] == sorted_numbers
+                for ticket in current_tickets
+            ):
+                response = "You already bought a ticket with these exact numbers!"
+            elif not baba.try_debit_money(user_id, self.ticket_cost):
+                response = (
+                    "You don't have enough bababucks! "
+                    f"A ticket costs {self.ticket_cost}."
+                )
+            else:
+                try:
+                    self.save_ticket(user_id, sorted_numbers)
+                except Exception:
+                    try:
+                        baba.credit_money(user_id, self.ticket_cost)
+                    except Exception:
+                        response = (
+                            "Ticket purchase failed and the automatic refund could not "
+                            "be saved. Please contact an administrator."
+                        )
+                        await ctx.send(response)
+                        raise
+                    response = (
+                        "Ticket purchase failed; your bababucks were refunded."
+                    )
+                else:
+                    response = (
+                        f"Ticket purchased! Numbers: {sorted_numbers}. Good luck!"
+                    )
 
-        # 3. Check for duplicate tickets (optional rule, but good for preventing spam of same numbers)
-        current_tickets = self.get_tickets()
-        for ticket in current_tickets:
-            if ticket["user_id"] == user_id and ticket["numbers"] == sorted_numbers:
-                await ctx.send("You already bought a ticket with these exact numbers!")
-                return
-
-        # 4. Process transaction
-        baba.bank[user_id] = (current_money - self.ticket_cost, claimed)
-        baba.refresh_bank_file()
-        
-        self.save_ticket(user_id, sorted_numbers)
-        
-        await ctx.send(f"Ticket purchased! Numbers: {sorted_numbers}. Good luck!")
+        await ctx.send(response)
 
     #Buyrandom command
     @commands.command(name="buyrandom", aliases=["br",])
@@ -99,138 +163,206 @@ class LotteryCog(commands.Cog):
 
         total_cost = self.ticket_cost * count
 
-        # 1. Check/initialize user in bank
-        if user_id not in baba.bank:
-            baba.bank[user_id] = (0, False)
-        
-        current_money, claimed = baba.bank[user_id]
-        
-        # 2. Verify total funds
-        if current_money < total_cost:
-            await ctx.send(f"You don't have enough bababucks! Buying {count} ticket(s) costs {total_cost} {baba.money_name} (you have {current_money}).")
+        tickets_bought = [
+            sorted(random.sample(range(1, 21), 6)) for _ in range(count)
+        ]
+        response = None
+        refund_error = None
+        with self._ticket_lock:
+            if self._ticket_sales_paused():
+                response = (
+                    "Lottery ticket sales are temporarily paused while today's "
+                    "drawing is being settled."
+                )
+            elif not baba.try_debit_money(user_id, total_cost):
+                current_money = baba.get_money(user_id)
+                response = (
+                    "You don't have enough bababucks! "
+                    f"Buying {count} ticket(s) costs {total_cost} "
+                    f"{baba.money_name} (you have {current_money})."
+                )
+            else:
+                try:
+                    self.save_tickets(user_id, tickets_bought)
+                except Exception:
+                    try:
+                        baba.credit_money(user_id, total_cost)
+                    except Exception as exc:
+                        refund_error = exc
+                        response = (
+                            "Ticket purchase failed and the automatic refund could not "
+                            "be saved. Please contact an administrator."
+                        )
+                    else:
+                        response = (
+                            "Ticket purchase failed; your bababucks were refunded."
+                        )
+                else:
+                    response = (
+                        f"Successfully purchased {count} ticket(s) for {total_cost} "
+                        f"{baba.money_name}! Good luck! You can check your tickets "
+                        "with `baba ticket`.\n"
+                    )
+
+        await ctx.send(response)
+        if refund_error is not None:
+            raise refund_error
+
+
+    @staticmethod
+    def _validate_winning_numbers(winning_numbers):
+        numbers = sorted(int(number) for number in winning_numbers)
+        if len(numbers) != 6 or len(set(numbers)) != 6:
+            raise ValueError("winning numbers must contain 6 unique values")
+        if any(number < 1 or number > 20 for number in numbers):
+            raise ValueError("winning numbers must be between 1 and 20")
+        return numbers
+
+    def _calculate_draw(self, tickets, winning_numbers):
+        winners = {6: [], 5: [], 4: [], 3: []}
+        for ticket in tickets:
+            match_count = len(
+                set(ticket["numbers"]) & set(winning_numbers)
+            )
+            if match_count in winners:
+                winners[match_count].append(int(ticket["user_id"]))
+
+        prizes = {5: 5000, 4: 1000, 3: 200}
+        jackpot_share = (
+            self.prize_pool // len(winners[6]) if winners[6] else 0
+        )
+        payouts = {}
+        for uid in winners[6]:
+            payouts[uid] = payouts.get(uid, 0) + jackpot_share
+        for match_count in (5, 4, 3):
+            for uid in winners[match_count]:
+                payouts[uid] = payouts.get(uid, 0) + prizes[match_count]
+        return winners, prizes, jackpot_share, payouts
+
+    async def _announce_draw(
+        self, tickets, winning_numbers, winners, prizes, jackpot_share
+    ):
+        if not tickets:
             return
 
-        tickets_bought = []
-        for _ in range(count):
-            # Generate random unique numbers
-            random_numbers = sorted(random.sample(range(1, 21), 6))
-            self.save_ticket(user_id, random_numbers)
-            tickets_bought.append(random_numbers)
+        msg = [
+            "🎰 **DAILY LOTTERY RESULTS** 🎰",
+            f"Winning Numbers: **{winning_numbers}**",
+        ]
+        if winners[6]:
+            mentions = ", ".join(f"<@{uid}>" for uid in winners[6])
+            msg.append(
+                f"🏆 **JACKPOT (6/6)**: {mentions} won "
+                f"{jackpot_share} bababucks!"
+            )
+        else:
+            msg.append(
+                f"🏆 **JACKPOT**: No winners. Pool remains {self.prize_pool}."
+            )
 
-        # 3. Process transaction and write to disk once
-        baba.bank[user_id] = (current_money - total_cost, claimed)
-        baba.refresh_bank_file()
-        
-        await ctx.send(f"Successfully purchased {count} ticket(s) for {total_cost} {baba.money_name}! Good luck! You can check your tickets with `baba ticket`.\n")
+        labels = {5: "🥈 **2nd Prize (5/6)**", 4: "🥉 **3rd Prize (4/6)**"}
+        for match_count in (5, 4):
+            if winners[match_count]:
+                mentions = ", ".join(
+                    f"<@{uid}>" for uid in winners[match_count]
+                )
+                msg.append(
+                    f"{labels[match_count]}: {mentions} won "
+                    f"{prizes[match_count]} bababucks!"
+                )
+        if winners[3]:
+            if len(winners[3]) > 10:
+                msg.append(
+                    f"🎉 **4th Prize (3/6)**: {len(winners[3])} winners won "
+                    f"{prizes[3]} bababucks!"
+                )
+            else:
+                mentions = ", ".join(f"<@{uid}>" for uid in winners[3])
+                msg.append(
+                    f"🎉 **4th Prize (3/6)**: {mentions} won "
+                    f"{prizes[3]} bababucks!"
+                )
+        if not any(winners.values()):
+            msg.append("No winning tickets today. Better luck next time!")
 
+        announcement = "\n".join(msg)
+        for channel_id in self.announce_channel_id:
+            channel = self.bot.get_channel(channel_id)
+            if channel is None:
+                print(f"Lottery channel {channel_id} not found.")
+                continue
+            await channel.send(announcement)
+
+    async def run_draw(self, draw_id, winning_numbers):
+        """Settle one durable draw without paying the same draw twice."""
+        requested_draw_id = str(draw_id).strip()
+        if not requested_draw_id:
+            raise ValueError("draw_id must not be empty")
+        requested_numbers = self._validate_winning_numbers(winning_numbers)
+        baba = self.bot.baba
+
+        with self._ticket_lock:
+            state = baba.economy_state
+            last_draw_id = str(state.get("last_lottery_draw_id", ""))
+            cleanup_draw_id = str(
+                state.get("lottery_cleanup_draw_id", "")
+            )
+
+            if last_draw_id == requested_draw_id:
+                if cleanup_draw_id == requested_draw_id:
+                    self.clear_tickets()
+                    baba.apply_money_deltas_with_state(
+                        {}, {"lottery_cleanup_draw_id": ""}
+                    )
+                return False
+
+            pending_draw_id = str(
+                state.get("pending_lottery_draw_id", "")
+            )
+            if pending_draw_id:
+                active_draw_id = pending_draw_id
+                active_numbers = self._validate_winning_numbers(
+                    state.get("pending_lottery_numbers", [])
+                )
+            else:
+                active_draw_id = requested_draw_id
+                active_numbers = requested_numbers
+                baba.apply_money_deltas_with_state(
+                    {},
+                    {
+                        "pending_lottery_draw_id": active_draw_id,
+                        "pending_lottery_numbers": active_numbers,
+                    },
+                )
+
+            tickets = self.get_tickets()
+            winners, prizes, jackpot_share, payouts = self._calculate_draw(
+                tickets, active_numbers
+            )
+            baba.apply_money_deltas_with_state(
+                payouts,
+                {
+                    "last_lottery_draw_id": active_draw_id,
+                    "pending_lottery_draw_id": "",
+                    "pending_lottery_numbers": [],
+                    "lottery_cleanup_draw_id": active_draw_id,
+                },
+            )
+            self.clear_tickets()
+            baba.apply_money_deltas_with_state(
+                {}, {"lottery_cleanup_draw_id": ""}
+            )
+
+        await self._announce_draw(
+            tickets, active_numbers, winners, prizes, jackpot_share
+        )
+        return True
 
     @tasks.loop(hours=24)
     async def lottery_loop(self):
-        
-        tickets = self.get_tickets()
-
-        # Generate winning numbers
+        draw_id = datetime.now().date().isoformat()
         winning_numbers = sorted(random.sample(range(1, 21), 6))
-        
-        # Categorize winners by match count
-        # 6 matches = Jackpot
-        # 5 matches = 2nd Prize
-        # 4 matches = 3rd Prize
-        # 3 matches = 4th Prize
-        winners = {6: [], 5: [], 4: [], 3: []}
-        
-        # Check for winners
-        for ticket in tickets:
-            # Calculate intersection of ticket numbers and winning numbers
-            match_count = len(set(ticket["numbers"]) & set(winning_numbers))
-            if match_count in winners:
-                winners[match_count].append(ticket["user_id"])
-
-        baba = self.bot.baba
-        
-        # Define fixed prizes for lower tiers
-        prizes = {
-            5: 5000,  # 2nd Prize
-            4: 1000,  # 3rd Prize
-            3: 200    # 4th Prize
-        }
-
-        # Calculate Jackpot share
-        jackpot_share = 0
-        if winners[6]:
-            jackpot_share = self.prize_pool // len(winners[6])
-
-        # Process payouts
-        # 1. Jackpot (Match 6)
-        for uid in winners[6]:
-            if uid in baba.bank:
-                curr, claimed = baba.bank[uid]
-                baba.bank[uid] = (curr + jackpot_share, claimed)
-            else:
-                baba.bank[uid] = (jackpot_share, False)
-        
-        # 2. Lower tiers (Match 5, 4, 3)
-        for match_count in [5, 4, 3]:
-            amount = prizes[match_count]
-            for uid in winners[match_count]:
-                if uid in baba.bank:
-                    curr, claimed = baba.bank[uid]
-                    baba.bank[uid] = (curr + amount, claimed)
-                else:
-                    baba.bank[uid] = (amount, False)
-
-        baba.refresh_bank_file()
-
-        # Announce in all configured channels
-        for channel_id in self.announce_channel_id:
-            channel = self.bot.get_channel(channel_id)
-            if not channel:
-                print(f"Lottery channel {channel_id} not found.")
-                continue
-            
-            if not tickets:
-                # await channel.send("Daily Lottery: No tickets were bought today. The prize remains unclaimed.")
-                continue
-            
-            # Build announcement message
-            msg = [f"🎰 **DAILY LOTTERY RESULTS** 🎰"]
-            msg.append(f"Winning Numbers: **{winning_numbers}**")
-
-            # Jackpot Announcement
-            if winners[6]:
-                mentions = ", ".join([f"<@{uid}>" for uid in winners[6]])
-                msg.append(f"🏆 **JACKPOT (6/6)**: {mentions} won {jackpot_share} bababucks!")
-            else:
-                msg.append(f"🏆 **JACKPOT**: No winners. Pool remains {self.prize_pool}.")
-
-            # 2nd Prize Announcement
-            if winners[5]:
-                mentions = ", ".join([f"<@{uid}>" for uid in winners[5]])
-                msg.append(f"🥈 **2nd Prize (5/6)**: {mentions} won {prizes[5]} bababucks!")
-
-            # 3rd Prize Announcement
-            if winners[4]:
-                mentions = ", ".join([f"<@{uid}>" for uid in winners[4]])
-                msg.append(f"🥉 **3rd Prize (4/6)**: {mentions} won {prizes[4]} bababucks!")
-
-            # 4th Prize Announcement
-            if winners[3]:
-                uids = winners[3]
-                if len(uids) > 10:
-                    msg.append(f"🎉 **4th Prize (3/6)**: {len(uids)} winners won {prizes[3]} bababucks!")
-                else:
-                    mentions = ", ".join([f"<@{uid}>" for uid in uids])
-                    msg.append(f"🎉 **4th Prize (3/6)**: {mentions} won {prizes[3]} bababucks!")
-
-            if not any(winners.values()):
-                pass
-                print("No winners today.")
-                msg.append("No winning tickets today. Better luck next time!")
-
-            await channel.send("\n".join(msg))
-
-        # Clear tickets for the next day
-        self.clear_tickets()
+        await self.run_draw(draw_id, winning_numbers)
 
     @lottery_loop.before_loop
     async def before_lottery_loop(self):

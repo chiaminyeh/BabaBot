@@ -4,25 +4,39 @@ import os
 import logging
 import random
 import asyncio
+import uuid
 from datetime import datetime
+from types import SimpleNamespace
 from discord import app_commands
 from discord.ext import commands, tasks
+from poker_ai_strategy import RLCardRuleStrategy
 
 # --- Player Class ---
 class Player:
-    def __init__(self, user: discord.User):
+    def __init__(
+        self,
+        user: discord.User,
+        *,
+        is_bot: bool = False,
+        seat_index: int | None = None,
+    ):
         self.user = user
         self.id = user.id
         self.name = user.name
         self.hand: list[str] = []
         self.bet: int = 0
         self.folded: bool = False
+        self.all_in: bool = False
+        self.is_bot = is_bot
+        self.seat_index = seat_index
+        self.position = ""
         
 
 # --- Poker Cog ---
 class PokerCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.baba = bot.baba
         # bank: mapping user_id -> (balance:int, claimed:bool)
         self.bank = bot.baba.bank
         self.money_name = bot.baba.money_name
@@ -40,19 +54,48 @@ class PokerCog(commands.Cog):
             format='%(asctime)s - %(levelname)s - %(message)s'
         )
 
+    @staticmethod
+    def build_bot_player(guild_id: int, index: int) -> Player:
+        """Create a deterministic local bot seat for a poker hand."""
+        if not isinstance(guild_id, int) or not isinstance(index, int):
+            raise TypeError("guild_id and index must be integers")
+        user = SimpleNamespace(
+            id=-(abs(guild_id) * 100 + index + 1),
+            name=f"BabaBot {index + 1}",
+        )
+        return Player(user, is_bot=True)
+
+    def ensure_bot_bankroll(self, player: Player):
+        """Give a bot a bounded house bankroll without touching raw bank state."""
+        target = max(100, self.minimum_bet * 20)
+        balance = self.baba.get_money(player.id)
+        if balance < target:
+            self.baba.add_money(player.id, target - balance)
+
     # --- Slash: Start Poker ---
     @app_commands.command(name='start_poker')
     @app_commands.describe(
-        min_players="How many players required to start the game (2–10)"
+        min_players="Total seats, including bots (2–10)",
+        bot_count="Number of BabaBot opponents (0–9)",
     )
     async def start_poker(
         self,
         interaction: discord.Interaction,
-        min_players: app_commands.Range[int, 2, 10] = 4
+        min_players: app_commands.Range[int, 2, 10] = 4,
+        bot_count: app_commands.Range[int, 0, 9] = 0,
     ):
         
         """Start a new poker game, waiting for `min_players` to join."""
         guild_id = interaction.guild_id
+        if bot_count >= min_players:
+            return await interaction.response.send_message(
+                "At least one human seat is required.", ephemeral=True
+            )
+        if self.baba.get_money(interaction.user.id) < self.minimum_bet:
+            return await interaction.response.send_message(
+                f"You need at least {self.minimum_bet} {self.money_name} to join.",
+                ephemeral=True,
+            )
         if guild_id in self.games and self.games[guild_id]['active']:
             return await interaction.response.send_message(
                 "A game is already in progress!", ephemeral=True
@@ -61,17 +104,22 @@ class PokerCog(commands.Cog):
         # initialize game state with dynamic player count
         self.games[guild_id] = {
             'active': True,
-            'players': [],            # list[Player]
+            'players': [Player(interaction.user)],  # host joins their own table
             'channel_id': interaction.channel_id,
             'instance': None,         # PokerGame instance
             'last_action': datetime.now(),
-            'min_players': min_players
+            'min_players': min_players,
+            'bot_count': bot_count,
+            'human_target': min_players - bot_count,
+            'starting': False,
         }
 
         embed = discord.Embed(
             title="Poker Game",
             description=(
-                f"Waiting for **{min_players}** players to join\n"
+                f"Seats: **1/{min_players}** (host joined)\n"
+                f"Humans: **1/{min_players - bot_count}**\n"
+                f"BabaBot opponents: **{bot_count}**\n"
                 f"Minimum bet: {self.minimum_bet} {self.money_name}\n"
                 "Click below to join!"
             ), color=discord.Color.dark_green()
@@ -85,23 +133,31 @@ class PokerCog(commands.Cog):
 
         async def btn_cb(btn_inter: discord.Interaction):
             user = btn_inter.user
-            bal = self.bank.get(user.id, (0,))[0]
             game = self.games[guild_id]
 
             if not game['active']:
                 return await btn_inter.response.send_message("This lobby has expired.", ephemeral=True)
-            if bal < self.minimum_bet:
+            if self.baba.get_money(user.id) < self.minimum_bet:
                 return await btn_inter.response.send_message(
                     f"You need at least {self.minimum_bet} {self.money_name} to join.", ephemeral=True
                 )
             if any(p.id == user.id for p in game['players']):
                 return await btn_inter.response.send_message("Already joined!", ephemeral=True)
+            human_count = len([p for p in game['players'] if not p.is_bot])
+            if human_count >= game['human_target']:
+                return await btn_inter.response.send_message(
+                    "All human seats are already occupied.", ephemeral=True
+                )
 
             game['players'].append(Player(user))
             game['last_action'] = datetime.now()
-            await btn_inter.response.send_message(f"{user.name} joined! ({len(game['players'])}/{min_players})")
+            human_count += 1
+            await btn_inter.response.send_message(
+                f"{user.name} joined! ({human_count}/{game['human_target']} humans)"
+            )
 
-            if len(game['players']) >= game['min_players']:
+            if human_count >= game['human_target']:
+                self._add_bots_to_lobby(guild_id)
                 await self._begin_game(guild_id)
 
         btn.callback = btn_cb
@@ -113,7 +169,8 @@ class PokerCog(commands.Cog):
         while (datetime.now() - start).seconds < 60:
             await asyncio.sleep(1)
             game = self.games[guild_id]
-            if len(game['players']) >= game['min_players']:
+            if len([p for p in game['players'] if not p.is_bot]) >= game['human_target']:
+                self._add_bots_to_lobby(guild_id)
                 return await self._begin_game(guild_id)
 
         # timeout: not enough players
@@ -127,22 +184,31 @@ class PokerCog(commands.Cog):
 
     async def _begin_game(self, guild_id: int):
         game = self.games[guild_id]
-        if game['instance']:
+        if game['instance'] or game.get('starting'):
             return
+        game['starting'] = True
+        for player in game['players']:
+            if player.is_bot:
+                self.ensure_bot_bankroll(player)
         channel = self.bot.get_channel(game['channel_id'])
         players = game['players']
-        poker = PokerGame(channel, players, self)
-        game['instance'] = poker
-        game['last_action'] = datetime.now()
-        await poker.play_game()
+        try:
+            poker = PokerGame(channel, players, self)
+            game['instance'] = poker
+            game['last_action'] = datetime.now()
+            await poker.play_game()
+        finally:
+            game['starting'] = False
+
+    def _add_bots_to_lobby(self, guild_id: int):
+        game = self.games[guild_id]
+        existing = len([p for p in game['players'] if p.is_bot])
+        for index in range(existing, game['bot_count']):
+            game['players'].append(self.build_bot_player(guild_id, index))
 
     # --- Slash: End Poker ---
     def _refund_bets(self, inst):
-        if inst and inst.pot > 0:
-            for p in inst.players:
-                if p.bet > 0:
-                    bal, claimed = self.bank[p.id]
-                    self.bank[p.id] = (bal + p.bet, claimed)
+        return inst.refund_game("cog") if inst else False
 
     @app_commands.command(name='end_poker')
     @commands.has_permissions(administrator=True)
@@ -152,9 +218,15 @@ class PokerCog(commands.Cog):
         game = self.games.get(guild_id)
         if not game or not game['active']:
             return await interaction.response.send_message("No active game.")
-        # refund
-        self._refund_bets(game['instance'])
+        # Refund the durable escrow before changing the lobby state or
+        # confirming success to the administrator.
+        refunded = await self._refund_bets(game['instance'])
+        if not refunded:
+            return await interaction.response.send_message(
+                "Game could not be ended safely; the escrow remains active."
+            )
         game['active'] = False
+        game['instance'] = None
         await interaction.response.send_message("Game force-ended. Bets returned.")
     
     @app_commands.command(name='poker_rules')
@@ -248,11 +320,15 @@ class PokerCog(commands.Cog):
     async def timeout_check(self):
         for guild_id, game in list(self.games.items()):
             if game['active'] and (datetime.now() - game['last_action']).seconds > self.game_timeout:
+                # Complete the durable refund before changing state or
+                # sending a success announcement.
+                refunded = await self._refund_bets(game['instance'])
+                if not refunded:
+                    continue
+                game['active'] = False
+                game['instance'] = None
                 chan = self.bot.get_channel(game['channel_id'])
                 await chan.send("Game ended due to inactivity.")
-                # refund
-                self._refund_bets(game['instance'])
-                game['active'] = False
 
 # --- Deck Class ---
 class Deck:
@@ -276,29 +352,394 @@ class Deck:
 
 # --- PokerGame Class ---
 class PokerGame:
-    def __init__(self, channel: discord.TextChannel, players: list[Player], cog: PokerCog):
+    def __init__(
+        self,
+        channel: discord.TextChannel,
+        players: list[Player],
+        cog: PokerCog,
+        *,
+        hand_id: str | None = None,
+        button_seat: int = 0,
+        small_blind: int | None = None,
+        big_blind: int | None = None,
+    ):
         self.channel = channel
         self.players = players
         self.cog = cog
         self.deck = Deck()
         self.community: list[str] = []
         self.pot: int = 0
-        self.highest: int = cog.minimum_bet
+        self.big_blind = big_blind or cog.minimum_bet
+        self.small_blind = small_blind or max(1, self.big_blind // 2)
+        if self.small_blind <= 0 or self.big_blind <= 0:
+            raise ValueError("blinds must be positive")
+        if self.small_blind > self.big_blind:
+            raise ValueError("small blind cannot exceed big blind")
+        self.bot_strategy = RLCardRuleStrategy(big_blind=self.big_blind)
+        self.highest: int = self.big_blind
         self.round = 0
+        self.street = "preflop"
         self.acted_players: set[int] = set()
+        self.current_actor_id: int | None = None
+        self.button_seat = button_seat % len(players) if players else 0
+        self._assign_seats_and_positions()
+        self.hand_id = hand_id or uuid.uuid4().hex
+        self.escrow_id = (
+            f"poker:{self.channel.guild.id}:{self.hand_id}"
+        )
+        self.escrow = cog.baba.new_escrow(
+            escrow_id=self.escrow_id, game_type="poker"
+        )
+        self._forced_bets_posted = False
+        self.terminal_state = self.escrow.state
+        self._terminal_lock = asyncio.Lock()
 
+    def _assign_seats_and_positions(self):
+        """Assign stable clockwise seats and Texas Hold'em positions."""
+        count = len(self.players)
+        if count < 2:
+            raise ValueError("a poker table needs at least two players")
+        for index, player in enumerate(self.players):
+            player.seat_index = index
+            player.position = ""
+
+        button = self.button_seat
+        if count == 2:
+            self.players[button].position = "SB/BTN"
+            self.players[(button + 1) % count].position = "BB"
+        else:
+            self.players[button].position = "BTN"
+            self.players[(button + 1) % count].position = "SB"
+            self.players[(button + 2) % count].position = "BB"
+            middle_positions = {
+                1: ["UTG"],
+                2: ["UTG", "CO"],
+                3: ["UTG", "HJ", "CO"],
+                4: ["UTG", "MP", "HJ", "CO"],
+                5: ["UTG", "UTG+1", "MP", "HJ", "CO"],
+            }.get(count - 3, [])
+            for offset in range(3, count):
+                middle_index = offset - 3
+                if middle_index < len(middle_positions):
+                    position = middle_positions[middle_index]
+                else:
+                    position = f"Seat+{offset}"
+                self.players[(button + offset) % count].position = position
+
+    def _next_seat(self, seat_index: int) -> int:
+        return (seat_index + 1) % len(self.players)
+
+    def _seat_with_position(self, position: str) -> int:
+        return next(
+            player.seat_index
+            for player in self.players
+            if player.position == position
+        )
+
+    def action_order_for(self, street: str | None = None) -> list[int]:
+        """Return clockwise actor IDs for the requested betting street."""
+        street = street or self.street
+        if street == "preflop":
+            if len(self.players) == 2:
+                start = self.button_seat
+            else:
+                start = self._next_seat(self._seat_with_position("BB"))
+        else:
+            start = self._next_seat(self.button_seat)
+
+        ordered: list[int] = []
+        seat = start
+        for _ in self.players:
+            player = self.players[seat]
+            if not player.folded and not player.all_in:
+                ordered.append(player.id)
+            seat = self._next_seat(seat)
+        return ordered
+
+    def table_display(self) -> str:
+        lines = []
+        for player in sorted(self.players, key=lambda item: item.seat_index):
+            tags = [player.position]
+            if player.is_bot:
+                tags.append("BOT")
+            if player.folded:
+                tags.append("folded")
+            elif player.all_in:
+                tags.append("all-in")
+            if player.id == self.current_actor_id and self.terminal_state == "open":
+                tags.append("TO ACT")
+            lines.append(
+                f"Seat {player.seat_index + 1}: {player.name} — "
+                f"{' / '.join(tags)}"
+            )
+        return "\n".join(lines)
+
+    async def _announce_table(self, *, prefix: str = "🪑 Table"):
+        await self.channel.send(f"{prefix}\n{self.table_display()}")
+
+    def _player_for(self, user_id: int):
+        return next((p for p in self.players if p.id == user_id), None)
+
+    def _next_actor_after(self, actor_id: int | None) -> int | None:
+        order = self.action_order_for(self.street)
+        if not order:
+            return None
+        actor = self._player_for(actor_id) if actor_id is not None else None
+        if actor is None:
+            return order[0]
+        seat = self._next_seat(actor.seat_index)
+        for _ in self.players:
+            candidate = self.players[seat]
+            if not candidate.folded and not candidate.all_in:
+                return candidate.id
+            seat = self._next_seat(seat)
+        return None
+
+    async def _send_action_message(self, sender, content: str):
+        await sender(content)
+
+    async def _dispatch_action(
+        self,
+        player: Player,
+        action: str,
+        *,
+        amount: int = 0,
+        sender=None,
+    ) -> bool:
+        """Apply human and bot actions through the same turn/escrow path."""
+        if self.terminal_state != "open":
+            if sender:
+                await self._send_action_message(sender, "This hand has already ended.")
+            return False
+        if player.folded:
+            if sender:
+                await self._send_action_message(sender, "You are not in the hand or already folded.")
+            return False
+        if player.id != self.current_actor_id:
+            expected = self._player_for(self.current_actor_id)
+            message = (
+                f"It is {expected.name}'s turn."
+                if expected else "It is not your turn."
+            )
+            if sender:
+                await self._send_action_message(sender, message)
+            return False
+
+        previous_highest = self.highest
+        if action == "bet":
+            if amount < 1:
+                if sender:
+                    await self._send_action_message(sender, "Bet must be positive.")
+                return False
+            if not self.escrow.try_debit(player.id, amount):
+                if sender:
+                    await self._send_action_message(sender, "Insufficient funds.")
+                return False
+            player.bet += amount
+            if player.bet > self.highest:
+                self.highest = player.bet
+            if sender:
+                await self._send_action_message(
+                    sender,
+                    f"{player.name} bets {amount}. (Total: {player.bet}) Pot: {self.escrow.total}",
+                )
+        elif action == "call":
+            difference = self.highest - player.bet
+            if difference <= 0:
+                if sender:
+                    await self._send_action_message(
+                        sender, "Nothing to call—use `baba check` to check."
+                    )
+                return False
+            if not self.escrow.try_debit(player.id, difference):
+                if sender:
+                    await self._send_action_message(sender, "Insufficient to call.")
+                return False
+            player.bet += difference
+            if sender:
+                await self._send_action_message(
+                    sender,
+                    f"{player.name} calls {difference}. Pot: {self.escrow.total}",
+                )
+        elif action == "check":
+            if player.bet != self.highest:
+                if sender:
+                    await self._send_action_message(
+                        sender, "You can’t check until you’ve matched the highest bet."
+                    )
+                return False
+            if sender:
+                await self._send_action_message(sender, f"{player.name} checks.")
+        elif action == "fold":
+            player.folded = True
+            active = [p for p in self.players if not p.folded]
+            if len(active) == 1:
+                winner = active[0]
+                settled = await self.settle_game(
+                    {winner.id: self.escrow.total}, "fold"
+                )
+                if not settled:
+                    player.folded = False
+                    if sender:
+                        await self._send_action_message(sender, "This hand has already ended.")
+                    return False
+                if sender:
+                    await self._send_action_message(sender, f"{player.name} folds.")
+                await self.channel.send(
+                    f"{winner.name} wins pot of {self.escrow.total} by default!"
+                )
+                self._mark_game_inactive()
+                return True
+            if sender:
+                await self._send_action_message(sender, f"{player.name} folds.")
+        elif action == "allin":
+            available = self.cog.baba.get_money(player.id)
+            if available <= 0 or not self.escrow.try_debit(player.id, available):
+                if sender:
+                    await self._send_action_message(sender, "Insufficient funds.")
+                return False
+            player.bet += available
+            player.all_in = True
+            if player.bet > self.highest:
+                self.highest = player.bet
+            if sender:
+                await self._send_action_message(
+                    sender,
+                    f"{player.name} goes ALL IN {available}! Pot: {self.escrow.total}",
+                )
+        else:
+            raise ValueError(f"unknown poker action: {action}")
+
+        if action == "bet" and player.bet > previous_highest:
+            self.acted_players.clear()
+        self.acted_players.add(player.id)
+        self.pot = self.escrow.total
+        if self.terminal_state == "open":
+            self.current_actor_id = self._next_actor_after(player.id)
+        advanced = await self._maybe_advance_round()
+        if not advanced and self.terminal_state == "open":
+            await self.run_bot_turns()
+        return True
+
+    def _mark_game_inactive(self):
+        guild_id = self.channel.guild.id
+        game = self.cog.games.get(guild_id)
+        if game and game.get("instance") is self:
+            game["active"] = False
+            game["instance"] = None
+
+    def bot_action(self, player: Player) -> tuple[str, int]:
+        """Adapt the RLCard rule decision to the shared action dispatcher."""
+        difference = self.highest - player.bet
+        stack = self.cog.baba.get_money(player.id)
+        if len(player.hand) != 2:
+            # A lobby/test fixture can enter a betting round before cards are
+            # dealt.  Keep the old safe fallback for that invalid/incomplete
+            # state; real hands always use the external rule policy.
+            if difference > 0:
+                return ("allin", 0) if stack < difference else ("call", 0)
+            return "check", 0
+
+        decision = self.bot_strategy.decide(
+            player.hand,
+            self.community,
+            pot=self.escrow.total,
+            current_bet=player.bet,
+            highest_bet=self.highest,
+            stack=stack,
+        )
+        return decision.action, decision.amount
+
+    async def run_bot_turns(self):
+        if getattr(self, "_bot_turn_running", False):
+            return
+        self._bot_turn_running = True
+        try:
+            for _ in range(len(self.players) * 2 + 1):
+                if self.terminal_state != "open" or self.current_actor_id is None:
+                    return
+                player = self._player_for(self.current_actor_id)
+                if not player or not player.is_bot:
+                    return
+                action, amount = self.bot_action(player)
+                before_actor = self.current_actor_id
+                applied = await self._dispatch_action(
+                    player, action, amount=amount, sender=self.channel.send
+                )
+                if not applied and self.current_actor_id == before_actor:
+                    await self._dispatch_action(
+                        player, "fold", sender=self.channel.send
+                    )
+        finally:
+            self._bot_turn_running = False
+
+    async def refund_game(self, reason: str = "unknown"):
+        """Refund the full hand escrow exactly once."""
+        async with self._terminal_lock:
+            if self.terminal_state != "open":
+                return False
+            if not self.escrow.refund():
+                return False
+            self.terminal_state = "refunded"
+            self.pot = 0
+            return True
+
+    async def settle_game(
+        self, payouts: dict[int, int], reason: str = "showdown"
+    ):
+        """Commit one terminal payout batch exactly once."""
+        async with self._terminal_lock:
+            if self.terminal_state != "open":
+                return False
+            if not self.escrow.settle(payouts):
+                return False
+            self.terminal_state = "settled"
+            self.pot = 0
+            return True
+
+    def post_forced_bets(self):
+        if self._forced_bets_posted:
+            return False
+        sb = self.players[(self.button_seat + 1) % len(self.players)]
+        bb = self.players[(self.button_seat + 2) % len(self.players)]
+        if len(self.players) == 2:
+            sb = self.players[self.button_seat]
+            bb = self.players[(self.button_seat + 1) % len(self.players)]
+        debits = {sb.id: self.small_blind, bb.id: self.big_blind}
+        if not self.escrow.try_debit_many(debits):
+            return False
+        for player in self.players:
+            player.bet = 0
+            player.all_in = False
+        sb.bet = self.small_blind
+        bb.bet = self.big_blind
+        self.pot = self.escrow.total
+        self.highest = self.big_blind
+        self.street = "preflop"
+        self.current_actor_id = self.action_order_for("preflop")[0]
+        self._forced_bets_posted = True
+        return True
 
     async def play_game(self):
+        if not self.post_forced_bets():
+            guild_id = self.channel.guild.id
+            game = self.cog.games.get(guild_id)
+            if game and game.get('instance') is self:
+                game['active'] = False
+                game['instance'] = None
+            await self.channel.send(
+                "Game cancelled because one or more players cannot post the "
+                "minimum bet."
+            )
+            return
+
         # 1) announce game start
         await self.channel.send("**Game started!** Dealing hands and posting blinds.")
+        await self._announce_table(prefix="🪑 Seats / BTN / SB / BB")
 
         # 2) deal hole cards & post blinds
         for p in self.players:
             p.hand = self.deck.deal(2)
-            bal, _ = self.cog.bank[p.id]
-            self.cog.bank[p.id] = (bal - self.cog.minimum_bet, False)
-            p.bet = self.cog.minimum_bet
-            self.pot += self.cog.minimum_bet
 
             # # 2a) DM them their cards
             # try:
@@ -334,62 +775,42 @@ class PokerGame:
 
     
     async def betting_round(self):
-        # Reset who’s acted this round:
+        """Announce a street and begin its clockwise action queue."""
         self.acted_players.clear()
-        # Pre-flop betting prompt
-        await self.channel.send("**🃏 Pre-Flop** — place your bets now!")
-        # We rely on place_bet/call/fold/allin to call next_round() once everyone has matched/folded.
+        order = self.action_order_for(self.street)
+        if not order:
+            return await self.next_round()
+        if self.current_actor_id not in order:
+            self.current_actor_id = order[0]
+        street_name = self.street.title()
+        await self.channel.send(
+            f"**🃏 {street_name}** — {self._player_for(self.current_actor_id).name} to act.\n"
+            f"{self.table_display()}"
+        )
+        await self.run_bot_turns()
 
 
     async def place_bet(self, ctx: commands.Context, amount: int):
         player = next((p for p in self.players if p.id==ctx.author.id and not p.folded), None)
         if not player:
             return await ctx.send("You are not in the game or already folded.")
-        if amount < 1:
-            return await ctx.send("Bet must be positive.")
-        bal, claimed = self.cog.bank[player.id]
-        if amount > bal:
-            return await ctx.send("Insufficient funds.")
-        bal -= amount; self.cog.bank[player.id] = (bal, claimed)
-        player.bet += amount; self.pot += amount
-        if player.bet > self.highest:
-            self.highest = player.bet
-        await ctx.send(f"{player.name} bets {amount}. (Total: {player.bet}) Pot: {self.pot}")
-        # continue if all matched or folded
-        self.acted_players.add(ctx.author.id)
-        await self._maybe_advance_round()
+        await self._dispatch_action(
+            player, "bet", amount=amount, sender=ctx.send
+        )
 
 
     async def call(self, ctx: commands.Context):
         player = next((p for p in self.players if p.id==ctx.author.id and not p.folded), None)
         if not player:
             return await ctx.send("You are not in the game or folded.")
-        diff = self.highest - player.bet
-        if diff == 0:
-            return await ctx.send("Nothing to call—use `baba check` to check.")
-
-        bal, claimed = self.cog.bank[player.id]
-        if diff > bal:
-            return await ctx.send("Insufficient to call.")
-        bal -= diff; self.cog.bank[player.id] = (bal, claimed)
-        player.bet += diff; self.pot += diff
-        await ctx.send(f"{player.name} calls {diff}. Pot: {self.pot}")
-        self.acted_players.add(ctx.author.id)
-
-        await self._maybe_advance_round()
+        await self._dispatch_action(player, "call", sender=ctx.send)
 
 
     async def check(self, ctx: commands.Context):
         player = next((p for p in self.players if p.id==ctx.author.id), None)
         if not player or player.folded:
             return await ctx.send("You’re not in the hand or have already folded.")
-        if player.bet != self.highest:
-            return await ctx.send("You can’t check until you’ve matched the highest bet.")
-        await ctx.send(f"{player.name} checks.")
-        # now only advance once _all_ active players have either folded or their bet == highest
-        self.acted_players.add(ctx.author.id)
-
-        await self._maybe_advance_round()
+        await self._dispatch_action(player, "check", sender=ctx.send)
 
 
 
@@ -397,54 +818,30 @@ class PokerGame:
         player = next((p for p in self.players if p.id==ctx.author.id and not p.folded), None)
         if not player:
             return await ctx.send("Not in game or already folded.")
-        player.folded = True
-        await ctx.send(f"{player.name} folds.")
-        active = [p for p in self.players if not p.folded]
-        if len(active)==1:
-            winner = active[0]
-            bal, claimed = self.cog.bank[winner.id]
-            self.cog.bank[winner.id] = (bal + self.pot, claimed)
-            await self.channel.send(f"{winner.name} wins pot of {self.pot} by default!")
-            guild_id = self.channel.guild.id
-            self.cog.games[guild_id]['active'] = False
-            self.cog.games[guild_id]['instance'] = None
-            return
-        self.acted_players.add(ctx.author.id)
-
-        await self._maybe_advance_round()
+        await self._dispatch_action(player, "fold", sender=ctx.send)
 
 
     async def allin(self, ctx: commands.Context):
         player = next((p for p in self.players if p.id==ctx.author.id and not p.folded), None)
         if not player:
             return await ctx.send("Not in game or folded.")
-        bal, claimed = self.cog.bank[player.id]
-        diff = bal
-        player.bet += diff; self.pot += diff
-        self.cog.bank[player.id] = (0, claimed)
-        if player.bet > self.highest:
-            self.highest = player.bet
-        await ctx.send(f"{player.name} goes ALL IN {diff}! Pot: {self.pot}")
-        self.acted_players.add(ctx.author.id)
-        await self._maybe_advance_round()
+        await self._dispatch_action(player, "allin", sender=ctx.send)
 
 
 
-    async def _maybe_advance_round(self):
-        active_ids = {p.id for p in self.players if not p.folded}
-        pending_ids = active_ids - self.acted_players
-
-        if pending_ids:
-            # someone still hasn’t moved
-            await self.channel.send(
-                "⏳ Waiting on: " + ", ".join(
-                    p.name for p in self.players if p.id in pending_ids
+    async def _maybe_advance_round(self) -> bool:
+        eligible = [
+            p for p in self.players if not p.folded and not p.all_in
+        ]
+        pending = [p for p in eligible if p.id not in self.acted_players]
+        if pending or any(p.bet != self.highest for p in eligible):
+            if pending:
+                await self.channel.send(
+                    "⏳ Waiting on: " + ", ".join(p.name for p in pending)
                 )
-            )
-        else:
-            # all have acted and bets are matched
-            if all(p.bet == self.highest or p.folded for p in self.players):
-                await self.next_round()
+            return False
+        await self.next_round()
+        return True
 
 
     async def next_round(self):
@@ -464,19 +861,24 @@ class PokerGame:
 
         # add the new community cards and announce
         self.community.extend(new_cards)
-        await self.channel.send(f"**{street}**: {' '.join(self.community)}")
+        self.street = street.lower()
 
         # reset bets & who has acted
         for p in self.players:
             p.bet = 0
         self.highest = 0
         self.acted_players.clear()
+        order = self.action_order_for(self.street)
+        self.current_actor_id = order[0] if order else None
 
-        # prompt for the next betting round
-        await self.channel.send("Place your bets!")
+        await self.channel.send(f"**{street}**: {' '.join(self.community)}")
+        await self.betting_round()
 
 
     async def showdown(self):
+        if self.terminal_state != "open":
+            return
+
         # 1) First, reveal everyone’s hand in an embed
         embed = discord.Embed(title="🏁 Showdown — Player Hands", color=discord.Color.purple())
         for p in self.players:
@@ -488,29 +890,33 @@ class PokerGame:
         # 2) Determine the winner(s) using your existing ranking logic
         best, best_score = None, None
         for p in self.players:
-            if p.folded: 
+            if p.folded:
                 continue
             score = self.rank_hand(p.hand + self.community)
             if best_score is None or self.compare(score, best_score) > 0:
                 best_score, best = score, p
 
-        # 3) Award the pot
+        # 3) Award the pot through the durable, idempotent escrow
         if best:
-            bal, claimed = self.cog.bank[best.id]
-            self.cog.bank[best.id] = (bal + self.pot, claimed)
-            await self.channel.send(f"🎉 **{best.name} wins {self.pot} {self.cog.money_name}!**")
+            pot = self.pot
+            settled = await self.settle_game({best.id: pot}, "showdown")
+            if not settled:
+                return
+            await self.channel.send(f"🎉 **{best.name} wins {pot} {self.cog.money_name}!**")
 
-              # after announcing the winner…
             guild_id = self.channel.guild.id
-            # deactivate & clean up
-            self.cog.games[guild_id]['active'] = False
-            self.cog.games[guild_id]['instance'] = None
+            game = self.cog.games.get(guild_id)
+            if game and game.get('instance') is self:
+                game['active'] = False
+                game['instance'] = None
         else:
             await self.channel.send("No winner could be determined.")
 
         # 4) Clean up for next game
         guild_id = self.channel.guild.id
-        self.cog.games[guild_id]['active'] = False
+        game = self.cog.games.get(guild_id)
+        if game and game.get('instance') is self:
+            game['active'] = False
 
     
     def rank_hand(self, cards: list[str]) -> tuple[int, list[int]]:

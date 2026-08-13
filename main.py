@@ -14,6 +14,7 @@ import logging
 import os, json, tempfile, threading
 from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
+from bababucks import BababucksEscrow, BababucksLedger
 from interaction_errors import is_transient_interaction_error
 import random
 load_dotenv()
@@ -95,6 +96,7 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
     
 
 BANK_FILE = "bank.json"
+BANK_META_KEY = "__bababucks_meta__"
 DAILY_FILE = "daily.json"
 DAILY_REWARD = 100
 
@@ -103,8 +105,20 @@ class Baba():
     def __init__(self):
         self.bank_lock = threading.RLock()
         self.bank = {}          # {uid(int): (money(int), claimed_bool)}  ← 保持元組格式，相容其他 cog
+        self.economy_state = {
+            "last_lottery_draw_id": "",
+            "pending_lottery_draw_id": "",
+            "pending_lottery_numbers": [],
+            "lottery_cleanup_draw_id": "",
+            "casino_escrows": {},
+        }
         self.daily_claims = {}  # {uid(int): "YYYY-MM-DD"}  ← 依日期判斷每日簽到，重載/重啟都安全
         self.load_bank()
+        self.ledger = BababucksLedger(
+            self.bank,
+            self.bank_lock,
+            self.refresh_bank_file,
+        )
         self.load_daily_claims()
         self.hunger = 100
         self.boredom = 50
@@ -117,7 +131,68 @@ class Baba():
             try:
                 with open(BANK_FILE, "r", encoding="utf-8") as f:
                     raw = json.load(f)
+                metadata = raw.get(BANK_META_KEY, {})
+                if isinstance(metadata, dict):
+                    self.economy_state["last_lottery_draw_id"] = str(
+                        metadata.get("last_lottery_draw_id", "")
+                    )
+                    self.economy_state["pending_lottery_draw_id"] = str(
+                        metadata.get("pending_lottery_draw_id", "")
+                    )
+                    pending_numbers = metadata.get(
+                        "pending_lottery_numbers", []
+                    )
+                    if isinstance(pending_numbers, list):
+                        self.economy_state["pending_lottery_numbers"] = [
+                            int(number) for number in pending_numbers
+                        ]
+                    self.economy_state["lottery_cleanup_draw_id"] = str(
+                        metadata.get("lottery_cleanup_draw_id", "")
+                    )
+                    raw_escrows = metadata.get("casino_escrows", {})
+                    if isinstance(raw_escrows, dict):
+                        escrows = {}
+                        for escrow_id, record in raw_escrows.items():
+                            if not isinstance(escrow_id, str):
+                                continue
+                            if not isinstance(record, dict):
+                                continue
+                            game_type = record.get("game_type")
+                            escrow_state = record.get("state")
+                            contributions = record.get("contributions", {})
+                            if game_type not in {"poker", "blackjack"}:
+                                continue
+                            if escrow_state not in {
+                                "open", "refunded", "settled"
+                            }:
+                                continue
+                            if not isinstance(contributions, dict):
+                                continue
+                            normalized_contributions = {}
+                            valid = True
+                            for uid, amount in contributions.items():
+                                try:
+                                    normalized_uid = str(int(uid))
+                                    normalized_amount = int(amount)
+                                except (TypeError, ValueError):
+                                    valid = False
+                                    break
+                                if normalized_amount <= 0:
+                                    valid = False
+                                    break
+                                normalized_contributions[normalized_uid] = (
+                                    normalized_amount
+                                )
+                            if valid:
+                                escrows[escrow_id] = {
+                                    "game_type": game_type,
+                                    "state": escrow_state,
+                                    "contributions": normalized_contributions,
+                                }
+                        self.economy_state["casino_escrows"] = escrows
                 for uid, val in raw.items():
+                    if uid == BANK_META_KEY:
+                        continue
                     money = int(val[0]) if isinstance(val, (list, tuple)) else int(val)
                     claimed = bool(val[1]) if isinstance(val, (list, tuple)) and len(val) > 1 else False
                     self.bank[int(uid)] = (money, claimed)
@@ -142,6 +217,7 @@ class Baba():
     def refresh_bank_file(self):
         with self.bank_lock:
             payload = {str(uid): [money, claimed] for uid, (money, claimed) in self.bank.items()}
+            payload[BANK_META_KEY] = dict(self.economy_state)
             directory = os.path.dirname(os.path.abspath(BANK_FILE)) or "."
             fd, tmp_path = tempfile.mkstemp(prefix="bank.", suffix=".tmp", dir=directory, text=True)
             try:
@@ -167,16 +243,37 @@ class Baba():
             json.dump({str(k): v for k, v in self.daily_claims.items()}, f, ensure_ascii=False, indent=2)
 
     def get_money(self, uid: int) -> int:
-        with self.bank_lock:
-            val = self.bank.get(int(uid))
-            return val[0] if val else 0
+        return self.ledger.get_balance(int(uid))
+
+    def try_debit_money(self, uid: int, amount: int) -> bool:
+        return self.ledger.try_debit(int(uid), int(amount))
+
+    def credit_money(self, uid: int, amount: int) -> int:
+        return self.ledger.credit(int(uid), int(amount))
+
+    def apply_money_deltas(self, deltas):
+        normalized = {int(uid): int(delta) for uid, delta in deltas.items()}
+        return self.ledger.apply(normalized)
+
+    def apply_money_deltas_with_state(self, deltas, state_updates):
+        normalized = {int(uid): int(delta) for uid, delta in deltas.items()}
+        updates = {str(key): value for key, value in state_updates.items()}
+        return self.ledger.apply_with_state(
+            normalized, self.economy_state, updates
+        )
+
+    def new_escrow(self, *, escrow_id=None, game_type=None):
+        if escrow_id is None and game_type is None:
+            return BababucksEscrow(self.ledger)
+        return BababucksEscrow(
+            self.ledger,
+            state=self.economy_state,
+            escrow_id=escrow_id,
+            game_type=game_type,
+        )
 
     def add_money(self, uid: int, amount: int):
-        with self.bank_lock:
-            uid = int(uid)
-            money, claimed = self.bank.get(uid, (0, False))
-            self.bank[uid] = (max(0, money + amount), claimed)
-            self.refresh_bank_file()
+        return self.ledger.adjust_clamped(int(uid), int(amount))
 
     def claim_daily(self, uid: int, reward: int = DAILY_REWARD):
         """依日期判斷每日簽到。回傳 (是否成功, 領取金額, 目前總額)。今天已領則成功=False。"""
