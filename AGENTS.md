@@ -14,8 +14,8 @@
 
 ## Project guidelines
 
-1. **TRPG System (求生意志)**: Located under the `trpg/` package. The entry-point cog is [trpg/cog.py](trpg/cog.py#L32).
-2. **Combat Mechanics**: Managed by [TRPGCombatEngine](trpg/combat.py#L25) and [choose_monster_action](trpg/monster_ai.py#L120).
-3. **Character Progression & Stats**: Controlled by [recalc_player_stats](trpg/stats.py#L45) and stored in SQLite via [PlayerDatabase](trpg/player_db.py#L12).
-4. **Discord UI & Views**: Handled in [trpg/view.py](trpg/view.py#L125), [trpg/view_dungeon.py](trpg/view_dungeon.py#L17), and [trpg/view_shop.py](trpg/view_shop.py#L29).
-5. **Localization**: Always use [i18n.t() or i18n.tf()](trpg/i18n.py#L34) for user-facing text to maintain English and 繁體中文 support.
+1. **Baba TRPG**: Located under `trpg/`; its entry-point cog is `trpg/cog.py`.
+2. **Combat mechanics**: Managed by `TRPGCombatEngine` in `trpg/combat.py`; monster decisions live in `trpg/monster_ai.py`.
+3. **Character progression and stats**: Recalculated in `trpg/stats.py` and persisted through `PlayerDatabase` in `trpg/player_db.py`.
+4. **Discord UI and views**: Implemented in `trpg/view.py` and the focused `trpg/view_*.py` modules.
+5. **Localization**: Use `i18n.t()` or `i18n.tf()` from `trpg/i18n.py` for every player-facing string so English and 繁體中文 remain aligned.
