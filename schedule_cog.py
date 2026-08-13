@@ -158,6 +158,20 @@ class ScheduleCog(commands.Cog):
     # ── Slash: list schedules ─────────────────────────────
     @app_commands.command(name="list_schedules", description="List upcoming schedules")
     async def list_schedules(self, interaction: discord.Interaction, user: discord.User = None):
+        # Schedule contents are private by default.  The optional user argument is
+        # retained for the owner tooling, but ordinary members cannot use it to
+        # inspect someone else's reminders.
+        if user is not None and user.id != interaction.user.id:
+            try:
+                is_owner = await self.bot.is_owner(interaction.user)
+            except Exception:
+                is_owner = False
+            if not is_owner:
+                await interaction.response.send_message(
+                    "You can only view your own schedules.", ephemeral=True
+                )
+                return
+
         user_id = user.id if user else interaction.user.id
         schedules = self.load_schedules(user_id)
 
@@ -167,8 +181,16 @@ class ScheduleCog(commands.Cog):
 
         per_page = 5
         total_pages = math.ceil(len(schedules) / per_page)
-        view = ScheduleView(schedules, per_page, 1, total_pages)
-        await interaction.response.send_message(view.build_content(), view=view)
+        view = ScheduleView(
+            schedules,
+            per_page,
+            1,
+            total_pages,
+            requester_id=interaction.user.id,
+        )
+        await interaction.response.send_message(
+            view.build_content(), view=view, ephemeral=True
+        )
 
     # ── Slash: remove own schedule ────────────────────────
     @app_commands.command(name="remove_schedule", description="Remove one of your schedules by index")
@@ -267,13 +289,30 @@ class ScheduleCog(commands.Cog):
 #  Pagination View
 # ══════════════════════════════════════════════════════════
 class ScheduleView(View):
-    def __init__(self, schedules: list[str], per_page: int, current_page: int, total_pages: int):
+    def __init__(
+        self,
+        schedules: list[str],
+        per_page: int,
+        current_page: int,
+        total_pages: int,
+        *,
+        requester_id: int,
+    ):
         super().__init__(timeout=120)
         self.schedules = schedules
         self.per_page = per_page
         self.current_page = current_page
         self.total_pages = total_pages
+        self.requester_id = int(requester_id)
         self._update_buttons()
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id == self.requester_id:
+            return True
+        await interaction.response.send_message(
+            "This schedule list belongs to another user.", ephemeral=True
+        )
+        return False
 
     def _update_buttons(self):
         self.previous.disabled = self.current_page <= 1

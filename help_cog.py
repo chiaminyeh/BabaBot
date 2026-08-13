@@ -176,7 +176,11 @@ class help_cog(commands.Cog):
         await ctx.send(embed=build_help_embed("home"), view=HelpView())
 
     @commands.command(name="prefix", help="Change bot prefix", hidden=True)
+    @commands.is_owner()
     async def prefix(self, ctx, *args):
+        if not args or not " ".join(args).strip():
+            await ctx.reply("Please provide a non-empty prefix.", mention_author=False)
+            return
         self.bot.command_prefix = " ".join(args)
         await ctx.send(f"prefix set to **'{self.bot.command_prefix}'**")
         await self.bot.change_presence(activity=discord.Game(PRESENCE_TEXT))

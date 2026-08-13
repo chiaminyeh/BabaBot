@@ -369,16 +369,23 @@ async def test(ctx):
 )
 async def roll(
     interaction: discord.Interaction,
-    num: int = 6,
-    times: int = 1,
+    num: app_commands.Range[int, 1, 1000] = 6,
+    times: app_commands.Range[int, 1, 100] = 1,
     repeat: bool = True
 ):
     """Roll a dice with a specified number of sides (default is 6), times (default is 1), and repeat option."""
     try:
         if num < 1 or times < 1:
+            await interaction.response.send_message(
+                "Dice sides and roll count must both be positive.", ephemeral=True
+            )
             return
 
         if not repeat and times > num:
+            await interaction.response.send_message(
+                "Without repeats, the roll count cannot exceed the number of sides.",
+                ephemeral=True,
+            )
             return
 
         if repeat:
@@ -388,7 +395,12 @@ async def roll(
 
         await interaction.response.send_message(f"{', '.join(map(str, rolls))}")
     except Exception:
-        await interaction.response.send_message("Please enter valid numbers.", ephemeral=True)
+        logger.exception("ROLL_FAILURE user_id=%s", getattr(interaction.user, "id", "unknown"))
+        if not interaction.response.is_done():
+            await interaction.response.send_message(
+                "I couldn't roll those dice. Please try again with valid values.",
+                ephemeral=True,
+            )
 
 @bot.command(name="shutdown",aliases=["sleep", "go sleep"])
 async def shutdown(ctx):
