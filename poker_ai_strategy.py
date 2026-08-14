@@ -10,6 +10,7 @@ requires no model training or external package.
 """
 
 from dataclasses import dataclass
+import secrets
 
 
 _RANK_VALUES = {
@@ -41,6 +42,19 @@ class PokerDecision:
     reason: str = ""
 
 
+@dataclass(frozen=True)
+class PokerDecisionContext:
+    """Immutable context snapshot provided to decision strategies."""
+
+    hole_cards: tuple[str, ...]
+    community_cards: tuple[str, ...]
+    pot: int
+    current_bet: int
+    highest_bet: int
+    stack: int
+    last_raise_size: int | None = None
+
+
 class RLCardRuleStrategy:
     """Deterministic rule policy adapted from RLCard's Hold'em rule agent.
 
@@ -57,22 +71,39 @@ class RLCardRuleStrategy:
     )
     source_license = "MIT"
 
-    def __init__(self, *, big_blind: int = 10):
+    def __init__(self, *, big_blind: int = 10, randomize: bool = False):
         if not isinstance(big_blind, int) or big_blind <= 0:
             raise ValueError("big_blind must be a positive integer")
         self.big_blind = big_blind
+        self.randomize = bool(randomize)
 
     def decide(
         self,
-        hole_cards: list[str],
-        community_cards: list[str],
+        hole_cards_or_context: list[str] | tuple[str, ...] | PokerDecisionContext,
+        community_cards: list[str] | tuple[str, ...] | None = None,
         *,
-        pot: int,
-        current_bet: int,
-        highest_bet: int,
-        stack: int,
+        pot: int | None = None,
+        current_bet: int | None = None,
+        highest_bet: int | None = None,
+        stack: int | None = None,
+        last_raise_size: int | None = None,
     ) -> PokerDecision:
         """Return one legal-enough action for the current table state."""
+        if isinstance(hole_cards_or_context, PokerDecisionContext):
+            ctx = hole_cards_or_context
+            hole_cards = list(ctx.hole_cards)
+            community = list(ctx.community_cards)
+            pot = ctx.pot
+            current_bet = ctx.current_bet
+            highest_bet = ctx.highest_bet
+            stack = ctx.stack
+            last_raise_size = ctx.last_raise_size
+        else:
+            hole_cards = list(hole_cards_or_context)
+            community = list(community_cards or [])
+            if pot is None or current_bet is None or highest_bet is None or stack is None:
+                raise ValueError("pot, current_bet, highest_bet, and stack are required")
+
         if len(hole_cards) != 2:
             raise ValueError("exactly two hole cards are required")
         if not isinstance(stack, int) or stack < 0:
@@ -83,19 +114,32 @@ class RLCardRuleStrategy:
             raise ValueError("highest_bet must be >= current_bet")
         if not isinstance(pot, int) or pot < 0:
             raise ValueError("pot must be a non-negative integer")
+        if last_raise_size is not None and (
+            not isinstance(last_raise_size, int) or last_raise_size <= 0
+        ):
+            raise ValueError("last_raise_size must be a positive integer")
 
-        semantic_action = self._source_rule_action(hole_cards, community_cards)
+        semantic_action = self._source_rule_action(hole_cards, community)
         to_call = highest_bet - current_bet
+        # No-limit Hold'em's minimum raise is the size of the previous full
+        # raise, not a fresh big-blind increment.  The first raise on a
+        # street still defaults to the big blind.
+        minimum_raise_size = max(self.big_blind, last_raise_size or self.big_blind)
 
         # RLCard's fallback behavior is preserved where it matters, then
         # adjusted for short stacks in no-limit Hold'em.
         if semantic_action == "raise":
-            minimum_raise_increment = to_call + self.big_blind
+            minimum_raise_increment = to_call + minimum_raise_size
             if stack <= minimum_raise_increment:
                 return PokerDecision("allin", 0, "raise policy with a short stack")
+            increment = self._raise_increment(
+                pot, minimum_raise_increment, stack
+            )
+            if increment >= stack:
+                return PokerDecision("allin", 0, "raise uses the remaining stack")
             return PokerDecision(
                 "bet",
-                self._raise_increment(pot, to_call, stack),
+                increment,
                 "RLCard rule: raise",
             )
 
@@ -115,6 +159,13 @@ class RLCardRuleStrategy:
                 return PokerDecision("check", 0, "RLCard rule: check")
             return PokerDecision("fold", 0, "RLCard fallback: check is illegal facing a bet")
 
+        # Folding is only meaningful when a bet is faced.  When checking is
+        # free (for example, the big blind after limpers), keep the hand alive
+        # with a check instead of turning a no-cost decision into a fold.
+        if to_call == 0:
+            return PokerDecision(
+                "check", 0, "free check takes precedence over fold policy"
+            )
         # The source agent folds when the hand is outside its accepted range.
         return PokerDecision("fold", 0, "RLCard rule: fold")
 
@@ -163,10 +214,15 @@ class RLCardRuleStrategy:
             return "call"
         return "fold"
 
-    def _raise_increment(self, pot: int, to_call: int, stack: int) -> int:
+    def _raise_increment(
+        self, pot: int, minimum_raise_increment: int, stack: int
+    ) -> int:
         """Choose a bounded increment while ensuring it actually raises."""
         desired = max(self.big_blind, pot // 2)
-        minimum_raise_increment = to_call + self.big_blind
+        if self.randomize and desired > self.big_blind:
+            desired = self.big_blind + secrets.randbelow(
+                desired - self.big_blind + 1
+            )
         return min(stack, max(desired, minimum_raise_increment))
 
     @staticmethod

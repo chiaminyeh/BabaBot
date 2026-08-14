@@ -864,5 +864,17 @@
     "battle.blood_demon_status": "👿 Blood-Pact Demon | ⚔️ ATK: `{attack}` | 🩸 Shield: `{shield}/{max_shield}`",
     "battle.choose_target": "Choose a target",
     "combat.skill_stale_target": "❌ The selected target is no longer valid. Choose again.",
-    "combat.blood_feast_bonus": "🌑 Blood Feast deals {damage} bonus dark damage!"
+    "combat.blood_feast_bonus": "🌑 Blood Feast deals {damage} bonus dark damage!",
+    "poker.board.title_cash": "♠ NLH Cash · Table {code} · Hand #{hand}",
+    "poker.board.title_tournament": "♠ NLH Tournament · Table {code} · Hand #{hand}",
+    "poker.board.blinds_pot": "Blinds {sb}/{bb} · Pot **{pot}** {currency} · {street}",
+    "poker.board.to_act_desc": "**{name}**{bot}{pos} · Stack **{stack}**\n{call_text}{raise_text} · ⏱ <t:{deadline}:R>{time_bank}",
+    "poker.board.seats_header": "🪑 SEATS ({active}/{total} Live)",
+    "poker.board.bot_thinking": "{name} is thinking…",
+    "poker.board.seat_hint": "Each seat shows its position, status, bet, and remaining stack.",
+    "poker.board.footer": "Use 'My Hand' to check private cards • Dynamic clock updates live",
+    "poker.action.call": "Call {amount}",
+    "poker.action.allin": "All-in ({amount})",
+    "poker.myhand.title": "🃏 Your Hand · {name}",
+    "poker.tournament.prize_line": "`{rank}.` **{name}** — Prize: **{prize}** {currency}"
 }

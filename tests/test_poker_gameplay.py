@@ -214,6 +214,25 @@ class PokerGameplayTests(unittest.TestCase):
         self.assertEqual(action, "bet")
         self.assertGreaterEqual(amount, cog.minimum_bet)
 
+    def test_six_high_straight_beats_wheel_straight(self):
+        _baba, cog = self.make_cog({7: (100, True), 8: (100, False)})
+        players = [
+            Player(self.user(7, "Wheel")),
+            Player(self.user(8, "Six high")),
+        ]
+        game = PokerGame(FakeChannel(), players, cog, hand_id="wheel-order")
+
+        wheel = game.rank_hand(
+            ["A♠", "2♦", "3♣", "4♥", "5♠", "K♦", "Q♣"]
+        )
+        six_high = game.rank_hand(
+            ["2♠", "3♦", "4♣", "5♥", "6♠", "K♦", "Q♣"]
+        )
+
+        self.assertEqual(wheel, (4, [5]))
+        self.assertEqual(six_high, (4, [6]))
+        self.assertEqual(game.compare(wheel, six_high), -1)
+
 
 if __name__ == "__main__":
     unittest.main()

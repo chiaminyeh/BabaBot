@@ -20,6 +20,22 @@ class RLCardRuleStrategyTests(unittest.TestCase):
         self.assertEqual(decision.action, "bet")
         self.assertGreaterEqual(decision.amount, 10)
 
+    def test_raise_uses_previous_full_raise_size(self):
+        decision = self.strategy.decide(
+            ["A♠", "K♦"],
+            [],
+            pot=100,
+            current_bet=10,
+            highest_bet=30,
+            last_raise_size=20,
+            stack=100,
+        )
+
+        # The player must call 20 and add a full 20-chip raise, so the
+        # smallest legal increment is 40 (total bet 50).
+        self.assertEqual(decision.action, "bet")
+        self.assertGreaterEqual(decision.amount, 40)
+
     def test_low_flop_with_no_pair_or_draw_checks_when_free(self):
         decision = self.strategy.decide(
             ["K♠", "Q♦"],
@@ -44,6 +60,19 @@ class RLCardRuleStrategyTests(unittest.TestCase):
         )
 
         self.assertEqual(decision.action, "fold")
+        self.assertEqual(decision.amount, 0)
+
+    def test_unacceptable_preflop_hand_checks_when_no_bet_is_faced(self):
+        decision = self.strategy.decide(
+            ["7♠", "2♦"],
+            [],
+            pot=25,
+            current_bet=10,
+            highest_bet=10,
+            stack=200,
+        )
+
+        self.assertEqual(decision.action, "check")
         self.assertEqual(decision.amount, 0)
 
     def test_raise_becomes_allin_when_stack_cannot_make_minimum_raise(self):

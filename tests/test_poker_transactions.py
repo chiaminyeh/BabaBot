@@ -83,7 +83,7 @@ class PokerTransactionTests(unittest.TestCase):
             },
         )
 
-    def test_forced_bets_are_all_or_nothing_and_record_contributions(self):
+    def test_forced_bets_are_atomic_and_support_short_blinds(self):
         baba, players, game = self.make_game(
             {7: (50, True), 8: (50, False)}
         )
@@ -101,15 +101,19 @@ class PokerTransactionTests(unittest.TestCase):
             {7: (50, True), 8: (5, False)}
         )
 
-        self.assertFalse(poor_game.post_forced_bets())
+        self.assertTrue(poor_game.post_forced_bets())
 
+        # A short big blind posts its remaining five chips and is all-in;
+        # NLH does not cancel the hand for an uncovered blind.
         self.assertEqual(
-            poor_baba.bank, {7: (50, True), 8: (5, False)}
+            poor_baba.bank, {7: (45, True), 8: (0, False)}
         )
-        self.assertEqual(poor_baba.writes, [])
-        self.assertEqual([player.bet for player in poor_players], [0, 0])
-        self.assertEqual(poor_game.pot, 0)
-        self.assertEqual(poor_game.escrow.contributions, {})
+        self.assertEqual(len(poor_baba.writes), 1)
+        self.assertEqual([player.bet for player in poor_players], [5, 5])
+        self.assertTrue(poor_players[1].all_in)
+        self.assertEqual(poor_game.pot, 10)
+        self.assertEqual(poor_game.highest, 5)
+        self.assertEqual(poor_game.escrow.contributions, {7: 5, 8: 5})
 
     def test_place_bet_commits_debit_before_updating_game_state(self):
         baba, players, game = self.make_game(
@@ -130,6 +134,22 @@ class PokerTransactionTests(unittest.TestCase):
         self.assertEqual(game.highest, 20)
         self.assertEqual(game.escrow.contributions, {7: 20, 8: 10})
         game._maybe_advance_round.assert_awaited_once()
+
+    def test_raise_uses_previous_full_raise_size(self):
+        baba, players, game = self.make_game(
+            {7: (100, True), 8: (100, False)}
+        )
+        self.assertTrue(game.post_forced_bets())
+        game._maybe_advance_round = AsyncMock(return_value=False)
+
+        # SB raises from 5 to 30.  The next minimum total is 50 because the
+        # previous full raise was 20 chips; 40 must be rejected untouched.
+        self.assertTrue(asyncio.run(game.raise_bet(players[0], 30)))
+        self.assertEqual(game.last_raise_size, 20)
+        before = dict(baba.bank)
+        self.assertFalse(asyncio.run(game.raise_bet(players[1], 40)))
+        self.assertEqual(baba.bank, before)
+        self.assertEqual(game.highest, 30)
 
     def test_call_commits_difference_through_durable_escrow(self):
         baba, players, game = self.make_game(

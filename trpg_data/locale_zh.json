@@ -80,5 +80,17 @@
     "battle.blood_demon_status": "👿 血契惡魔｜⚔️ ATK: `{attack}`｜🩸 血盾: `{shield}/{max_shield}`",
     "battle.choose_target": "選擇目標",
     "combat.skill_stale_target": "❌ 選擇的目標已失效，請重新選擇。",
-    "combat.blood_feast_bonus": "🌑 血宴追加 {damage} 點暗傷！"
+    "combat.blood_feast_bonus": "🌑 血宴追加 {damage} 點暗傷！",
+    "poker.board.title_cash": "♠ 德州撲克現金桌 · 桌號 {code} · 第 #{hand} 局",
+    "poker.board.title_tournament": "♠ 德州撲克錦標賽 · 桌號 {code} · 第 #{hand} 局",
+    "poker.board.blinds_pot": "盲注 {sb}/{bb} · 底池 **{pot}** {currency} · {street}",
+    "poker.board.to_act_desc": "**{name}**{bot}{pos} · 籌碼 **{stack}**\n{call_text}{raise_text} · ⏱ <t:{deadline}:R>{time_bank}",
+    "poker.board.seats_header": "🪑 座位席 ({active}/{total} 進行中)",
+    "poker.board.bot_thinking": "{name} 正在思考…",
+    "poker.board.seat_hint": "每個座位顯示其位置、狀態、下注額與剩餘籌碼。",
+    "poker.board.footer": "點擊「手牌」查看私密底牌 • 動態倒數即時更新",
+    "poker.action.call": "跟注 {amount}",
+    "poker.action.allin": "全押 ({amount})",
+    "poker.myhand.title": "🃏 你的手牌 · {name}",
+    "poker.tournament.prize_line": "`{rank}.` **{name}** — 獎金: **{prize}** {currency}"
 }

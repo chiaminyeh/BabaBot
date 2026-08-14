@@ -75,8 +75,12 @@ CATEGORY_FIELDS = {
             "Casino",
             "`/blackjack <bet>` — Start solo Blackjack\n"
             "`/blackjack_multiplayer` — Open a Blackjack lobby\n"
-            "`/start_poker` — Start a Poker lobby\n"
-            "`/poker_rules` — Show Poker rules",
+            "`/poker create` — Open an NLH Cash or Tournament lobby\n"
+            "`/poker join <4-character code>` — Join a Poker lobby\n"
+            "`/poker start` — Start your lobby; open seats become BabaBots\n"
+            "`/poker status` — View the active table status\n"
+            "`/poker close` — Safely close the table (admin)\n"
+            "`/poker rules` — Show Poker rules",
         ),
         (
             "Wordle",
