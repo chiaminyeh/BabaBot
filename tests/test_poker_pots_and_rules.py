@@ -69,6 +69,31 @@ class PokerPotsAndRulesTests(unittest.TestCase):
 
         self.assertEqual(sum(sp.amount for sp in side_pots), 270)
 
+    def test_folded_blind_is_included_when_two_remaining_players_are_all_in(self):
+        folded = self.make_player(1, "Folded", 985, 0)
+        winner = self.make_player(2, "Winner", 0, 1)
+        runner_up = self.make_player(3, "Runner-up", 0, 2)
+        folded.folded = True
+        winner.all_in = True
+        runner_up.all_in = True
+        folded.hand = ["2♠", "3♦"]
+        winner.hand = ["A♠", "A♦"]
+        runner_up.hand = ["K♠", "K♦"]
+        contributions = {1: 15, 2: 1000, 3: 1000}
+        community = ["4♣", "7♥", "9♦", "J♣", "Q♥"]
+
+        payouts, side_pots = PotManager.resolve_showdown_payouts(
+            players=[folded, winner, runner_up],
+            contributions=contributions,
+            rank_fn=HandEvaluator.rank_hand,
+            compare_fn=HandEvaluator.compare,
+            community=community,
+            button_seat=0,
+        )
+
+        self.assertEqual(sum(pot.amount for pot in side_pots), 2015)
+        self.assertEqual(payouts, {2: 2015})
+
     def test_odd_chip_allocation_clockwise_from_button(self):
         # 3-way tie on a 10 chip pot (3 chips each, 1 remainder)
         # Button is seat 0. Seats: P1 (seat 0), P2 (seat 1), P3 (seat 2)

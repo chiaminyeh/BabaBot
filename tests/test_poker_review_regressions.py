@@ -78,20 +78,16 @@ class PokerReviewRegressionTests(unittest.TestCase):
         game._maybe_advance_round = AsyncMock(return_value=False)
         entered = asyncio.Event()
         release = asyncio.Event()
-        first_sender = True
 
-        async def paused_sender(_content):
-            nonlocal first_sender
-            if first_sender:
-                first_sender = False
-                entered.set()
-                await release.wait()
+        async def paused_refresh():
+            entered.set()
+            await release.wait()
+
+        game._refresh_board = paused_refresh
 
         async def scenario():
             first = asyncio.create_task(
-                game._dispatch_action(
-                    players[0], "bet", amount=15, sender=paused_sender
-                )
+                game._dispatch_action(players[0], "bet", amount=15)
             )
             await asyncio.wait_for(entered.wait(), timeout=1)
             second = asyncio.create_task(
@@ -117,15 +113,15 @@ class PokerReviewRegressionTests(unittest.TestCase):
         entered = asyncio.Event()
         release = asyncio.Event()
 
-        async def paused_sender(_content):
+        async def paused_refresh():
             entered.set()
             await release.wait()
 
+        game._refresh_board = paused_refresh
+
         async def scenario():
             action = asyncio.create_task(
-                game._dispatch_action(
-                    players[0], "bet", amount=15, sender=paused_sender
-                )
+                game._dispatch_action(players[0], "bet", amount=15)
             )
             await asyncio.wait_for(entered.wait(), timeout=1)
             refund = asyncio.create_task(game.refund_game("race"))

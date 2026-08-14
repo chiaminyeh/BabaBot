@@ -142,7 +142,7 @@ class PokerCog(commands.Cog):
     def build_bot_player(guild_id: int, index: int) -> Player:
         """Generate a virtual bot player with a deterministic negative ID."""
         bot_id = -(abs(guild_id) * 100 + index + 1)
-        name = f"BabaBot {index + 1}"
+        name = f"Bot {index + 1}"
         user = SimpleNamespace(id=bot_id, name=name, bot=True)
         return Player(user, is_bot=True)
 
@@ -172,7 +172,7 @@ class PokerCog(commands.Cog):
                 f"Buy-in: **{game['buyin']} {self.money_name}** · Seats: "
                 f"**{len(players)}/{config.max_seats}**\n\n"
                 f"Join with `/poker join code:{game['code']}`. Open seats become "
-                "BabaBots when the host starts."
+                "Bots when the host starts."
             ),
             color=discord.Color.dark_green(),
         )
@@ -326,7 +326,7 @@ class PokerCog(commands.Cog):
         mode="Game mode: Cash Game or Freezeout Tournament",
         blinds="Blinds format (e.g. '5/10')",
         buyin="Buy-in amount in Bababucks (default 1000 for Cash, 100 for Tournament)",
-        seats="Total seats; open seats become BabaBots when the host starts",
+        seats="Total seats; open seats become Bots when the host starts",
     )
     async def create_table(
         self,

@@ -174,7 +174,7 @@ class PotManager:
                 )
             ]
 
-        levels = sorted({contributions[p.id] for p in active if contributions.get(p.id, 0) > 0})
+        levels = sorted({amount for amount in contributions.values() if amount > 0})
         pots: list[SidePot] = []
         previous_level = 0
 

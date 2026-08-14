@@ -39,16 +39,19 @@ async def _safe_respond(
 ):
     """Reply to an interaction safely regardless of whether it was deferred."""
     response = interaction.response
+    send_kwargs: dict[str, Any] = {"ephemeral": ephemeral}
+    if content is not None:
+        send_kwargs["content"] = content
+    if embed is not None:
+        send_kwargs["embed"] = embed
+    if view is not None:
+        send_kwargs["view"] = view
     is_done = getattr(response, "is_done", lambda: False)()
     if not is_done:
-        return await response.send_message(
-            content=content, embed=embed, view=view, ephemeral=ephemeral
-        )
+        return await response.send_message(**send_kwargs)
     followup = getattr(interaction, "followup", None)
     if followup is not None:
-        return await followup.send(
-            content=content, embed=embed, view=view, ephemeral=ephemeral
-        )
+        return await followup.send(**send_kwargs)
     return None
 
 

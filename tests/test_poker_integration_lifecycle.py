@@ -8,8 +8,9 @@ from bababucks import BababucksEscrow, BababucksLedger
 from poker.cog import PokerCog
 from poker.models import BlindLevel, GameMode, HandResult, Player, TableConfig
 from poker.pacing import PacingController
+from poker.pots import PokerChipEscrow
 from poker.service import PokerGameInstance
-from poker.ui import RaisePresetsView
+from poker.ui import RaisePresetsView, TableEmbedBuilder, _safe_respond
 
 
 class FakeBaba:
@@ -218,6 +219,95 @@ class PokerIntegrationLifecycleTests(unittest.TestCase):
             self.assertEqual(len(game.community), 5)
             self.assertEqual(game.terminal_state, "settled")
             self.assertEqual(len(game.burned), 3)
+
+        asyncio.run(scenario())
+
+    def test_folded_blind_and_two_all_in_bots_settle_and_start_next_hand(self):
+        folded = Player(user(1, "Human"))
+        winner = Player(user(-1, "Bot 1"), is_bot=True)
+        runner_up = Player(user(-2, "Bot 2"), is_bot=True)
+        players = [folded, winner, runner_up]
+        for player in players:
+            player.stack = 1000
+        _baba, _cog, _channel, game = self.make_service(players)
+        game.table_escrow = SimpleNamespace(state="open")
+        game.run_bot_turns = AsyncMock()
+        game.escrow = PokerChipEscrow(players)
+        self.assertTrue(game.escrow.try_debit(folded.id, 15))
+        self.assertTrue(game.escrow.try_debit(winner.id, 1000))
+        self.assertTrue(game.escrow.try_debit(runner_up.id, 1000))
+        folded.folded = True
+        folded.hand = ["2♠", "3♦"]
+        winner.hand = ["A♠", "A♦"]
+        runner_up.hand = ["K♠", "K♦"]
+        game.community = ["4♣", "7♥", "9♦", "J♣", "Q♥"]
+        game.current_actor_id = None
+        game.street = "river"
+        game.round = 4
+        settled_escrow = game.escrow
+
+        async def scenario():
+            await game.showdown()
+            self.assertEqual(settled_escrow.state, "settled")
+            self.assertEqual(sum(game.last_payouts.values()), 2015)
+            self.assertIsNotNone(game._next_hand_task)
+            await game._next_hand_task
+            self.assertEqual(game.hand_number, 2)
+            self.assertEqual(game.terminal_state, "open")
+            self.assertTrue(any(
+                entry.action == "rotation" for entry in game.action_log
+            ))
+            game.action_clock.cancel()
+
+        asyncio.run(scenario())
+
+    def test_safe_respond_omits_absent_view_for_embed_only_reply(self):
+        response = SimpleNamespace(
+            is_done=lambda: False,
+            send_message=AsyncMock(),
+        )
+        interaction = SimpleNamespace(response=response)
+        embed = SimpleNamespace(title="Private hand")
+
+        asyncio.run(_safe_respond(interaction, embed=embed, ephemeral=True))
+
+        response.send_message.assert_awaited_once()
+        kwargs = response.send_message.await_args.kwargs
+        self.assertIs(kwargs["embed"], embed)
+        self.assertNotIn("view", kwargs)
+
+    def test_next_hand_rotates_positions_and_shows_rotation_in_table_embed(self):
+        players = [
+            Player(user(1, "Seat 1")),
+            Player(user(2, "Seat 2")),
+            Player(user(3, "Seat 3")),
+        ]
+        for player in players:
+            player.stack = 100
+        _baba, _cog, _channel, game = self.make_service(players)
+        game.table_escrow = SimpleNamespace(state="open")
+
+        async def scenario():
+            await game.play_game()
+            self.assertEqual(
+                [player.position for player in players], ["BTN", "SB", "BB"]
+            )
+            game.action_clock.cancel()
+            game.terminal_state = "settled"
+
+            await game._start_next_hand("fold")
+
+            self.assertEqual(game.hand_number, 2)
+            self.assertEqual(
+                [player.position for player in players], ["BB", "BTN", "SB"]
+            )
+            embed = TableEmbedBuilder.build_table_embed(game)
+            recent_actions = next(
+                field.value for field in embed.fields
+                if "RECENT ACTIONS" in field.name
+            )
+            self.assertIn("blinds rotate clockwise", recent_actions)
+            game.action_clock.cancel()
 
         asyncio.run(scenario())
 

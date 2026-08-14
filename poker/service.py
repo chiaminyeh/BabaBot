@@ -565,9 +565,6 @@ class PokerGameInstance:
         sender: Any = None,
         from_timeout: bool = False,
     ) -> bool:
-        if sender is None and self.channel and hasattr(self.channel, "send"):
-            sender = self.channel.send
-
         if self.terminal_state != "open":
             if sender:
                 await self._send_msg(sender, "This hand has already ended.")
@@ -650,16 +647,12 @@ class PokerGameInstance:
                 player.all_in = True
 
             if action == "raise" or prev_highest > 0:
-                if sender:
-                    await self._send_msg(sender, f"{player.name} raises to {player.bet}. Pot: {self.escrow.total}")
                 self.log_action(
                     f"{player.name} raises to {player.bet} · pot {self.escrow.total}",
                     player.name,
                     "raise",
                 )
             else:
-                if sender:
-                    await self._send_msg(sender, f"{player.name} bets {amount}. Pot: {self.escrow.total}")
                 self.log_action(
                     f"{player.name} bets {amount} · pot {self.escrow.total}",
                     player.name,
@@ -683,8 +676,6 @@ class PokerGameInstance:
             if call_amt < difference or self._stack_for(player) == 0:
                 player.all_in = True
 
-            if sender:
-                await self._send_msg(sender, f"{player.name} calls {call_amt}. Pot: {self.escrow.total}")
             self.log_action(
                 f"{player.name} calls {call_amt} · pot {self.escrow.total}",
                 player.name,
@@ -697,8 +688,6 @@ class PokerGameInstance:
                     await self._send_msg(sender, "You can’t check until you’ve matched the highest bet.")
                 return False
 
-            if sender:
-                await self._send_msg(sender, f"{player.name} checks.")
             self.log_action(f"{player.name} checks", player.name, "check")
 
         elif action == "fold":
@@ -715,9 +704,6 @@ class PokerGameInstance:
                     if sender:
                         await self._send_msg(sender, "This hand has already ended.")
                     return False
-                if sender:
-                    await self._send_msg(sender, f"{player.name} folds.")
-                    await self._send_msg(sender, f"🎉 **{winner.name} wins {won_pot} {self.money_name}!**")
                 self.last_result = f"🎉 {winner.name} wins {won_pot} {self.money_name}"
                 self.last_result_summary = f"{winner.name} won {won_pot} {self.money_name}"
                 self.last_payouts = {winner.id: won_pot}
@@ -733,9 +719,6 @@ class PokerGameInstance:
                     "fold",
                 )
                 return True
-
-            if sender:
-                await self._send_msg(sender, f"{player.name} folds.")
 
         elif action == "allin":
             available = self._stack_for(player)
@@ -766,8 +749,6 @@ class PokerGameInstance:
                     full_raise = True
                 self.highest = player.bet
 
-            if sender:
-                await self._send_msg(sender, f"{player.name} goes ALL IN {available}! Pot: {self.escrow.total}")
             self.log_action(
                 f"{player.name} goes ALL IN {available} · pot {self.escrow.total}",
                 player.name,
@@ -1041,7 +1022,7 @@ class PokerGameInstance:
             return
 
         self.hand_number += 1
-        self.last_action = "New hand — blinds rotate clockwise"
+        self.log_action("New hand — blinds rotate clockwise", action="rotation")
         self.last_showdown = []
         self.last_showdown_hands = []
         self.last_payouts = {}

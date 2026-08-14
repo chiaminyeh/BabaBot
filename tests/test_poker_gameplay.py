@@ -182,18 +182,32 @@ class PokerGameplayTests(unittest.TestCase):
 
         self.assertEqual(game.escrow.contributions, {7: 5, 8: 10, 1001: 10})
         self.assertEqual(game.current_actor_id, 7)
+        self.assertFalse(any(call.args for call in game.channel.send.await_args_list))
         self.assertTrue(any(
-            "Bot 1 calls" in call.args[0]
-            for call in game.channel.send.await_args_list
-            if call.args
+            "Bot 1 calls" in entry.text for entry in game.action_log
         ))
         self.assertIn("BOT", game.table_display())
+
+    def test_successful_human_action_updates_embed_without_action_message(self):
+        _baba, cog = self.make_cog({7: (100, True), 8: (100, False)})
+        players = [
+            Player(self.user(7, "Human SB")),
+            Player(self.user(8, "Human BB")),
+        ]
+        game = PokerGame(FakeChannel(), players, cog, hand_id="quiet-action")
+        self.assertTrue(game.post_forced_bets())
+        ctx = SimpleNamespace(author=players[0].user, send=AsyncMock())
+
+        self.assertTrue(asyncio.run(game.call(ctx)))
+
+        ctx.send.assert_not_awaited()
+        self.assertTrue(any("Human SB calls" in entry.text for entry in game.action_log))
 
     def test_bot_factory_creates_a_non_human_player(self):
         player = PokerCog.build_bot_player(88, 0)
 
         self.assertTrue(player.is_bot)
-        self.assertEqual(player.name, "BabaBot 1")
+        self.assertEqual(player.name, "Bot 1")
         self.assertLess(player.id, 0)
 
     def test_bot_action_uses_rlcard_rule_strategy_for_hole_cards(self):
@@ -201,7 +215,7 @@ class PokerGameplayTests(unittest.TestCase):
             -8801: (200, False),
             7: (200, True),
         })
-        bot = Player(self.user(-8801, "BabaBot 1"), is_bot=True)
+        bot = Player(self.user(-8801, "Bot 1"), is_bot=True)
         human = Player(self.user(7, "Human"))
         game = PokerGame(
             FakeChannel(), [bot, human], cog, hand_id="rlcard-strategy"
