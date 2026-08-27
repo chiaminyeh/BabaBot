@@ -123,7 +123,7 @@ def latest_startup_log_text() -> tuple[Path | None, str]:
     if not logs:
         return None, ""
     path = logs[0]
-    return path, path.read_text(encoding="utf-8", errors="replace")[-20000:]
+    return path, path.read_text(encoding="utf-8", errors="replace")
 
 
 def check_gateway_connected(running_required: bool) -> CheckResult:

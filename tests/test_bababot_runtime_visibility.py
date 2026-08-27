@@ -1,4 +1,5 @@
 import ast
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -114,6 +115,29 @@ class ExtensionHealthContractTests(unittest.TestCase):
 
         self.assertIn("chess_cog", runtime_extensions)
         self.assertEqual(runtime_extensions, check_bababot_health.EXPECTED_EXTENSIONS)
+
+
+class HealthLogParsingTests(unittest.TestCase):
+    def test_startup_markers_remain_visible_after_runtime_log_grows(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_path = Path(temp_dir) / "bababot_restart_20260827_000000.log"
+            log_path.write_text(
+                "Shard ID None has connected to Gateway\n"
+                "Extensions loaded: 11/11 (all expected extensions)\n"
+                "Slash commands synced: 22\n"
+                + ("ordinary runtime chatter\n" * 2000),
+                encoding="utf-8",
+            )
+            with patch.object(check_bababot_health, "LOG_DIR", Path(temp_dir)), patch.object(
+                check_bababot_health, "is_bababot_running", return_value=True
+            ):
+                results = [
+                    check_bababot_health.check_gateway_connected(running_required=True),
+                    check_bababot_health.check_extensions_loaded(),
+                    check_bababot_health.check_slash_commands_synced(),
+                ]
+
+        self.assertTrue(all(result.ok for result in results), [result.detail for result in results])
 
 
 if __name__ == "__main__":

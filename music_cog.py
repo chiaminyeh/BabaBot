@@ -421,7 +421,6 @@ class music_cog(commands.Cog):
             "no_warnings": True,
             "skip_download": False,
             "outtmpl": os.path.join(self.music_folder, '%(title)s.%(ext)s'),
-            "extractor_args": {"youtube": ["player_client=ios,android_vr,mweb,web"]}
         }
         self.FFMPEG_OPTIONS = {
             'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',

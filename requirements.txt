@@ -27,7 +27,7 @@ aiohttp
 discord.py[voice]>=2.4.0
 python-dotenv
 google-genai
-yt-dlp
+yt-dlp>=2026.8.19
 psutil
 numpy
 matplotlib

@@ -1359,6 +1359,11 @@ class MusicViewLifecycleTests(unittest.IsolatedAsyncioTestCase):
 
 
 class MusicDependencyContractTests(unittest.TestCase):
+    def test_music_uses_upstream_youtube_client_fallbacks(self):
+        cog = music_module.music_cog(SimpleNamespace())
+
+        self.assertNotIn("extractor_args", cog.YDL_OPTIONS)
+
     def test_music_dependencies_are_single_source_and_ci_fallback_can_import_cog(self):
         root = Path(__file__).resolve().parents[1]
         requirements = [
@@ -1369,7 +1374,7 @@ class MusicDependencyContractTests(unittest.TestCase):
         ci_source = (root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8").lower()
 
         self.assertNotIn("youtube-dl==2021.12.17", requirements)
-        self.assertIn("yt-dlp", requirements)
+        self.assertIn("yt-dlp>=2026.8.19", requirements)
         self.assertEqual(sum(line.startswith("pynacl") for line in requirements), 1)
         self.assertIn("yt-dlp", ci_source)
 
