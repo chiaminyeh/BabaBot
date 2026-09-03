@@ -92,11 +92,17 @@ class WordleGame:
 
         return final_message
 
-    async def send_board(self, bot: commands.Bot, user: discord.abc.User):
+    async def send_board(
+        self,
+        bot: commands.Bot,
+        user: discord.abc.User,
+        *,
+        force_new: bool = False,
+    ):
         """
         Sends or edits the current board message.
-        Edits the existing message if it was sent less than 10 minutes ago;
-        otherwise sends a new message.
+        Sends a new message when force_new is true. Otherwise, edits the
+        existing message if it was sent less than 10 minutes ago.
         """
         channel = bot.get_channel(self.channel)
 
@@ -117,7 +123,8 @@ class WordleGame:
 
         # Try to edit the existing board message if it's less than 10 minutes old
         should_edit = (
-            self.board_message is not None
+            not force_new
+            and self.board_message is not None
             and (time.time() - self.last_board_time) < 600  # 10 minutes
         )
 
@@ -251,7 +258,11 @@ class wordle_cog(commands.Cog):
                 "Refreshing your Wordle board...",
                 ephemeral=True
             )
-            await game.send_board(self.bot, interaction.user)
+            await game.send_board(
+                self.bot,
+                interaction.user,
+                force_new=True,
+            )
         else:
             await interaction.response.send_message(
                 "You need to start a game first!",
