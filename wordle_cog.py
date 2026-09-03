@@ -247,6 +247,10 @@ class wordle_cog(commands.Cog):
         _, game = self._find_game(user_id)
 
         if game:
+            await interaction.response.send_message(
+                "Refreshing your Wordle board...",
+                ephemeral=True
+            )
             await game.send_board(self.bot, interaction.user)
         else:
             await interaction.response.send_message(
