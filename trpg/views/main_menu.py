@@ -59,6 +59,27 @@ def build_adventure_compass(view, unspent_points: int, *, today: str | None = No
     field_name = t(lang, "compass.field_name", "🧭 冒險指南")
     area_data = view.cog.areas.get(player.current_area, {})
 
+    # 第一戰固定掉落木劍；先讓玩家立刻感受到裝備變強，再引導任務與其他系統。
+    if player.inventory.get("wooden_sword", 0) > 0 and player.weapon != "wooden_sword" and player.level <= 2:
+        value = t(
+            lang,
+            "compass.equip_starter_weapon",
+            "🗡️ 你獲得了第一件武器！下一步：點選「裝備」→ 裝上【練習用木劍】。",
+        )
+        return _compact_compass_field(field_name, value)
+
+    # 教學史萊姆算第一場擊殺；裝好木劍後直接帶玩家出村完成一場正式探索，
+    # 接著才把任務、配點等較大的系統交給原本的優先規則。
+    kills = max(0, int((getattr(player, "stats", {}) or {}).get("monsters_killed", 0) or 0))
+    if player.weapon == "wooden_sword" and kills <= 1:
+        if area_data.get("is_village"):
+            value = t(lang, "compass.first_patrol_move", "🗺️ 裝備完成！下一步：點選「移動」→ 前往【米酥村郊外】。")
+        elif not getattr(player, "current_subarea", None):
+            value = t(lang, "compass.first_patrol_subarea", "🌿 下一步：選擇一個郊外區域，開始第一次正式巡邏。")
+        else:
+            value = t(lang, "compass.first_patrol_explore", "⚔️ 下一步：點選「探索」，完成第一場正式野外戰鬥。")
+        return _compact_compass_field(field_name, value)
+
     if unspent_points > 0:
         if area_data.get("is_village"):
             value = t(
@@ -196,6 +217,7 @@ class MainMenuLayout:
             view.add_action_button(label=t(lang, "menu.btn_school", "學校"), style=discord.ButtonStyle.secondary, custom_id="btn_school_menu", row=2, emoji="🏫")
             view.add_action_button(label=t(lang, "menu.btn_guild", "公會"), style=discord.ButtonStyle.secondary, custom_id="btn_guild_menu", row=2, emoji="🏛️")
             view.add_action_button(label=t(lang, "menu.btn_village_chief", "Baba"), style=discord.ButtonStyle.secondary, custom_id="btn_ask_chief", row=2, emoji=baba_emoji(view.cog.bot))
+            view.add_action_button(label=t(lang, "menu.btn_life", "休閒生活"), style=discord.ButtonStyle.success, custom_id="btn_life_menu", row=3, emoji="🏡")
         else:
             area_data = view.cog.areas.get(view.player.current_area, {})
             current_subarea = view._current_subarea_data(area_data)
@@ -308,6 +330,7 @@ class MainMenuLayout:
         else:
             view.add_action_button(label=t(lang, "menu.btn_daily", "每日簽到"), style=discord.ButtonStyle.success, custom_id="btn_daily_claim", emoji="🎁")
         view.add_action_button(label=t(lang, "menu.btn_quest_hall", "任務大廳"), style=discord.ButtonStyle.success, custom_id="btn_quest_hall", emoji="📜")
+        view.add_action_button(label=t(lang, "menu.btn_weekly_event", "每週活動"), style=discord.ButtonStyle.success, custom_id="btn_weekly_event", emoji="🌟")
         view.add_action_button(label=t(lang, "menu.btn_lottery", "幸運抽獎"), style=discord.ButtonStyle.primary, custom_id="btn_lottery_menu", emoji="🎰")
         view.add_action_button(label=t(lang, "menu.btn_achievements", "成就"), style=discord.ButtonStyle.primary, custom_id="btn_achievements", emoji="🏅")
         view.add_action_button(label=t(lang, "menu.btn_leaderboard", "排行榜"), style=discord.ButtonStyle.secondary, custom_id="btn_leaderboard", emoji="🏆")

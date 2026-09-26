@@ -92,18 +92,28 @@ CRAFTING_RECIPES = {
 }
 
 UPGRADE_COSTS = {
-    1: {"gold": 100, "material": "slime_jelly", "mat_qty": 2, "rate": 1.00, "label": "100%"},
-    2: {"gold": 250, "material": "boar_tusk", "mat_qty": 2, "rate": 0.80, "label": "80%"},
-    3: {"gold": 500, "material": "wolf_fur", "mat_qty": 2, "rate": 0.60, "label": "60%"},
-    4: {"gold": 1000, "material": "ancient_wood", "mat_qty": 2, "rate": 0.40, "label": "40%"},
-    5: {"gold": 2500, "material": "ectoplasm", "mat_qty": 2, "rate": 0.25, "label": "25%"},
+    1: {"gold": 100, "materials": {"fresh_lumber": 12, "stone": 12}, "rate": 1.00, "label": "100%"},
+    2: {"gold": 250, "materials": {"fresh_lumber": 18, "stone": 18}, "rate": 0.80, "label": "80%"},
+    3: {"gold": 500, "materials": {"rare_lumber": 8, "stone": 24, "gold_ore": 5}, "rate": 0.60, "label": "60%"},
+    4: {"gold": 1000, "materials": {"rare_lumber": 12, "gold_ore": 10}, "rate": 0.40, "label": "40%"},
+    5: {"gold": 2500, "materials": {"premium_lumber": 8, "gold_ore": 15}, "rate": 0.25, "label": "25%"},
     # +6 以上是後期金幣回收管道：費用陡升、成功率保底不再往下掉太狠（失敗不降級，
     # 純粹是「錢跟稀有材料的坑」），讓後期滿裝玩家的金幣有地方花。
-    6: {"gold": 6000, "material": "gargoyle_stone", "mat_qty": 3, "rate": 0.22, "label": "22%"},
-    7: {"gold": 12000, "material": "lich_soulstone", "mat_qty": 3, "rate": 0.20, "label": "20%"},
-    8: {"gold": 22000, "material": "dragon_scale_shard", "mat_qty": 3, "rate": 0.18, "label": "18%"},
-    9: {"gold": 38000, "material": "demon_core", "mat_qty": 2, "rate": 0.15, "label": "15%"},
-    10: {"gold": 60000, "material": "void_crystal", "mat_qty": 2, "rate": 0.12, "label": "12%"},
+    6: {"gold": 6000, "materials": {"premium_lumber": 12, "gold_ore": 20, "diamond": 2}, "rate": 0.22, "label": "22%"},
+    7: {"gold": 12000, "materials": {"premium_lumber": 16, "diamond": 3}, "rate": 0.20, "label": "20%"},
+    8: {"gold": 22000, "materials": {"legendary_lumber": 4, "diamond": 4}, "rate": 0.18, "label": "18%"},
+    9: {"gold": 38000, "materials": {"legendary_lumber": 6, "diamond": 5}, "rate": 0.15, "label": "15%"},
+    10: {"gold": 60000, "materials": {"legendary_lumber": 8, "diamond": 6}, "rate": 0.12, "label": "12%"},
 }
 
 MAX_UPGRADE_LEVEL = max(UPGRADE_COSTS)
+
+
+def upgrade_materials(cost: dict) -> dict[str, int]:
+    """Return normalized multi-material costs, accepting the old one-material shape."""
+    materials = cost.get("materials")
+    if isinstance(materials, dict):
+        return {item_id: max(0, int(qty)) for item_id, qty in materials.items() if int(qty) > 0}
+    material = cost.get("material")
+    quantity = max(0, int(cost.get("mat_qty", 0) or 0))
+    return {material: quantity} if material and quantity else {}

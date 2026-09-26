@@ -22,3 +22,8 @@ trpg_data/trpg_players.sqlite3
 trpg_data/backup_legacy_json/
 *.log
 *.tmp
+
+# Local files excluded from GitHub uploads
+bank.txt
+lottery_tickets.txt
+review-red.txt

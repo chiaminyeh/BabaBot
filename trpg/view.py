@@ -12,7 +12,7 @@ from trpg.status import format_status_list, clear_all_status, get_daily_jester_i
 from trpg.monster_pool import pick_random_monster
 from trpg.quest_popup import process_quest_popups, accept_quest
 from trpg.stats import default_stat_alloc, grant_qualified_skills, recalc_player_stats, get_unspent_points, get_potion_heal_target, prestige_required_level, format_item_stat_requirements, format_stat_requirement_map, item_stat_requirements, meets_item_stat_requirements, meets_skill_requirements, format_skill_point_requirements, prune_unqualified_skills, stat_display_name
-from trpg.player import RoguePlayerWrapper
+from trpg.player import CONTENT_UPDATE_VERSION, RoguePlayerWrapper
 from trpg.entity import absorb_monster_damage
 from trpg import dungeon as dg
 from trpg.balance import ARCHETYPE_BALANCE_VERSION
@@ -21,6 +21,8 @@ from trpg.view_shared import item_emoji, EQUIP_STAT_DISPLAY, ELEMENT_DISPLAY
 from trpg.view_shop import ShopMixin
 from trpg.view_dungeon import DungeonMixin
 from trpg.view_tutorial import TutorialMixin
+from trpg.view_life import LifeSkillMixin
+from trpg.view_weekly import WeeklyEventMixin
 from trpg.views.main_menu import (
     MainMenuLayout,
     adventure_compass_for_main_panel,
@@ -31,6 +33,7 @@ from trpg.balance import MYSTERY_MERCHANT_CHANCE
 from trpg.views.battle import BattleLayout
 from trpg.views.char import CharLayout, prestige_hall_accessible
 from trpg.archetypes import change_fortune, core_active, fortune_tier
+from trpg.weekly_events import current_weekly_event, exploration_event_bonus, featured_spawn_weights, weekly_event_field
 from interaction_errors import is_transient_interaction_error
 
 
@@ -47,7 +50,7 @@ def _interaction_log_fields(interaction: discord.Interaction, **fields) -> str:
     return " ".join(f"{key}={value}" for key, value in payload.items())
 
 
-class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
+class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin, LifeSkillMixin, WeeklyEventMixin):
     async def on_error(self, interaction: discord.Interaction, error: Exception, item: discord.ui.Item) -> None:
         if is_transient_interaction_error(error):
             logger.warning(
@@ -98,6 +101,14 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             self.build_language_select_menu()
         else:
             self.build_main_menu()
+            if getattr(real_player, "content_update_version", 0) < CONTENT_UPDATE_VERSION:
+                real_player.content_update_version = CONTENT_UPDATE_VERSION
+                self.log_message = t(
+                    self.player.language,
+                    "menu.content_update_notice",
+                    "🎉 【悠閒生活更新】已上線！\n伐木、釣魚、採礦、農作每天各有 20 次；農作物需要每日澆水，成熟後能食用或賣錢。收集四階木材與石頭、黃金礦、鑽石還能強化裝備！",
+                )
+                self.cog.save_players(player=self.player)
 
     def _load_player_state(self):
         real_player = getattr(self.player, "real_player", self.player)
@@ -282,11 +293,20 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
         "btn_status": {"m": "handle_items", "i": True},
         "b_sta": {"m": "handle_items", "i": True},
         "btn_leaderboard": {"m": "handle_leaderboard"},
+        "btn_weekly_event": {"m": "build_weekly_event_menu", "await": False},
+        "btn_weekly_hunt": {"m": "handle_weekly_hunt"},
         "btn_quest_hall": {"m": "handle_quest_hall"},
         "btn_area_npc": {"m": "handle_area_npc"},
         "btn_lottery_menu": {"m": "handle_lottery_menu"},
         "btn_lottery_draw": {"m": "handle_lottery_draw"},
         "btn_daily_claim": {"m": "handle_daily_claim"},
+        "btn_life_menu": {"m": "build_life_menu", "await": False},
+        "life_woodcut": {"m": "handle_life_gather", "args": ["woodcutting"]},
+        "life_fish": {"m": "handle_life_gather", "args": ["fishing"]},
+        "life_mine": {"m": "handle_life_gather", "args": ["mining"]},
+        "life_plant": {"m": "handle_life_plant"},
+        "life_water": {"m": "handle_life_water"},
+        "life_harvest": {"m": "handle_life_harvest"},
         "btn_achievements": {"m": "handle_achievements", "await": False},
         "btn_combat_history": {"m": "handle_combat_history", "i": True},
         "btn_rest": {"m": "build_inn_menu", "await": False},
@@ -352,6 +372,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
     # gets passed: "suffix" = custom_id after the prefix, "full" = whole
     # custom_id, "int_tail" = int of the last underscore segment.
     _PREFIX_ROUTES = [
+        ("life_plant_", {"m": "handle_life_plant", "arg": "suffix"}),
+        ("life_eat_", {"m": "handle_life_eat", "arg": "suffix"}),
         ("inn_rest_", {"m": "handle_inn_rest", "arg": "suffix"}),
         ("codex_cat_", {"m": "handle_skill_codex_category", "arg": "suffix"}),
         ("char_switch_", {"m": "handle_char_switch", "arg": "suffix"}),
@@ -1523,6 +1545,9 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
                 unspent_points=unspent,
             )
             embed.add_field(name=compass_name, value=compass_value, inline=False)
+            weekly_field = weekly_event_field(self.player, getattr(self.cog, "weekly_events", []), lang)
+            if weekly_field:
+                embed.add_field(name=weekly_field[0], value=weekly_field[1], inline=False)
 
         # 戰鬥時顯示敵方狀態區塊（最多 3 格，前排優先顯示在最上面）
         if self.in_battle and self.monster_slots:
@@ -2402,6 +2427,8 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             valid_ids = ["slime"]
 
         weights = [area_data["monsters"][m_id].get("spawn_rate", 1) for m_id in valid_ids]
+        weekly_event = current_weekly_event(getattr(self.cog, "weekly_events", []))
+        weights = featured_spawn_weights(valid_ids, weights, weekly_event)
         selected_id = random.choices(valid_ids, weights=weights)[0]
         base_monster = area_data["monsters"][selected_id]
 
@@ -2465,6 +2492,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             return
 
         event_chance = area_data.get("event_chance", 0.2)
+        event_chance = min(0.85, event_chance + exploration_event_bonus(current_weekly_event(getattr(self.cog, "weekly_events", []))))
         if random.random() < event_chance and self.cog.events:
             await self.handle_random_event(area_data=area_data)
             return
@@ -2491,6 +2519,7 @@ class TRPGGameView(discord.ui.View, ShopMixin, DungeonMixin, TutorialMixin):
             return
 
         event_chance = subarea.get("event_chance", area_data.get("event_chance", 0.2))
+        event_chance = min(0.85, event_chance + exploration_event_bonus(current_weekly_event(getattr(self.cog, "weekly_events", []))))
         if random.random() < event_chance and self.cog.events:
             await self.handle_random_event(area_data=area_data, subarea_data=subarea)
             return

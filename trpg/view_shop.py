@@ -5,7 +5,7 @@ from trpg.balance import MYSTERY_MERCHANT_STOCK_COUNT, area_shop_config, area_sh
 from trpg.combat import get_sell_price
 from trpg.i18n import t, tf
 from trpg.player import _item_shop_level_ok
-from trpg.recipes import CRAFTING_RECIPES, MAX_UPGRADE_LEVEL, UPGRADE_COSTS
+from trpg.recipes import CRAFTING_RECIPES, MAX_UPGRADE_LEVEL, UPGRADE_COSTS, upgrade_materials
 from trpg.stats import format_item_stat_requirements, meets_item_stat_requirements, recalc_player_stats
 from trpg.view_shared import item_emoji
 
@@ -27,6 +27,17 @@ def blacksmith_accessible(player) -> bool:
 
 
 class ShopMixin:
+    def _upgrade_material_description(self, cost: dict, lang: str) -> tuple[str, bool]:
+        parts = []
+        enough = True
+        for material, required in upgrade_materials(cost).items():
+            name = tf(self.cog.items.get(material, {}), "name", lang) or material
+            current = self.player.inventory.get(material, 0)
+            parts.append(f"{name} ({current}/{required})")
+            if current < required:
+                enough = False
+        return "、".join(parts), enough
+
     def _format_shop_item_line(self, item_id: str) -> str:
         lang = self.player.language
         item = self.cog.items.get(item_id, {})
@@ -397,10 +408,9 @@ class ShopMixin:
             else:
                 next_lvl = w_up + 1
                 cost = UPGRADE_COSTS[next_lvl]
-                mat_name = tf(self.cog.items.get(cost["material"], {}), "name", lang) or cost["material"]
-                current_qty = p.inventory.get(cost["material"], 0)
-                w_desc = t(lang, "blacksmith.upgrade_info", "升級至 +{next_lvl} | 成功率: {rate_label}\n花費: {gold}$ | 材料: {mat_name} ({current_qty}/{mat_qty})", next_lvl=next_lvl, rate_label=cost["label"], gold=cost["gold"], mat_name=mat_name, current_qty=current_qty, mat_qty=cost["mat_qty"])
-                can_up_w = user_bal >= cost["gold"] and current_qty >= cost["mat_qty"]
+                materials_desc, materials_ok = self._upgrade_material_description(cost, lang)
+                w_desc = t(lang, "blacksmith.upgrade_info", "升級至 +{next_lvl} | 成功率: {rate_label}\n花費: {gold}$ | 材料: {materials}", next_lvl=next_lvl, rate_label=cost["label"], gold=cost["gold"], materials=materials_desc)
+                can_up_w = user_bal >= cost["gold"] and materials_ok
 
         if a_id:
             if a_up >= MAX_UPGRADE_LEVEL:
@@ -408,10 +418,9 @@ class ShopMixin:
             else:
                 next_lvl = a_up + 1
                 cost = UPGRADE_COSTS[next_lvl]
-                mat_name = tf(self.cog.items.get(cost["material"], {}), "name", lang) or cost["material"]
-                current_qty = p.inventory.get(cost["material"], 0)
-                a_desc = t(lang, "blacksmith.upgrade_info", "升級至 +{next_lvl} | 成功率: {rate_label}\n花費: {gold}$ | 材料: {mat_name} ({current_qty}/{mat_qty})", next_lvl=next_lvl, rate_label=cost["label"], gold=cost["gold"], mat_name=mat_name, current_qty=current_qty, mat_qty=cost["mat_qty"])
-                can_up_a = user_bal >= cost["gold"] and current_qty >= cost["mat_qty"]
+                materials_desc, materials_ok = self._upgrade_material_description(cost, lang)
+                a_desc = t(lang, "blacksmith.upgrade_info", "升級至 +{next_lvl} | 成功率: {rate_label}\n花費: {gold}$ | 材料: {materials}", next_lvl=next_lvl, rate_label=cost["label"], gold=cost["gold"], materials=materials_desc)
+                can_up_a = user_bal >= cost["gold"] and materials_ok
 
         self.log_message += "\n" + t(lang, "blacksmith.weapon_upgrade_section", "**武器強化：**\n{desc}\n", desc=w_desc)
         self.log_message += "\n" + t(lang, "blacksmith.armor_upgrade_section", "**防具強化：**\n{desc}\n", desc=a_desc)
@@ -527,16 +536,19 @@ class ShopMixin:
 
         next_lvl = current_up + 1
         cost = UPGRADE_COSTS[next_lvl]
-        if self.player.inventory.get(cost["material"], 0) < cost["mat_qty"]:
-            await self.handle_blacksmith_menu(t(lang, "blacksmith.err_no_materials", "❌ 強化材料不足！"))
-            return
+        materials = upgrade_materials(cost)
+        for material, required in materials.items():
+            if self.player.inventory.get(material, 0) < required:
+                await self.handle_blacksmith_menu(t(lang, "blacksmith.err_no_materials", "❌ 強化材料不足！"))
+                return
         if not self.cog.try_spend(self.user_id, p, cost["gold"]):
             await self.handle_blacksmith_menu(t(lang, "blacksmith.err_no_gold", "❌ 金幣不足！"))
             return
 
-        p.inventory[cost["material"]] -= cost["mat_qty"]
-        if p.inventory[cost["material"]] <= 0:
-            del p.inventory[cost["material"]]
+        for material, required in materials.items():
+            p.inventory[material] -= required
+            if p.inventory[material] <= 0:
+                del p.inventory[material]
 
         success = random.random() < cost["rate"]
         if success:

@@ -8,6 +8,7 @@ from trpg.dungeon import SEALED_FIELDS
 # Bump this when you change the save schema in a way that needs real migration
 # logic (not just a new defaulted field). Stored on every player save.
 SCHEMA_VERSION = 4
+CONTENT_UPDATE_VERSION = 1
 
 # Immutable scalar defaults (safe to share — never mutated in place).
 _SCALAR_DEFAULTS = {
@@ -53,6 +54,8 @@ _SCALAR_DEFAULTS = {
     "archetype_balance_version": ARCHETYPE_BALANCE_VERSION,
     "core_ability": None,
     "fortune": 0,
+    # 舊角色第一次打開此版本時顯示一次更新公告；新角色直接從目前版本開始。
+    "content_update_version": CONTENT_UPDATE_VERSION,
 }
 
 
@@ -81,6 +84,25 @@ def _fresh_containers() -> dict:
         "dungeon_state": {"floor": 1, "choices": [], "in_run": False},
         "hidden_quest_progress": {},
         "pending_event": {},  # unresolved choice event: {"event_id": ...}
+        # 每週主題活動進度。week_key 改變時由 weekly_events 自動重置；舊存檔
+        # 缺少此欄位時會由 _fresh_containers 安全補上，不需要破壞性 migration。
+        "weekly_event_progress": {"week_key": "", "kills": 0, "rewarded": False},
+        # 休閒生活系統：每日行動力、四種熟練度與不會枯死的隔日農田。
+        "life_skills": {
+            "daily_date": "",
+            "energy": {skill: 20 for skill in ("woodcutting", "fishing", "mining", "farming")},
+            "bonus_energy": 0,
+            "woodcutting_xp": 0,
+            "fishing_xp": 0,
+            "mining_xp": 0,
+            "farming_xp": 0,
+            "farm": {
+                "crop": None,
+                "planted_on": "",
+                "watered_on": "",
+                "waterings": 0,
+            },
+        },
         "repeatable_cooldowns": {},  # {quest_id: "YYYY-MM-DD"} 可重複/每日任務上次完成日期
         "dungeon_buffs": {},
         "dungeon_relic_effects": {},  # 地下城遺物/裝備彙整出的戰鬥 hook（僅 run 內生效）
@@ -171,6 +193,8 @@ class TRPGPlayer:
             player.onboarding_done = True
         if "archetype_balance_version" not in data:
             player.archetype_balance_version = 0
+        if "content_update_version" not in data:
+            player.content_update_version = 0
         if player.level > 99:
             player.level = 99
             player.exp = 0

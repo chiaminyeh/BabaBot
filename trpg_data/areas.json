@@ -66,7 +66,9 @@
                 "desc": "農舍、田埂和偶爾會有野獸出沒的空地。",
                 "events": [
                     "herb_patch",
-                    "trap_pit"
+                    "trap_pit",
+                    "escaped_chicken",
+                    "singing_scarecrow"
                 ],
                 "name_en": "Farmland",
                 "desc_en": "Farm plots, ridges, and open ground where the occasional beast wanders through.",
@@ -82,7 +84,9 @@
                 "events": [
                     "shiny_coin",
                     "bird_song",
-                    "slime_prank"
+                    "slime_prank",
+                    "old_fishing_spot",
+                    "riverside_bottle"
                 ],
                 "name_en": "Open Plains",
                 "desc_en": "A broad sweep of grassland with strong winds and the clearest lines of sight.",
@@ -99,7 +103,8 @@
                 "events": [
                     "find_chest",
                     "thief_snatch",
-                    "lore_ruins"
+                    "lore_ruins",
+                    "storm_fallen_tree"
                 ],
                 "name_en": "Ruined House",
                 "desc_en": "A half-collapsed house that looks perfect for bandits or goblins to use as a temporary den.",

@@ -325,5 +325,156 @@
         "weight": 8,
         "message": "實驗室牆上釘著一張警告紙條，上頭反覆寫著別去碰那些培養槽。",
         "message_en": "A warning note on the lab wall tells you not to touch the incubation tanks."
+    },
+    "escaped_chicken": {
+        "category": "good",
+        "weight": 12,
+        "message": "一隻逃出農舍的胖母雞叼著布袋，在田埂上跑得飛快。",
+        "message_en": "A plump hen has escaped the farm with a cloth pouch in its beak.",
+        "choices": [
+            {
+                "label": "慢慢引牠回家",
+                "label_en": "Guide it home gently",
+                "outcome": {
+                    "message": "你用麥粒慢慢把母雞引回農舍。農夫把一小束收成送給你。",
+                    "message_en": "You lure the hen home with grain. The farmer gives you a small share of the harvest.",
+                    "fortune": 1,
+                    "rewards": {"items": {"wheat_bundle": 2}}
+                }
+            },
+            {
+                "label": "全速追雞",
+                "label_en": "Sprint after it",
+                "outcome": {
+                    "message": "一場驚天動地的追逐後，你抓到了雞，也從布袋裡撿回散落的零錢。",
+                    "message_en": "After a spectacular chase, you catch the hen and recover the coins spilled from its pouch.",
+                    "rewards": {"gold": 35}
+                }
+            },
+            {
+                "label": "假裝沒看到",
+                "label_en": "Pretend you saw nothing",
+                "outcome": {
+                    "message": "母雞帶著勝利者的眼神消失在田野盡頭。",
+                    "message_en": "The hen disappears across the fields with the look of a champion."
+                }
+            }
+        ]
+    },
+    "singing_scarecrow": {
+        "category": "neutral",
+        "weight": 8,
+        "message": "無風的田裡，稻草人竟低聲哼著一首你從沒聽過的收穫歌。",
+        "message_en": "In a windless field, a scarecrow hums a harvest song you have never heard.",
+        "choices": [
+            {
+                "label": "陪它唱完",
+                "label_en": "Sing along",
+                "outcome": {
+                    "message": "最後一個音符落下時，腳邊長出一株閃耀的麥穗。",
+                    "message_en": "As the final note fades, a shining ear of wheat sprouts at your feet.",
+                    "fortune": 1,
+                    "rewards": {"items": {"golden_wheat": 1}}
+                }
+            },
+            {
+                "label": "記住旋律後離開",
+                "label_en": "Memorize the tune and leave",
+                "outcome": {
+                    "message": "那段旋律讓旅途的腳步輕快了不少。",
+                    "message_en": "The melody makes the rest of your journey feel lighter."
+                }
+            }
+        ]
+    },
+    "old_fishing_spot": {
+        "category": "good",
+        "weight": 10,
+        "message": "河岸邊放著一支老釣竿，浮標正劇烈上下晃動。",
+        "message_en": "An old rod rests by the riverbank, its float bobbing violently.",
+        "choices": [
+            {
+                "label": "立刻拉竿",
+                "label_en": "Pull the rod now",
+                "outcome": {
+                    "message": "你使勁一拉，一尾肥美河魚在空中畫出漂亮弧線。",
+                    "message_en": "You pull hard and a plump river fish arcs through the air.",
+                    "rewards": {"items": {"river_fish": 2}}
+                }
+            },
+            {
+                "label": "先找釣竿主人",
+                "label_en": "Look for the owner first",
+                "outcome": {
+                    "message": "老漁夫從樹後走出來，感謝你的誠實並分享了魚獲。",
+                    "message_en": "An old fisher steps from behind a tree, thanks you for your honesty, and shares the catch.",
+                    "fortune": 2,
+                    "rewards": {"items": {"river_fish": 1}}
+                }
+            }
+        ]
+    },
+    "riverside_bottle": {
+        "category": "neutral",
+        "weight": 9,
+        "message": "一只封蠟玻璃瓶順流漂來，裡面塞著字條和一枚小小硬幣。",
+        "message_en": "A wax-sealed bottle drifts downstream with a note and a tiny coin inside.",
+        "choices": [
+            {
+                "label": "讀完後重新放流",
+                "label_en": "Read it and send it onward",
+                "outcome": {
+                    "message": "字條寫著陌生人的旅行願望。你添上一句祝福，讓瓶子繼續前進。",
+                    "message_en": "The note carries a stranger's travel wish. You add a blessing and return the bottle to the river.",
+                    "fortune": 2
+                }
+            },
+            {
+                "label": "留下硬幣與瓶子",
+                "label_en": "Keep the coin and bottle",
+                "outcome": {
+                    "message": "硬幣在陽光下閃了一下，瓶中的微弱魔力也滲入你的行囊。",
+                    "message_en": "The coin flashes in the sun as a trace of magic seeps from the bottle into your pack.",
+                    "fortune": -1,
+                    "rewards": {"gold": 25, "items": {"mana_potion": 1}}
+                }
+            }
+        ]
+    },
+    "storm_fallen_tree": {
+        "category": "good",
+        "weight": 7,
+        "message": "昨夜風暴吹倒一棵老樹，樹幹擋住半條道路，斷口仍滲著微光樹液。",
+        "message_en": "Last night's storm felled an old tree across the road, and faintly glowing sap seeps from the break.",
+        "choices": [
+            {
+                "label": "清理樹幹",
+                "label_en": "Clear the trunk",
+                "outcome": {
+                    "message": "你花了些力氣清出道路，也留下幾段能用的木材。",
+                    "message_en": "You clear the road and keep several usable pieces of lumber.",
+                    "rewards": {"items": {"fresh_lumber": 3}}
+                }
+            },
+            {
+                "label": "收集發光樹液",
+                "label_en": "Collect the glowing sap",
+                "outcome": {
+                    "message": "樹液在瓶裡像星光一樣流動。老樹的枝葉卻似乎輕輕顫了一下。",
+                    "message_en": "The sap flows like starlight in your bottle, though the old tree's branches seem to shiver.",
+                    "fortune": -1,
+                    "rewards": {"items": {"mystic_sap": 1}}
+                }
+            },
+            {
+                "label": "替老樹覆土後離開",
+                "label_en": "Cover its roots and leave",
+                "outcome": {
+                    "message": "你把裸露的根重新覆好。離開時，一片綠葉落在你的肩上。",
+                    "message_en": "You cover the exposed roots. A green leaf settles on your shoulder as you leave.",
+                    "fortune": 1
+                }
+            }
+        ]
     }
 }

@@ -15,34 +15,14 @@ from trpg.i18n import t
 
 
 class TutorialMixin:
-    # 教學戰的提示，依序在玩家每次戰鬥行動後彈出一則（ephemeral，不會洗掉主面板）。
-    # 第一則在戰鬥剛開始、玩家還沒點任何按鈕前就先送出。
+    # 第一場只教玩家「現在需要知道」的操作。技能、屬性克制與異常狀態等概念
+    # 留到真正取得技能／遇到對應敵人時再呈現，避免第一次登入被六段說明淹沒。
     _TUTORIAL_TIPS = [
         ("tutorial.tip_stats",
-         "📖 **戰鬥教學 1/6 —— 你的狀態**\n面板上方會顯示你的 ❤️HP、💧MP、⚔️ATK、🛡️DEF、🚀SPD。"
-         "HP 歸零就會戰敗，MP 用來施放技能。\n\n先點擊下方的「攻擊」按鈕，砍這隻木樁人偶一刀試試看！"),
+         "📖 **第一步：攻擊**\n上方是你的 ❤️HP 與戰鬥能力。先點下方的「攻擊」，解決這隻迷路的史萊姆！"),
         ("tutorial.tip_action_bar",
-         "📖 **戰鬥教學 2/6 —— 行動條、速度與 AP**\n面板上的 ⚡ 行動條會隨著雙方的 SPD（速度）累積，"
-         "累積滿了才會輪到你或敵人行動。速度越快，累積得越快，能行動的次數也就越多。\n\n"
-         "⚡ **AP（行動點數）**：輪到你時會獲得 AP，每次攻擊或技能都會消耗 1 AP。"
-         "AP 耗盡時回合會**自動結束**；也可以按「結束回合」提早收手，把剩餘時間讓給敵人。"),
-        ("tutorial.tip_warning",
-         "📖 **戰鬥教學 3/6 —— ❗ 警示標記**\n敵人名稱旁若出現 ❗，代表系統預測牠在你下次行動前"
-         "還會攻擊幾次（❗越多代表威脅越大）。看到 ❗❗❗ 時，考慮先防禦或優先解決牠！"),
-        ("tutorial.tip_element",
-         "📖 **戰鬥教學 4/6 —— 屬性相剋**\n武器與技能可能帶有火/冰/雷等屬性。打中弱點會顯示 "
-         "🌟【效果拔群】，打到抗性顯示 🛡️【效果微弱】，完全免疫則是 👻【完全無效】。"
-         "找出敵人的弱點能讓輸出大幅提升！"),
-        ("tutorial.tip_skill_item",
-         "📖 **戰鬥教學 5/6 —— 技能、強化與道具**\n去🏫米酥學院用卷軸學習技能、「配置」到戰鬥欄後，"
-         "就能在戰鬥中點擊「技能」按鈕施放（消耗 MP 或 HP）。「道具」按鈕能使用藥水回血回魔、"
-         "或解除異常狀態。\n\n"
-         "💡 **技能等級（最高 Lv.5）**：反覆使用技能可提升熟練度自動升級，或到米酥學院花費金幣直接強化！"
-         "等級越高效果越強，但 MP/HP 消耗也會隨之增加。"),
-        ("tutorial.tip_defend_flee",
-         "📖 **戰鬥教學 6/6 —— 防禦／閃避／逃跑**\n「防禦」能減半這回合受到的傷害；"
-         "「閃避」則有機率完全躲開攻擊（速度越快機率越高）；打不過就按「逃跑」，"
-         "成功率同樣看雙方速度差。"),
+         "📖 **第二步：看 AP**\n⚡ AP 是本回合可用的行動次數，攻擊會消耗 1 點；用完會自動結束回合。"
+         "敵人旁的 ❗ 代表牠即將行動。再攻擊一次，把勝利和第一件武器帶回家！"),
     ]
 
     def build_language_select_menu(self):
@@ -65,10 +45,10 @@ class TutorialMixin:
         lang = self.player.language
         self.log_message = t(
             lang, "tutorial.prompt",
-            "👋 看起來這是你第一次來到這個世界！\n要不要花一分鐘體驗新手教學，認識一下戰鬥面板怎麼看？",
+            "👋 歡迎來到米酥村！\n要不要立刻進行一場約一分鐘的冒險？打贏會獲得你的第一件武器。",
         )
-        self.add_action_button(label=t(lang, "tutorial.btn_yes", "✅ 好，教我！"), style=discord.ButtonStyle.success, custom_id="btn_tutorial_yes")
-        self.add_action_button(label=t(lang, "tutorial.btn_no", "❌ 不用，我要自己冒險"), style=discord.ButtonStyle.secondary, custom_id="btn_tutorial_no")
+        self.add_action_button(label=t(lang, "tutorial.btn_yes", "⚔️ 立即開始第一戰"), style=discord.ButtonStyle.success, custom_id="btn_tutorial_yes")
+        self.add_action_button(label=t(lang, "tutorial.btn_no", "稍後再自己探索"), style=discord.ButtonStyle.secondary, custom_id="btn_tutorial_no")
 
     async def handle_tutorial_choice(self, interaction: discord.Interaction, want_tutorial: bool):
         real = getattr(self.player, "real_player", self.player)
@@ -87,15 +67,14 @@ class TutorialMixin:
         await self.start_tutorial_battle(interaction)
 
     async def start_tutorial_battle(self, interaction: discord.Interaction):
-        """組出教學戰的木樁人偶：血量足以撐完 6 則提示、攻擊力低到不構成真實威脅，
-        速度略低於新手初始速度，讓 ❗ 警示還是有機會自然出現。"""
+        """A short real encounter with normal rewards and a guaranteed starter weapon."""
         lang = self.player.language
         dummy = {
-            "id": "training_dummy",
-            "name": "木樁人偶", "name_en": "Training Dummy",
-            "max_hp": 70, "atk": 4, "def": 0, "spd": 8,
-            "exp": 20, "money_min": 10, "money_max": 10,
-            "drops": {}, "ai": "none",
+            "id": "tutorial_slime",
+            "name": "迷路的史萊姆", "name_en": "Lost Slime",
+            "max_hp": 20, "atk": 4, "def": 0, "spd": 6,
+            "exp": 10, "money_min": 10, "money_max": 10,
+            "drops": {"slime_jelly": 1, "wooden_sword": 1}, "ai": "none",
             "weakness": [], "resistance": [], "immunity": [],
             "is_tutorial": True,
         }
@@ -104,7 +83,7 @@ class TutorialMixin:
         self.start_combat([dummy])
         self.log_message = t(
             lang, "tutorial.battle_start",
-            "⚔️ 【教學戰】訓練場的木樁人偶站到了你面前，準備好體驗你的第一場戰鬥了嗎？",
+            "⚔️ 【第一場冒險】一隻迷路的史萊姆擋住村口！擊敗牠，帶回你的第一件武器。",
         )
         self.build_battle_menu()
         try:
@@ -127,8 +106,8 @@ class TutorialMixin:
             try:
                 await interaction.followup.send(
                     t(lang, "tutorial.complete",
-                      "🎉 **教學結束！** 你已經掌握戰鬥的基本操作了。記得——🏫米酥學院學技能並升級、"
-                      "🛒商店買裝備、🧓村長什麼都能問。祝你在這個世界闖出一片天！"),
+                      "🎉 **第一場冒險完成！** 如果拿到了練習用木劍，下一步請點「裝備」把它穿上。"
+                      "其他系統會在你真正遇到時再說明，不用一次全記住。"),
                     ephemeral=True,
                 )
             except Exception as e:

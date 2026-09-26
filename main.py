@@ -71,6 +71,14 @@ async def on_command_error(ctx, error):
 
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    if isinstance(error, app_commands.MissingPermissions):
+        message = "You need Administrator permission to use this command."
+        response = interaction.response
+        if not getattr(response, "is_done", lambda: False)():
+            await response.send_message(message, ephemeral=True)
+        else:
+            await interaction.followup.send(message, ephemeral=True)
+        return
     if is_transient_interaction_error(error):
         logger.warning(
             "Transient Discord app-command interaction failure ignored command=%s error=%s",

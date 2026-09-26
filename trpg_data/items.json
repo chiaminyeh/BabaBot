@@ -101,6 +101,150 @@
         "name_en": "Slime Jelly",
         "desc_en": "A sticky, glistening liquid."
     },
+    "fresh_lumber": {
+        "name": "普通木材",
+        "type": "etc",
+        "price": 10,
+        "sell_price": 4,
+        "shop_weight": 0,
+        "desc": "最常見的木材，是初階鍛造的基礎材料。",
+        "name_en": "Common Lumber",
+        "desc_en": "Common lumber used as a basic material for early equipment upgrades."
+    },
+    "rare_lumber": {
+        "name": "稀有木材",
+        "type": "etc",
+        "price": 35,
+        "sell_price": 14,
+        "shop_weight": 0,
+        "desc": "紋理細密的稀有木材，可承受更高溫的鍛造。",
+        "name_en": "Rare Lumber",
+        "desc_en": "Fine-grained rare lumber that withstands hotter forging temperatures."
+    },
+    "premium_lumber": {
+        "name": "高級木材",
+        "type": "etc",
+        "price": 110,
+        "sell_price": 44,
+        "shop_weight": 0,
+        "desc": "堅韌又富含魔力的高級木材，用於中高階強化。",
+        "name_en": "Premium Lumber",
+        "desc_en": "Strong, mana-rich lumber used for advanced equipment upgrades."
+    },
+    "legendary_lumber": {
+        "name": "傳說級木材",
+        "type": "etc",
+        "price": 420,
+        "sell_price": 168,
+        "shop_weight": 0,
+        "desc": "只有資深伐木者可能發現的傳說木材，是頂級鍛造素材。",
+        "name_en": "Legendary Lumber",
+        "desc_en": "Legendary timber found by master woodcutters and used in top-tier forging."
+    },
+    "mystic_sap": {
+        "name": "魔力樹液",
+        "type": "etc",
+        "price": 80,
+        "sell_price": 32,
+        "shop_weight": 0,
+        "desc": "伐木時偶爾發現的發光樹液。",
+        "name_en": "Mystic Sap",
+        "desc_en": "Glowing sap occasionally found while woodcutting."
+    },
+    "river_fish": {
+        "name": "新鮮河魚",
+        "type": "etc",
+        "price": 12,
+        "sell_price": 5,
+        "shop_weight": 0,
+        "desc": "從米酥河釣起的新鮮魚獲。",
+        "name_en": "Fresh River Fish",
+        "desc_en": "A fresh catch from the MISO river."
+    },
+    "golden_carp": {
+        "name": "金光鯉",
+        "type": "etc",
+        "price": 100,
+        "sell_price": 40,
+        "shop_weight": 0,
+        "desc": "極少上鉤、鱗片會映出金光的珍稀鯉魚。",
+        "name_en": "Golden Carp",
+        "desc_en": "A rare carp whose scales shimmer like gold."
+    },
+    "stone": {
+        "name": "石頭",
+        "type": "etc",
+        "price": 9,
+        "sell_price": 4,
+        "shop_weight": 0,
+        "desc": "採礦時最常取得的石材，可用於初階裝備強化。",
+        "name_en": "Stone",
+        "desc_en": "Common mining material used for early equipment upgrades."
+    },
+    "gold_ore": {
+        "name": "黃金礦",
+        "type": "etc",
+        "price": 85,
+        "sell_price": 34,
+        "shop_weight": 0,
+        "desc": "閃耀的黃金礦石，是中階鍛造的重要材料。",
+        "name_en": "Gold Ore",
+        "desc_en": "Shimmering gold ore used for intermediate forging."
+    },
+    "diamond": {
+        "name": "鑽石",
+        "type": "etc",
+        "price": 360,
+        "sell_price": 144,
+        "shop_weight": 0,
+        "desc": "極為稀有又堅硬的礦物，是高階裝備強化的核心素材。",
+        "name_en": "Diamond",
+        "desc_en": "An exceptionally rare and durable mineral central to high-tier upgrades."
+    },
+    "wheat_bundle": {
+        "name": "小麥束",
+        "type": "etc",
+        "life_energy_restore": 1,
+        "price": 8,
+        "sell_price": 3,
+        "shop_weight": 0,
+        "desc": "每天最多澆水一次，累計 2 次後成熟。可食用恢復 1 點生活行動力，也能出售。",
+        "name_en": "Wheat Bundle",
+        "desc_en": "Wheat that matures after 2 once-daily waterings. Eat it to restore 1 life energy or sell it."
+    },
+    "golden_wheat": {
+        "name": "黃金麥穗",
+        "type": "etc",
+        "life_energy_restore": 2,
+        "price": 90,
+        "sell_price": 36,
+        "shop_weight": 0,
+        "desc": "收成時偶爾出現的奇蹟作物。可食用恢復 2 點生活行動力，也能高價出售。",
+        "name_en": "Golden Wheat",
+        "desc_en": "A miraculous harvest. Eat it to restore 2 life energy or sell it for a fine price."
+    },
+    "hearty_carrot": {
+        "name": "元氣胡蘿蔔",
+        "type": "etc",
+        "life_energy_restore": 1,
+        "price": 18,
+        "sell_price": 7,
+        "shop_weight": 0,
+        "desc": "農耕 Lv.3 可種植，每天最多澆水一次，累計 3 次後成熟。食用恢復 1 點生活行動力。",
+        "name_en": "Hearty Carrot",
+        "desc_en": "Plantable at Farming Lv.3 and mature after 3 once-daily waterings. Restores 1 life energy."
+    },
+    "moon_berry": {
+        "name": "月光莓",
+        "type": "etc",
+        "life_energy_restore": 2,
+        "price": 48,
+        "sell_price": 19,
+        "shop_weight": 0,
+        "desc": "農耕 Lv.6 可種植，每天最多澆水一次，累計 4 次後成熟。食用恢復 2 點生活行動力。",
+        "name_en": "Moon Berry",
+        "desc_en": "Plantable at Farming Lv.6 and mature after 4 once-daily waterings. Restores 2 life energy."
+    },
     "wolf_fur": {
         "name": "完整狼皮",
         "type": "etc",

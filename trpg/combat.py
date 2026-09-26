@@ -39,6 +39,7 @@ from trpg.skill_progression import (
 
 from trpg.entity import PlayerCombatant, MonsterCombatant
 from trpg import dungeon as dg
+from trpg.weekly_events import current_weekly_event, drop_multiplier, record_weekly_kills, reward_multipliers
 
 
 VITALITY_ICONS = {"blood": "🩸", "soul": "🔷", "construct": "⚙️"}
@@ -1593,15 +1594,63 @@ class TRPGCombat:
         luck = getattr(self.player, "fortune", 0)
         gold = int(random.randint(min_gold, max_gold) * luck_gold_mult(luck))
         exp = int(monster.get("exp", 0) * luck_exp_mult(luck))
+        weekly_event = current_weekly_event(getattr(self.cog, "weekly_events", []))
+        gold_mult, exp_mult = reward_multipliers(weekly_event, monster.get("id"))
+        gold = int(gold * gold_mult)
+        exp = int(exp * exp_mult)
         return gold, exp
+
+    def _apply_weekly_event_progress(self, killed_monsters: list[dict]) -> str:
+        event = current_weekly_event(getattr(self.cog, "weekly_events", []))
+        if not event or not killed_monsters:
+            return ""
+        progress, newly_complete = record_weekly_kills(self.player, event, len(killed_monsters))
+        lang = self.player.language
+        goal = max(1, int(event.get("goal_kills", 5) or 5))
+        if not newly_complete:
+            return t(
+                lang,
+                "weekly.progress_log",
+                "\n🌟 本週事件進度：{kills}/{goal}",
+                kills=progress["kills"],
+                goal=goal,
+            )
+
+        reward_gold = max(0, int(event.get("reward_gold", 0) or 0))
+        if reward_gold:
+            self.cog.adjust_bank(self.view.user_id, reward_gold)
+        item_parts = []
+        for item_id, raw_qty in (event.get("reward_items") or {}).items():
+            if item_id not in self.cog.items:
+                continue
+            qty = max(1, int(raw_qty or 1))
+            self.player.inventory[item_id] = self.player.inventory.get(item_id, 0) + qty
+            item_name = tf(self.cog.items[item_id], "name", lang) or item_id
+            item_parts.append(f"{item_name} x{qty}")
+        progress["rewarded"] = True
+        rewards = []
+        if reward_gold:
+            rewards.append(t(lang, "weekly.reward_gold", "{gold} 金幣", gold=reward_gold))
+        rewards.extend(item_parts)
+        reward_text = "、".join(rewards) or t(lang, "weekly.reward_none", "公會嘉許")
+        title = tf(event, "title", lang) or event.get("id", "Weekly Event")
+        return t(
+            lang,
+            "weekly.completed_log",
+            "\n🎉 本週事件【{title}】完成！獲得：{rewards}",
+            title=title,
+            rewards=reward_text,
+        )
 
     def _roll_drops_for(self, monster: dict) -> str:
         lang = self.player.language
         drop_log = ""
         luck_mult = luck_drop_rate_mult(getattr(self.player, "fortune", 0))
+        weekly_event = current_weekly_event(getattr(self.cog, "weekly_events", []))
+        weekly_drop_mult = drop_multiplier(weekly_event, monster.get("id"))
         for item_id, rate in monster.get("drops", {}).items():
             qty = int(rate) if rate > 1 else 1
-            effective_rate = 1.0 if rate > 1 else min(1.0, rate * luck_mult)
+            effective_rate = 1.0 if rate > 1 else min(1.0, rate * luck_mult * weekly_drop_mult)
             if random.random() < effective_rate:
                 self.player.inventory[item_id] = self.player.inventory.get(item_id, 0) + qty
                 item_name = tf(self.cog.items.get(item_id, {}), "name", lang) or item_id
@@ -1746,6 +1795,8 @@ class TRPGCombat:
             boss_log += self._handle_boss_kill_rewards(monster)
             quest_log += self._update_kill_quest_progress(monster)
 
+        weekly_log = self._apply_weekly_event_progress(killed_monsters)
+
         self.cog.adjust_bank(self.view.user_id, total_gold)
         skills_before = set(self.player.skills)
         equipped_before = set(self.player.equipped_skills)
@@ -1804,9 +1855,9 @@ class TRPGCombat:
 
         log = t(
             lang, "combat.victory_summary",
-            "\n🏆 戰鬥勝利！\n獲得了 {exp} 經驗值與 {gold} {money_name}。\n{drop_log}{boss_log}{quest_log}{flee_log}{tower_log}{dungeon_log}",
+            "\n🏆 戰鬥勝利！\n獲得了 {exp} 經驗值與 {gold} {money_name}。\n{drop_log}{boss_log}{quest_log}{weekly_log}{flee_log}{tower_log}{dungeon_log}",
             exp=total_exp, gold=total_gold, money_name=self.cog.bot.baba.money_name,
-            drop_log=drop_log, boss_log=boss_log, quest_log=quest_log, flee_log=flee_log, tower_log=tower_log, dungeon_log="",
+            drop_log=drop_log, boss_log=boss_log, quest_log=quest_log, weekly_log=weekly_log, flee_log=flee_log, tower_log=tower_log, dungeon_log="",
         )
 
         if lvl_up:

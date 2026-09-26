@@ -44,6 +44,7 @@ class TRPGCog(commands.Cog):
         self.areas = {}
         self.quests = {}
         self.events = {}
+        self.weekly_events = []
         self.achievements = {}
         self.monster_pool = {}
         self.dungeon_events = {}
@@ -116,6 +117,7 @@ class TRPGCog(commands.Cog):
             "items": len(self.items),
             "skills": len(self.skills),
             "monsters": len(flat_monsters),
+            "weekly_events": len(self.weekly_events),
         }
         missing = []
         for name, filename in REQUIRED_CONTENT:
@@ -133,7 +135,8 @@ class TRPGCog(commands.Cog):
             f"{counts['areas']} areas, "
             f"{counts['monsters']} monsters, "
             f"{counts['items']} items, "
-            f"{counts['skills']} skills"
+            f"{counts['skills']} skills, "
+            f"{counts['weekly_events']} weekly events"
         )
 
     def load_all_config(self):
@@ -146,6 +149,7 @@ class TRPGCog(commands.Cog):
             ("status_effects", "status_effects.json"),
             ("quests", "quests.json"),
             ("events", "events.json"),
+            ("weekly_events", "weekly_events.json"),
             ("achievements", "achievements.json"),
             ("dungeon_events", "dungeon_events.json"),
             ("dungeon_relics", "dungeon_relics.json"),
