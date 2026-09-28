@@ -1,4 +1,5 @@
 .env
+!.env.example
 info.txt
 
 # Python bytecode cache / virtualenv

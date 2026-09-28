@@ -410,7 +410,13 @@ class YouTubeSearchView(View):
 class music_cog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.music_folder = "C:/Users/manza/Music"
+        default_music_folder = os.path.join(os.path.expanduser("~"), "Music")
+        configured_music_folder = os.getenv("BABABOT_MUSIC_FOLDER")
+        self.music_folder = os.path.abspath(
+            os.path.expanduser(configured_music_folder or default_music_folder)
+        )
+        self.ffmpeg_executable = os.getenv("BABABOT_FFMPEG_EXECUTABLE", "ffmpeg")
+        os.makedirs(self.music_folder, exist_ok=True)
         self.guild_states = {} # Dictionary to hold the state for each guild
         self.guild_silence = {}  # Per-guild override; missing guilds stay silent.
         self._unloading = False
@@ -873,7 +879,7 @@ class music_cog(commands.Cog):
                     else {"options": "-vn"}
                 )
                 raw_audio = discord.FFmpegPCMAudio(
-                    source_to_play, executable="ffmpeg.exe", **ffmpeg_options
+                    source_to_play, executable=self.ffmpeg_executable, **ffmpeg_options
                 )
                 audio_source = raw_audio
                 volume_audio = discord.PCMVolumeTransformer(raw_audio, volume=state.volume)
