@@ -28,3 +28,6 @@ trpg_data/backup_legacy_json/
 bank.txt
 lottery_tickets.txt
 review-red.txt
+
+# Per-user schedule data written by schedule_cog
+schedules/
